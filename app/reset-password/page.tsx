@@ -1,12 +1,12 @@
 "use client"
 import { useSearchParams } from "next/navigation"
-import { useState } from "react"
+import { Suspense, useState } from "react"
 import AuthCard from "@/components/AuthCard"
 import AuthInput from "@/components/AuthInput"
 import AuthForm from "@/components/AuthForm"
 import Link from "next/link"
 
-export default function ResetPassword() {
+function ResetPasswordContent() {
   const token = useSearchParams().get("token")
   const [password, setPassword] = useState("")
   const [error, setError] = useState("")
@@ -54,5 +54,13 @@ export default function ResetPassword() {
         )}
       </AuthCard>
     </div>
+  )
+}
+
+export default function ResetPassword() {
+  return (
+    <Suspense fallback={null}>
+      <ResetPasswordContent />
+    </Suspense>
   )
 }

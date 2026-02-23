@@ -55,8 +55,8 @@ export async function GET(req: Request) {
       incoterm: invoice.incoterm,
       gstType: gstType || invoice.exporter.gstType || "registered",
       lcNumber: invoice.lcNumber || undefined,
-      portOfLoading: invoice.portOfLoading,
-      portOfDischarge: invoice.portOfDischarge,
+      portOfLoading: invoice.portOfLoading || undefined,
+      portOfDischarge: invoice.portOfDischarge || undefined,
       currency: invoice.currency,
       exchangeRate: 83.45, // Default USD to INR, can be parameterized
     })
@@ -105,7 +105,7 @@ export async function GET(req: Request) {
 
   await lockInvoiceOnFirstPdfDownload(invoiceId)
 
-  return new NextResponse(pdf, {
+  return new NextResponse(pdf as any, {
     headers: { "Content-Type": "application/pdf" },
   })
 }

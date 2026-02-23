@@ -28,6 +28,14 @@ export interface ExchangeRates {
   [currency: string]: number // e.g., { "USD": 83.25, "EUR": 90.50 }
 }
 
+export const DEFAULT_EXCHANGE_RATES: ExchangeRates = {
+  USD: 83.45,
+  EUR: 90.5,
+  GBP: 105.2,
+  AED: 22.72,
+  INR: 1,
+}
+
 /**
  * Calculate total value of all items using Money (integer arithmetic)
  * 

@@ -23,12 +23,3 @@ export async function GET() {
 
   return NextResponse.json(exporters)
 }
-
-
-export async function GET() {
-  const exporters = await prisma.exporter.findMany({
-    orderBy: { createdAt: "desc" },
-  })
-
-  return NextResponse.json(exporters)
-}

@@ -95,7 +95,7 @@ export async function GET(req: Request) {
 
   await lockInvoiceOnFirstPdfDownload(invoiceId)
 
-  return new NextResponse(Buffer.from(pdfData), {
+  return new NextResponse(Buffer.from(pdfData) as any, {
     headers: { "Content-Type": "application/pdf" },
   })
 }

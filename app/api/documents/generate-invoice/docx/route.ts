@@ -28,7 +28,7 @@ export async function GET(req: Request) {
 
   const docx = await generateInvoiceDOCX(invoice)
 
-  return new NextResponse(docx, {
+  return new NextResponse(docx as any, {
     headers: {
       "Content-Type":
         "application/vnd.openxmlformats-officedocument.wordprocessingml.document",

@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server"
 import { prisma } from "@/lib/db"
-import { getSessionId } from "@/lib/session"
+import { getServerSession } from "next-auth"
+import { authOptions } from "@/lib/authOptions"
 
 export async function POST(req: Request) {
   if (process.env.PAYMENTS_ENABLED !== "true") {
@@ -8,13 +9,18 @@ export async function POST(req: Request) {
   }
 
   try {
+    const session = await getServerSession(authOptions)
+    const userId = session?.user?.id
+
+    if (!userId) {
+      return new NextResponse("Unauthorized", { status: 401 })
+    }
+
     const { amount } = await req.json()
 
     if (!amount) {
       return new NextResponse("Amount required", { status: 400 })
     }
-
-    const sessionId = getSessionId()
 
     // Create Razorpay order
     const orderResponse = await fetch("https://api.razorpay.com/v1/orders", {
@@ -28,7 +34,7 @@ export async function POST(req: Request) {
       body: JSON.stringify({
         amount: amount * 100, // Convert to paise
         currency: "INR",
-        receipt: `receipt_${sessionId}`,
+        receipt: `receipt_${userId}`,
       }),
     })
 
@@ -41,7 +47,7 @@ export async function POST(req: Request) {
     // Save order to database
     await prisma.payment.create({
       data: {
-        sessionId,
+        userId,
         razorpayOrderId: order.id,
         amount,
         status: "pending",

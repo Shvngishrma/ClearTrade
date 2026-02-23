@@ -1,13 +1,13 @@
 "use client"
 
 import { signIn, useSession } from "next-auth/react"
-import { useEffect, useState } from "react"
+import { Suspense, useEffect, useState } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
 import AuthCard from "@/components/AuthCard"
 import AuthInput from "@/components/AuthInput"
 import OAuthButton from "@/components/OAuthButton"
 
-export default function LoginPage() {
+function LoginPageContent() {
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
   const [error, setError] = useState("")
@@ -121,5 +121,13 @@ export default function LoginPage() {
         </div>
       </AuthCard>
     </div>
+  )
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense fallback={null}>
+      <LoginPageContent />
+    </Suspense>
   )
 }

@@ -32,8 +32,11 @@ export async function GET(req: Request) {
 
   const validation = await validateBeforeRelease(invoiceId)
   const docx = await generateComplianceCertificateDOCX(invoice, validation)
+  const body = new Blob([Uint8Array.from(docx)], {
+    type: "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+  })
 
-  return new NextResponse(docx, {
+  return new NextResponse(body, {
     headers: {
       "Content-Type": "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
       "Content-Disposition": `attachment; filename=Compliance_Certificate_${invoiceId}.docx`,

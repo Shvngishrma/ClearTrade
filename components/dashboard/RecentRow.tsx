@@ -13,6 +13,7 @@ export function RecentRow({ invoice, onRemove, isPro }: any) {
   }
 
   const invoiceId = invoice.id
+  const statusKey = String(invoice.status || "DRAFT") as keyof typeof statusColor
   const createdAtLabel = new Date(invoice.createdAt).toLocaleDateString("en-GB", {
     day: "2-digit",
     month: "short",
@@ -32,7 +33,7 @@ export function RecentRow({ invoice, onRemove, isPro }: any) {
         </p>
 
         <span
-          className={`px-3 py-1 text-xs rounded-full ${statusColor[invoice.status] || "bg-gray-200 text-gray-700 dark:bg-zinc-700 dark:text-zinc-200"}`}
+          className={`px-3 py-1 text-xs rounded-full ${statusColor[statusKey] || "bg-gray-200 text-gray-700 dark:bg-zinc-700 dark:text-zinc-200"}`}
         >
           {String(invoice.status || "DRAFT").replace("_", " ")}
         </span>

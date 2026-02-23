@@ -1,10 +1,20 @@
+import type { FormEventHandler, ReactNode } from "react"
+
+type AuthFormProps = {
+  onSubmit: FormEventHandler<HTMLFormElement>
+  loading: boolean
+  error?: string
+  buttonText: string
+  children: ReactNode
+}
+
 export default function AuthForm({
   onSubmit,
   loading,
   error,
   buttonText,
   children,
-}) {
+}: AuthFormProps) {
   return (
     <form onSubmit={onSubmit}>
       {children}

@@ -1,4 +1,4 @@
-import { prisma } from "@/lib/prisma"
+import { prisma } from "@/lib/db"
 
 export async function getDashboardData(userId: string) {
   const startOfMonth = new Date()
@@ -34,7 +34,7 @@ export async function getDashboardData(userId: string) {
 
     prisma.document.findMany({
       where: { userId },
-      orderBy: { updatedAt: "desc" },
+      orderBy: { createdAt: "desc" },
       take: 5,
     }),
   ])

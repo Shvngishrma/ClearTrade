@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { Suspense, useEffect, useState } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
 import Link from "next/link"
 
@@ -15,7 +15,7 @@ const DOCUMENT_TYPES = [
   "Document Compliance Certificate",
 ]
 
-export default function DownloadPage() {
+function DownloadPageContent() {
   const router = useRouter()
   const params = useSearchParams()
   const invoiceId = params.get("invoiceId")
@@ -305,5 +305,13 @@ export default function DownloadPage() {
         </div>
       </div>
     </div>
+  )
+}
+
+export default function DownloadPage() {
+  return (
+    <Suspense fallback={null}>
+      <DownloadPageContent />
+    </Suspense>
   )
 }

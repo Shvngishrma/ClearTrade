@@ -1,7 +1,8 @@
 import { NextResponse } from "next/server"
 import { prisma } from "@/lib/db"
-import { getSessionId } from "@/lib/session"
 import crypto from "crypto"
+import { getServerSession } from "next-auth"
+import { authOptions } from "@/lib/authOptions"
 
 export async function POST(req: Request) {
   if (process.env.PAYMENTS_ENABLED !== "true") {
@@ -9,14 +10,19 @@ export async function POST(req: Request) {
   }
 
   try {
+    const session = await getServerSession(authOptions)
+    const userId = session?.user?.id
+
+    if (!userId) {
+      return new NextResponse("Unauthorized", { status: 401 })
+    }
+
     const { razorpayOrderId, razorpayPaymentId, razorpaySignature } =
       await req.json()
 
     if (!razorpayOrderId || !razorpayPaymentId || !razorpaySignature) {
       return new NextResponse("Missing payment details", { status: 400 })
     }
-
-    const sessionId = getSessionId()
 
     // Verify signature
     const body = `${razorpayOrderId}|${razorpayPaymentId}`
@@ -32,7 +38,7 @@ export async function POST(req: Request) {
     // Update payment status
     await prisma.payment.updateMany({
       where: {
-        sessionId,
+        userId,
         razorpayOrderId,
       },
       data: {
@@ -42,9 +48,10 @@ export async function POST(req: Request) {
     })
 
     // Mark usage as Pro
-    await prisma.usage.update({
-      where: { sessionId },
-      data: { isPro: true },
+    await prisma.usage.upsert({
+      where: { userId },
+      create: { userId, isPro: true },
+      update: { isPro: true },
     })
 
     return NextResponse.json({ success: true })

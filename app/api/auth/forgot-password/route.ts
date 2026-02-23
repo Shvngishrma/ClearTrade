@@ -2,6 +2,7 @@ import { prisma } from "@/lib/db"
 import { v4 as uuid } from "uuid"
 import nodemailer from "nodemailer"
 import { NextResponse } from "next/server"
+import { SignJWT } from "jose"
 
 export async function POST(req: Request) {
   const { email } = await req.json()
@@ -41,16 +42,18 @@ export async function POST(req: Request) {
     smtpEmail.includes("your@email.com") ||
     smtpPassword.includes("app-password")
 
-  const token = uuid()
-  const resetUrl = `${appUrl}/reset-password?token=${token}`
-
-  await prisma.passwordReset.create({
-    data: {
-      userId: user.id,
-      token,
-      expiresAt: new Date(Date.now() + 15 * 60 * 1000),
-    },
+  const secret = process.env.NEXTAUTH_SECRET || process.env.JWT_SECRET || "development-secret"
+  const token = await new SignJWT({
+    sub: user.id,
+    jti: uuid(),
+    purpose: "password-reset",
   })
+    .setProtectedHeader({ alg: "HS256" })
+    .setIssuedAt()
+    .setExpirationTime("15m")
+    .sign(new TextEncoder().encode(secret))
+
+  const resetUrl = `${appUrl}/reset-password?token=${token}`
 
   if (hasPlaceholderSmtp) {
     console.error("[forgot-password] SMTP is not configured. Set SMTP_EMAIL and SMTP_PASSWORD.")

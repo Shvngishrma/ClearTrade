@@ -576,7 +576,7 @@ export async function validateRealization(
     paymentTermValid: true, // If we reach here, term is valid
     advanceReceivedOnTime:
       input.paymentTerms !== "Advance" || 
-      (input.advanceReceivedDate && input.advanceReceivedDate < input.shipmentDate),
+      Boolean(input.advanceReceivedDate && input.advanceReceivedDate < input.shipmentDate),
     rbiCompliant: isCompliant,
     realizationStatus: timelineCheck.status,
     riskLevel,

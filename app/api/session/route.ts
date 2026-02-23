@@ -3,6 +3,11 @@ import { NextResponse } from "next/server"
 
 export async function POST(req: Request) {
   const body = await req.json()
+  const invoiceNumber =
+    body.invoiceNumber ||
+    `INV-${Date.now()}-${Math.floor(Math.random() * 1000)
+      .toString()
+      .padStart(3, "0")}`
 
   const exporter = await prisma.exporter.create({
     data: body.exporter,
@@ -19,6 +24,7 @@ export async function POST(req: Request) {
 
   const invoice = await prisma.invoice.create({
     data: {
+      invoiceNumber,
       exporterId: exporter.id,
       buyerId: buyer.id,
       incoterm: body.incoterm,

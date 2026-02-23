@@ -36,7 +36,7 @@ export async function GET(req: Request) {
 
   const docx = await generatePackingListDOCX(invoice, invoice.packingLists[0])
 
-  return new NextResponse(docx, {
+  return new NextResponse(docx as any, {
     headers: {
       "Content-Type":
         "application/vnd.openxmlformats-officedocument.wordprocessingml.document",

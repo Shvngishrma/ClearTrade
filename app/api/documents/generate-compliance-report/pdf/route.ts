@@ -63,7 +63,7 @@ export async function GET(req: Request) {
       await browser.close()
     }
 
-    return new NextResponse(Buffer.from(pdfData), {
+    return new NextResponse(Buffer.from(pdfData) as any, {
       headers: {
         "Content-Type": "application/pdf",
         "Content-Disposition": `inline; filename="Compliance_Certificate_${invoiceId}.pdf"`,
