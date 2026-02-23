@@ -1,0 +1,101 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+	body {
+		@apply bg-gray-50 text-gray-900;
+	}
+
+	html.dark body {
+		@apply bg-zinc-900 text-zinc-100;
+	}
+
+	html.dark nav,
+	html.dark aside {
+		@apply bg-zinc-900 border-zinc-700;
+	}
+
+		.page-transition {
+			animation: pageFadeIn 180ms ease-out;
+		}
+
+		@media (prefers-reduced-motion: reduce) {
+			.page-transition {
+				animation: none;
+			}
+		}
+
+		@keyframes pageFadeIn {
+			from {
+				opacity: 0;
+				transform: translateY(4px);
+			}
+			to {
+				opacity: 1;
+				transform: translateY(0);
+			}
+		}
+}
+
+@layer components {
+	.ui-panel {
+		@apply bg-white/95 dark:bg-zinc-900/90 border border-gray-200 dark:border-zinc-700 rounded-xl shadow-sm;
+		backdrop-filter: blur(4px);
+	}
+
+	html.dark .documents-page .bg-white {
+		@apply bg-zinc-900;
+	}
+
+	html.dark .documents-page .bg-gray-50 {
+		@apply bg-zinc-800;
+	}
+
+	html.dark .documents-page .border,
+	html.dark .documents-page .border-gray-100,
+	html.dark .documents-page .border-gray-200,
+	html.dark .documents-page .border-gray-300 {
+		@apply border-zinc-700;
+	}
+
+	html.dark .documents-page input,
+	html.dark .documents-page select,
+	html.dark .documents-page textarea {
+		@apply bg-zinc-900 border-zinc-700 text-zinc-100;
+	}
+
+	html.dark .documents-page input::placeholder,
+	html.dark .documents-page textarea::placeholder {
+		@apply text-zinc-400;
+	}
+
+	html.dark .documents-page input:read-only,
+	html.dark .documents-page select:disabled,
+	html.dark .documents-page textarea:disabled {
+		@apply bg-zinc-800 text-zinc-300;
+	}
+
+	html.dark .documents-page table,
+	html.dark .documents-page thead,
+	html.dark .documents-page tbody,
+	html.dark .documents-page tr,
+	html.dark .documents-page th,
+	html.dark .documents-page td {
+		@apply border-zinc-700 text-zinc-200;
+	}
+
+	html.dark .documents-page .text-gray-900 {
+		@apply text-zinc-100;
+	}
+
+	html.dark .documents-page .text-gray-700 {
+		@apply text-zinc-300;
+	}
+
+	html.dark .documents-page .text-gray-600,
+	html.dark .documents-page .text-gray-500,
+	html.dark .documents-page .text-gray-400 {
+		@apply text-zinc-400;
+	}
+}

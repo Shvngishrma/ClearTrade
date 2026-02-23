@@ -1,0 +1,487 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id        String   @id @default(uuid())
+  email     String   @unique
+  password  String?
+  isPro     Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  invoices  Invoice[]
+  usage     Usage?
+  payments  Payment[]
+  documents Document[]
+}
+
+model Exporter {
+  id        String    @id @default(uuid())
+  name      String
+  address   String
+  iec       String
+  gstin     String?
+  gstType   String    @default("registered") // registered | unregistered | composition | sez | deemed_export
+  createdAt DateTime  @default(now())
+  invoices  Invoice[]
+
+  // Sequential invoice number tracking - AUDIT TRAIL
+  invoiceSequence  InvoiceSequence?
+  cancelledNumbers CancelledInvoiceNumber[]
+  sequenceAudits   InvoiceSequenceAudit[]
+
+  // LC Term Locks - UCP 600 COMPLIANCE
+  lcLocks LCLock[]
+
+  // AD Port Mapping - CUSTOMS COMPLIANCE
+  adMappings ExporterADMapping[]
+}
+
+// ============================================
+// AD-PORT VALIDATION - CUSTOMS COMPLIANCE
+// ============================================
+
+model ExporterADMapping {
+  id         String  @id @default(uuid())
+  exporterId String
+  adCode     String // e.g., "EPCG", "SEZ", "DTA"
+  portCode   String // e.g., "INMAA", "INMAB1", "INMAE"
+  isActive   Boolean @default(true)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  exporter Exporter @relation(fields: [exporterId], references: [id], onDelete: Cascade)
+
+  @@unique([exporterId, adCode, portCode])
+  @@index([exporterId, isActive])
+}
+
+model Buyer {
+  id                      String    @id @default(uuid())
+  name                    String
+  address                 String
+  country                 String
+  buyerTaxId              String?
+  buyerVAT                String?
+  buyerRegistrationNumber String?
+  invoices                Invoice[]
+}
+
+model Invoice {
+  id            String   @id @default(uuid())
+  invoiceNumber String   @unique
+  invoiceDate   DateTime @default(now())
+  userId        String?
+  exporterId    String
+  buyerId       String
+
+  currency     String // ISO 4217 (USD, INR, EUR, etc.)
+  incoterm     String // FOB/CIF/EXW/CFR etc.
+  paymentTerms String @default("Advance")
+
+  // Legacy shipment fields (kept nullable for migration safety)
+  portOfLoading    String?
+  portOfDischarge  String?
+  countryOfOrigin  String?
+  finalDestination String?
+  modeOfTransport  String?
+
+  // Export-house shipment layer (invoice-level logistics)
+  containerNumber      String?
+  blNumber             String?
+  awbNumber            String?
+  vesselOrFlightNumber String?
+  marksAndNumbers      String?
+  totalPackages        Int?
+  packageType          String?
+  portOfLoadingCode    String? // UN/LOCODE (e.g., INNSA)
+  portOfDischargeCode  String? // UN/LOCODE (e.g., AEDXB)
+
+  freight   Decimal  @default(0)
+  insurance Decimal  @default(0)
+  fobValue  Decimal?
+  cifValue  Decimal?
+
+  totalValue       Decimal
+  totalValueINR    Decimal?
+  exchangeRateDate DateTime? // RBI requirement: when was exchange rate fixed
+
+  // Document lifecycle control
+  status          InvoiceLifecycleStatus @default(DRAFT)
+  version         Int                    @default(1)
+  readyAt         DateTime?
+  lockedAt        DateTime?
+  amendedAt       DateTime?
+  parentInvoiceId String?
+
+  // Integrity snapshot and hash (frozen on first lock)
+  documentHash    String?
+  hashGeneratedAt DateTime?
+  integritySnapshot Json?
+
+  isLC     Boolean @default(false)
+  lcNumber String?
+
+  createdAt DateTime @default(now())
+
+  certificatesOfOrigin CertificateOfOrigin[]
+  declarations         Declaration[]
+  insurances           Insurance[]
+  buyer                Buyer                 @relation(fields: [buyerId], references: [id])
+  exporter             Exporter              @relation(fields: [exporterId], references: [id])
+  user                 User?                 @relation(fields: [userId], references: [id])
+  parentInvoice        Invoice?              @relation("InvoiceAmendments", fields: [parentInvoiceId], references: [id])
+  amendments           Invoice[]             @relation("InvoiceAmendments")
+  versionTrail         InvoiceVersion[]
+  items                Item[]
+  lettersOfCredit      LetterOfCredit[]
+  packingLists         PackingList[]
+  shippingBills        ShippingBill[]
+}
+
+model InvoiceVersion {
+  id          String   @id @default(cuid())
+  invoiceId   String
+  version     Int
+  status      InvoiceLifecycleStatus
+  changeType  String   // "DRAFT" | "READY" | "LOCKED" | "AMENDED"
+  reason      String?
+  changedBy   String?
+  snapshot    Json
+  documentHash String?
+  createdAt   DateTime @default(now())
+
+  invoice Invoice @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+
+  @@index([invoiceId, createdAt])
+  @@index([invoiceId, version])
+}
+
+enum InvoiceLifecycleStatus {
+  DRAFT
+  READY
+  LOCKED
+  AMENDED
+}
+
+model Item {
+  id          String  @id @default(uuid())
+  invoiceId   String
+  description String
+  hsCode      String
+  quantity    Int
+  unitPrice   Decimal
+
+  // Item-level compliance fields (migration-safe nullable)
+  netWeight        Decimal?
+  grossWeight      Decimal?
+  countryOfOrigin  String?
+  packageReference String? // Optional carton mapping reference (e.g., cartonNumber)
+
+  invoice Invoice @relation(fields: [invoiceId], references: [id])
+}
+
+model PackingList {
+  id          String   @id @default(uuid())
+  invoiceId   String
+  totalBoxes  Int
+  totalQuantity Int    @default(0)
+  netWeight   Decimal
+  grossWeight Decimal
+  totalCBM    Decimal?
+  createdAt   DateTime @default(now())
+  invoice     Invoice  @relation(fields: [invoiceId], references: [id])
+  cartons     Carton[]
+}
+
+model Carton {
+  id              String      @id @default(cuid())
+  packingListId   String
+  cartonNumber    Int
+  quantity        Int         @default(1)
+  marks           String?
+  lengthCm        Decimal?
+  widthCm         Decimal?
+  heightCm        Decimal?
+  netWeightKg     Decimal
+  grossWeightKg   Decimal
+  cbm             Decimal?
+  createdAt       DateTime    @default(now())
+  packingList     PackingList @relation(fields: [packingListId], references: [id], onDelete: Cascade)
+
+  @@unique([packingListId, cartonNumber])
+  @@index([packingListId])
+}
+
+model ShippingBill {
+  id              String   @id @default(uuid())
+  invoiceId       String
+  portOfLoading   String
+  portOfDischarge String
+  cargoType       String
+  schemeCode      String?
+  drawback        Boolean
+  createdAt       DateTime @default(now())
+  invoice         Invoice  @relation(fields: [invoiceId], references: [id])
+}
+
+model Declaration {
+  id        String   @id @default(uuid())
+  invoiceId String
+  type      String
+  createdAt DateTime @default(now())
+  invoice   Invoice  @relation(fields: [invoiceId], references: [id])
+}
+
+model CertificateOfOrigin {
+  id            String   @id @default(uuid())
+  invoiceId     String
+  originCountry String
+  chamberName   String
+  createdAt     DateTime @default(now())
+  invoice       Invoice  @relation(fields: [invoiceId], references: [id])
+}
+
+model Insurance {
+  id           String   @id @default(uuid())
+  invoiceId    String
+  policyNumber String
+  insuredValue Decimal
+  createdAt    DateTime @default(now())
+  invoice      Invoice  @relation(fields: [invoiceId], references: [id])
+}
+
+model LetterOfCredit {
+  id                     String   @id @default(uuid())
+  invoiceId              String
+  lcNumber               String
+  lcDescriptionText      String   @default("") @db.Text // Empty default for backward compat
+  latestShipmentDate     DateTime @default(now()) // Current date as default
+  presentationDays       Int      @default(45) // UCP 600: typically 45 days for presentation
+  partialShipmentAllowed Boolean  @default(false)
+  tolerancePercent       Float?   @default(0) // ±0% by default (no tolerance)
+  governedBy             String   @default("UCP 600")
+  createdAt              DateTime @default(now())
+  invoice                Invoice  @relation(fields: [invoiceId], references: [id])
+}
+
+model Usage {
+  id        String   @id @default(uuid())
+  userId    String   @unique
+  count     Int      @default(0)
+  isPro     Boolean  @default(false)
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id])
+}
+
+model Payment {
+  id                String   @id @default(uuid())
+  userId            String
+  razorpayOrderId   String   @unique
+  razorpayPaymentId String?
+  amount            Decimal
+  status            String   @default("pending")
+  createdAt         DateTime @default(now())
+  user              User     @relation(fields: [userId], references: [id])
+}
+
+model Document {
+  id        String   @id @default(cuid())
+  type      String
+  status    String
+  userId    String
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id])
+}
+
+// ============================================
+// INVOICE SEQUENCING - AUDIT-PROOF CONTROL
+// ============================================
+
+model InvoiceSequence {
+  id         String @id @default(cuid())
+  exporterId String @unique
+
+  // Next number to assign
+  nextNumber       Int @default(1)
+  lastIssuedNumber Int @default(0)
+
+  // Most recent issuance metadata
+  lastIssuedDate DateTime?
+  lastIssuedId   String?
+
+  // Sequencing format
+  prefix    String  @default("INV-")
+  suffix    String? // e.g., "/2026"
+  padLength Int     @default(6)
+
+  // Audit trail
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  exporter Exporter @relation(fields: [exporterId], references: [id], onDelete: Cascade)
+}
+
+model CancelledInvoiceNumber {
+  id             String @id @default(cuid())
+  exporterId     String
+  invoiceNumber  String
+  sequenceNumber Int
+
+  // Why was it cancelled?
+  reason          String // "USER_DELETED" | "DUPLICATE" | "FRAUD_PREVENTED" | "CORRECTION"
+  linkedInvoiceId String?
+
+  // Audit trail
+  cancelledBy String
+  cancelledAt DateTime @default(now())
+  notes       String?
+
+  exporter Exporter @relation(fields: [exporterId], references: [id], onDelete: Cascade)
+
+  @@unique([exporterId, sequenceNumber])
+  @@index([exporterId, cancelledAt])
+}
+
+model InvoiceSequenceAudit {
+  id         String  @id @default(cuid())
+  exporterId String
+  invoiceId  String?
+
+  // Action type
+  action String // "ISSUED" | "CANCELLED" | "SKIPPED" | "REISSUED" | "SEQUENCE_CORRECTED"
+
+  // Number details
+  invoiceNumber  String
+  sequenceNumber Int
+  expectedNext   Int
+
+  // Timing
+  invoiceDate DateTime
+  systemTime  DateTime @default(now())
+
+  // User info
+  userId    String?
+  ipAddress String?
+
+  // Status
+  status String // "SUCCESS" | "VIOLATION_ALLOWED" | "VIOLATION_BLOCKED"
+  reason String?
+
+  exporter Exporter @relation(fields: [exporterId], references: [id], onDelete: Cascade)
+
+  @@index([exporterId, action])
+  @@index([exporterId, invoiceDate])
+}
+
+// ============================================
+// LC TERM LOCK SERVICE MODELS
+// ============================================
+
+model LCLock {
+  id         String  @id @default(cuid())
+  lockId     String  @unique // Format: LC-LOCK-{lcNumber}-{timestamp}
+  lcNumber   String
+  exporterId String
+  buyerId    String?
+
+  // LC Terms (immutable snapshot JSON)
+  lockedTerms Json // Stores entire LCTerms interface
+
+  // Lock lifecycle
+  lockedAt     DateTime @default(now())
+  lockedBy     String // User ID
+  expiresAt    DateTime // Same as LC expiryDate
+  status       String   @default("Active") // "Active" | "Expired" | "Cancelled" | "Locked"
+  cancelReason String?
+
+  // Statistics
+  invoicesGenerated  Int @default(0)
+  invoicesSubmitted  Int @default(0)
+  discrepanciesFound Int @default(0)
+
+  // Audit trail
+  auditLogId String?
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  // Relations
+  exporter          Exporter             @relation(fields: [exporterId], references: [id], onDelete: Cascade)
+  auditTrail        LCLockAudit[]
+  complianceReports LCComplianceReport[]
+
+  @@unique([exporterId, lcNumber])
+  @@index([exporterId, status])
+  @@index([expiresAt])
+}
+
+model LCComplianceReport {
+  id        String @id @default(cuid())
+  reportId  String @unique // Format: REPORT-{lcNumber}-{invoiceId}-{timestamp}
+  lockId    String
+  lcNumber  String
+  invoiceId String
+
+  // Checkpoint results (JSON array of CheckpointValidation)
+  checkpoints Json // Stores CheckpointValidation[]
+
+  // Summary
+  totalCheckpoints  Int
+  checkpointsPassed Int
+  checkpointsFailed Int
+  complianceScore   Int // 0-100
+  compliant         Boolean // true if all Errors passed
+
+  // Issues (JSON array of resolved issues)
+  issues Json // Stores issue objects with severity & resolution
+
+  // Audit info
+  validatedAt DateTime @default(now())
+  validatedBy String // User ID
+
+  // Bank submission
+  submittedAt   DateTime?
+  submittedTo   String? // Bank name
+  bankReference String?
+  acceptance    String? // "Accepted" | "Rejected" | "Pending"
+
+  lcLock LCLock @relation(fields: [lockId], references: [id], onDelete: Cascade)
+
+  @@index([lockId])
+  @@index([invoiceId])
+  @@index([compliant])
+  @@index([submittedAt])
+}
+
+model LCLockAudit {
+  id       String @id @default(cuid())
+  lockId   String
+  lcNumber String
+
+  // Event type
+  eventType String // "LOCKED" | "INVOICE_GENERATED" | "VALIDATION_RUN" | "DISCREPANCY_FOUND" | "SUBMISSION" | "EXPIRED" | "CANCELLED"
+
+  // Event details
+  eventData Json // Details specific to event type
+
+  // Affected invoice
+  invoiceId     String?
+  invoiceNumber String?
+
+  // Audit trail
+  timestamp DateTime @default(now())
+  userId    String?
+  ipAddress String?
+
+  lcLock LCLock @relation(fields: [lockId], references: [id], onDelete: Cascade)
+
+  @@index([lockId, eventType])
+  @@index([lcNumber])
+}
