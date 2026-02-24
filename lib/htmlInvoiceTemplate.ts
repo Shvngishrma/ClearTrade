@@ -600,11 +600,14 @@ export function generateInvoiceHTML(invoice: any, usage?: any): string {
 
     /* Signature Block - Bottom Right */
     .signature-block {
-      margin-top: 48px;
-      margin-bottom: 32px;
+      margin-top: 24px;
+      margin-bottom: 16px;
       display: flex;
       justify-content: flex-end;
       page-break-inside: avoid;
+      break-inside: avoid;
+      page-break-before: avoid;
+      break-before: avoid;
     }
 
     .signature-container {
@@ -658,8 +661,8 @@ export function generateInvoiceHTML(invoice: any, usage?: any): string {
 
     /* Compliance Footer Block */
     .compliance-footer {
-      margin-top: 32px;
-      margin-bottom: 32px;
+      margin-top: 16px;
+      margin-bottom: 16px;
       display: grid;
       grid-template-columns: 1fr 1fr;
       gap: 24px 40px;
@@ -669,6 +672,9 @@ export function generateInvoiceHTML(invoice: any, usage?: any): string {
       border-top: 1px solid #f3f4f6;
       border-bottom: 1px solid #f3f4f6;
       page-break-inside: avoid;
+      break-inside: avoid;
+      page-break-before: avoid;
+      break-before: avoid;
     }
 
     .compliance-footer-item {
@@ -701,7 +707,7 @@ export function generateInvoiceHTML(invoice: any, usage?: any): string {
 
     /* Footer Compliance Strip */
     .footer {
-      margin-top: 48px;
+      margin-top: 20px;
       padding-top: 16px;
       padding-bottom: 0;
       border-top: 1px solid #f3f4f6;
@@ -711,6 +717,9 @@ export function generateInvoiceHTML(invoice: any, usage?: any): string {
       text-align: center;
       line-height: 1.4;
       page-break-inside: avoid;
+      break-inside: avoid;
+      page-break-before: avoid;
+      break-before: avoid;
     }
 
     .footer-content {
@@ -767,6 +776,16 @@ export function generateInvoiceHTML(invoice: any, usage?: any): string {
       }
       .container {
         page-break-inside: avoid;
+        break-inside: avoid;
+      }
+
+      .signature-block,
+      .compliance-footer,
+      .footer {
+        page-break-inside: avoid;
+        break-inside: avoid;
+        page-break-before: avoid;
+        break-before: avoid;
       }
     }
   </style>

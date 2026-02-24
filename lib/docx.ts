@@ -128,12 +128,37 @@ export async function generateInvoiceDOCX(invoice: any) {
     ]
   })
 
+  // Transport details
+  const vesselOrFlight = (invoice.vesselOrFlightNumber || "").trim()
+  const blOrAwb = (invoice.blNumber || invoice.awbNumber || "").trim()
+  const containerNumber = (invoice.containerNumber || "").trim()
+  const marksAndNumbers = (invoice.marksAndNumbers || "").trim()
+
+  // Exchange rate
+  const hasExchangeDisclosure =
+    invoice.currency !== "INR" &&
+    Number(invoice.totalValue) > 0 &&
+    Number(invoice.totalValueINR) > 0
+  const derivedExchangeRate = hasExchangeDisclosure
+    ? Number(invoice.totalValueINR) / Number(invoice.totalValue)
+    : null
+  const referenceDate = hasExchangeDisclosure
+    ? new Date(invoice.exchangeRateDate || invoice.invoiceDate || new Date())
+    : null
+  const formattedReferenceDate = referenceDate
+    ? referenceDate.toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" })
+    : null
+
   return pack([
     h1("COMMERCIAL INVOICE"),
     kv("Invoice No", invoice.invoiceNumber || "N/A"),
     kv("Invoice Date", invoice.invoiceDate ? new Date(invoice.invoiceDate).toLocaleDateString("en-GB") : "N/A"),
     kv("Incoterm", invoice.incoterm || "N/A"),
     kv("Payment Terms", invoice.paymentTerms || "N/A"),
+    kv("Port of Loading", invoice.portOfLoading || "N/A"),
+    kv("Port of Discharge", invoice.portOfDischarge || "N/A"),
+    kv("Country of Origin", invoice.countryOfOrigin || "N/A"),
+    kv("Mode of Transport", invoice.modeOfTransport || "N/A"),
     h2("Exporter Details"),
     kv("Name", invoice.exporter?.name || "N/A"),
     kv("Address", invoice.exporter?.address || "N/A"),
@@ -144,32 +169,78 @@ export async function generateInvoiceDOCX(invoice: any) {
     kv("Country", invoice.buyer?.country || "N/A"),
     h2("Goods"),
     table(["SR", "Description", "HS Code", "Qty", "Unit Price", "Value"], rows),
+    h2("Transport Details"),
+    ...(vesselOrFlight ? [kv("Vessel / Flight", vesselOrFlight)] : []),
+    ...(blOrAwb ? [kv("BL / AWB No", blOrAwb)] : []),
+    ...(containerNumber ? [kv("Container No", containerNumber)] : []),
+    ...(marksAndNumbers ? [kv("Marks & Numbers", marksAndNumbers)] : []),
     h2("Valuation"),
     kv("Total Invoice Value", `${invoice.currency || "USD"} ${Number(invoice.totalValue || 0).toFixed(2)}`),
+    ...(hasExchangeDisclosure
+      ? [
+          kv(
+            "Exchange Rate",
+            `1 ${invoice.currency} = ₹${derivedExchangeRate?.toFixed(2)}`
+          ),
+          kv("Reference Date", formattedReferenceDate || "N/A"),
+        ]
+      : []),
     ...signBlock(invoice.exporter?.name || "Exporter"),
   ])
 }
 
 export async function generatePackingListDOCX(invoice: any, packing: any) {
+  const poRef = invoice.poReference || invoice.poRef || invoice.purchaseOrderRef || "N/A"
   const rows = (invoice.items || []).map((item: any, index: number) => [
     String(index + 1),
     item.description || "",
     item.hsCode || "",
     String(item.quantity ?? ""),
   ])
+  const cartons = Array.isArray(packing?.cartons) ? packing.cartons : []
+  const cartonRows = cartons.map((carton: any) => [
+    String(carton.cartonNumber ?? ""),
+    carton.marks || "",
+    carton.lengthCm && carton.widthCm && carton.heightCm
+      ? `${Number(carton.lengthCm).toFixed(2)} × ${Number(carton.widthCm).toFixed(2)} × ${Number(carton.heightCm).toFixed(2)}`
+      : "",
+    Number(carton.netWeightKg || 0).toFixed(3),
+    Number(carton.grossWeightKg || 0).toFixed(3),
+    Number(carton.cbm || 0).toFixed(6),
+  ])
+  const totalNetWeight = Number(packing?.netWeight || 0)
+  const totalGrossWeight = Number(packing?.grossWeight || 0)
+  const totalCBM = Number(packing?.totalCBM || 0)
+  const totalBoxes = Number(packing?.totalBoxes || cartons.length || 0)
 
   return pack([
     h1("PACKING LIST"),
     kv("Invoice Ref", invoice.invoiceNumber || "N/A"),
-    h2("Exporter Details"),
+    kv("PO Ref", poRef),
+    kv("Incoterm", invoice.incoterm || "N/A"),
+    kv("Port of Loading", invoice.portOfLoading || "N/A"),
+    kv("Port of Discharge", invoice.portOfDischarge || "N/A"),
+    kv("Country of Origin", invoice.countryOfOrigin || "N/A"),
+    kv("Mode of Transport", invoice.modeOfTransport || "N/A"),
+    h2("Exporter / Shipper"),
     kv("Name", invoice.exporter?.name || "N/A"),
-    kv("Buyer", invoice.buyer?.name || "N/A"),
+    kv("Address", invoice.exporter?.address || "N/A"),
+    kv("IEC", invoice.exporter?.iec || "N/A"),
+    h2("Buyer / Importer"),
+    kv("Name", invoice.buyer?.name || "N/A"),
+    kv("Address", invoice.buyer?.address || "N/A"),
+    kv("Country", invoice.buyer?.country || "N/A"),
     h2("Goods"),
     table(["SR", "Description", "HS Code", "Qty"], rows),
-    h2("Packing Summary"),
-    kv("Total Boxes", String(packing?.totalBoxes ?? "0")),
-    kv("Net Weight", `${packing?.netWeight ?? "0"} kg`),
-    kv("Gross Weight", `${packing?.grossWeight ?? "0"} kg`),
+    h2("Carton Details"),
+    table(["Carton No", "Marks", "Dimensions (cm)", "Net Wt", "Gross Wt", "CBM"], cartonRows),
+    h2("Summary"),
+    kv("Total Cartons", String(totalBoxes)),
+    kv("Total Net Weight (kg)", totalNetWeight.toFixed(3)),
+    kv("Total Gross Weight (kg)", totalGrossWeight.toFixed(3)),
+    kv("Total CBM", totalCBM.toFixed(6)),
+    h2("Declaration"),
+    new Paragraph("We hereby certify that the above packing details are true and correct and correspond to the related commercial invoice."),
     ...signBlock(invoice.exporter?.name || "Exporter"),
   ])
 }

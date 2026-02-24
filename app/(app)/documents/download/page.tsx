@@ -3,6 +3,7 @@
 import { Suspense, useEffect, useState } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
 import Link from "next/link"
+import { UpgradeModal } from "@/components/UpgradeModal"
 
 
 // No longer used for UI; kept for fallback
@@ -24,7 +25,13 @@ function DownloadPageContent() {
   const initialStatus = (params.get("status") || "DRAFT").toUpperCase()
   const [isDownloading, setIsDownloading] = useState(false)
   const [isDownloadingDocxZip, setIsDownloadingDocxZip] = useState(false)
+  const [showUpgradeModal, setShowUpgradeModal] = useState(false)
+  const [upgradeContext, setUpgradeContext] = useState<{
+    reason: "DOCX_RESTRICTED" | "LIMIT_EXCEEDED"
+    message: string
+  } | null>(null)
   const [downloadSuccess, setDownloadSuccess] = useState(false)
+  const [downloadError, setDownloadError] = useState<string | null>(null)
   const [invoiceStatus, setInvoiceStatus] = useState(initialStatus)
   const [invoiceVersion, setInvoiceVersion] = useState<number>(1)
   const [isPro, setIsPro] = useState(false)
@@ -120,16 +127,28 @@ function DownloadPageContent() {
         const errorPayload = await res.json().catch(async () => ({ message: await res.text() }))
         console.error("[DOWNLOAD] Response not OK, body:", errorPayload)
 
-        const blockers = Array.isArray(errorPayload?.blockers) ? errorPayload.blockers : []
-        const blockerText = blockers.length
-          ? blockers.map((b: any) => `• [${b.engine}] ${b.code}: ${b.message}${b.resolution ? `\n  Fix: ${b.resolution}` : ""}`).join("\n")
-          : null
-
-        alert(
-          blockerText
-            ? `Download blocked by validation gate:\n\n${blockerText}`
-            : `Download failed: ${errorPayload?.message || res.status}`
-        )
+        // Special handling for Puppeteer/Chrome missing error
+        if (
+          errorPayload?.details?.message?.includes("Could not find Chrome") ||
+          errorPayload?.details?.message?.includes("puppeteer browsers install chrome")
+        ) {
+          setDownloadError(
+            "PDF generation failed due to a missing Chrome browser on the server. " +
+            "This is a technical issue. Please contact support or your administrator and ask them to run " +
+            "'npx puppeteer browsers install chrome' on the server, or refer to the Puppeteer configuration guide. " +
+            "If you are self-hosting, see https://pptr.dev/guides/configuration."
+          )
+        } else {
+          const blockers = Array.isArray(errorPayload?.blockers) ? errorPayload.blockers : []
+          const blockerText = blockers.length
+            ? blockers.map((b: any) => `• [${b.engine}] ${b.code}: ${b.message}${b.resolution ? `\n  Fix: ${b.resolution}` : ""}`).join("\n")
+            : null
+          setDownloadError(
+            blockerText
+              ? `Download blocked by validation gate:\n\n${blockerText}`
+              : `Download failed: ${errorPayload?.message || res.status}`
+          )
+        }
         setIsDownloading(false)
         return
       }
@@ -140,7 +159,7 @@ function DownloadPageContent() {
 
       if (blob.size === 0) {
         console.error("[DOWNLOAD] Blob size is 0")
-        alert("Download failed: Empty file")
+        setDownloadError("Download failed: Empty file")
         setIsDownloading(false)
         return
       }
@@ -167,7 +186,7 @@ function DownloadPageContent() {
       setIsDownloading(false)
     } catch (err) {
       console.error("[DOWNLOAD] Error caught:", err)
-      alert("Download error: " + (err instanceof Error ? err.message : String(err)))
+      setDownloadError("Download error: " + (err instanceof Error ? err.message : String(err)))
       setIsDownloading(false)
     }
   }
@@ -176,7 +195,11 @@ function DownloadPageContent() {
     if (!invoiceId) return
 
     if (!isPro) {
-      router.push("/pricing")
+      setUpgradeContext({
+        reason: "DOCX_RESTRICTED",
+        message: "DOCX ZIP export is available only for Pro users. Upgrade to unlock DOCX downloads.",
+      })
+      setShowUpgradeModal(true)
       return
     }
 
@@ -194,11 +217,19 @@ function DownloadPageContent() {
               .join("\n")
           : null
 
-        alert(
-          blockerText
-            ? `DOCX ZIP blocked by validation gate:\n\n${blockerText}`
-            : errorPayload?.message || "DOCX ZIP download failed"
-        )
+        if (res.status === 403 && errorPayload?.error?.includes("Pro")) {
+          setUpgradeContext({
+            reason: "DOCX_RESTRICTED",
+            message: errorPayload?.error || "DOCX ZIP export is available only for Pro users.",
+          })
+          setShowUpgradeModal(true)
+        } else {
+          alert(
+            blockerText
+              ? `DOCX ZIP blocked by validation gate:\n\n${blockerText}`
+              : errorPayload?.message || "DOCX ZIP download failed"
+          )
+        }
         setIsDownloadingDocxZip(false)
         return
       }
@@ -228,6 +259,20 @@ function DownloadPageContent() {
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-zinc-950 p-4">
       <div className="ui-panel rounded-lg max-w-md w-full p-8 border border-gray-200 dark:border-zinc-800 shadow-sm dark:shadow-none">
+        {downloadError && (
+          <div className="mb-4 p-3 rounded bg-red-50 border border-red-200 text-red-800 text-sm whitespace-pre-line">
+            <strong className="block mb-1">Download Error</strong>
+            {downloadError}
+            {downloadError.includes('puppeteer') || downloadError.includes('Chrome browser') ? (
+              <>
+                <br />
+                <span className="block mt-2 text-xs text-red-700">
+                  <b>What to do:</b> Contact your administrator or support and share this message. If you are self-hosting, follow the instructions above to install Chrome for Puppeteer.
+                </span>
+              </>
+            ) : null}
+          </div>
+        )}
         {/* Success Icon */}
         <div className="flex justify-center mb-6">
           <div className="w-12 h-12 bg-green-100 dark:bg-green-900/40 rounded-full flex items-center justify-center">
@@ -301,11 +346,12 @@ function DownloadPageContent() {
           {isDownloadingDocxZip ? "Preparing DOCX ZIP…" : "Download all as DOCX ZIP"}
         </button>
 
-        {!isPro && (
-          <p className="text-xs text-center text-amber-700 dark:text-amber-400 mb-4">
-            DOCX download is available on Pro. <Link href="/pricing" className="underline hover:opacity-80">Upgrade</Link>
-          </p>
-        )}
+        {/* Upgrade Modal for DOCX ZIP restriction */}
+        <UpgradeModal
+          isOpen={showUpgradeModal}
+          onClose={() => setShowUpgradeModal(false)}
+          context={upgradeContext}
+        />
 
         {/* Success Message */}
         {downloadSuccess && (

@@ -39,10 +39,13 @@ export async function GET(req: Request) {
 
     const usage = await checkUsage()
     if (!usage.isPro) {
-      return new Response(JSON.stringify({ error: "Pro only" }), {
-        status: 403,
-        headers: { "Content-Type": "application/json" },
-      })
+      return new Response(
+        JSON.stringify({ error: "DOCX export is available only for Pro users. Please upgrade to access this feature." }),
+        {
+          status: 403,
+          headers: { "Content-Type": "application/json" },
+        }
+      )
     }
 
     const invoice = await prisma.invoice.findUnique({
