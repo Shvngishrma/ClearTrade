@@ -5,8 +5,12 @@ import type { DefaultSession, NextAuthOptions } from "next-auth"
 import { prisma } from "@/lib/db"
 import bcrypt from "bcryptjs"
 
-const PREMIUM_EMAIL = "knownconstantl@gmail.com"
+const PREMIUM_EMAIL = "knownconstant@gmail.com"
 let roleColumnExists: boolean | null = null
+
+function isPremiumEligibleEmail(email: string): boolean {
+  return normalizeEmail(email) === PREMIUM_EMAIL
+}
 
 function normalizeEmail(email: string): string {
   return String(email || "").trim().toLowerCase()
@@ -164,7 +168,7 @@ export const authOptions: NextAuthOptions = {
       }
 
       const normalizedSignInEmail = normalizeEmail(user.email || "")
-      if (normalizedSignInEmail === PREMIUM_EMAIL) {
+      if (isPremiumEligibleEmail(normalizedSignInEmail)) {
         try {
           const updatedUser = (user as any).id
             ? await prisma.user.update({
@@ -199,6 +203,32 @@ export const authOptions: NextAuthOptions = {
         token.email = user.email
         token.isPro = user.isPro
         token.picture = (user as any).image || token.picture
+      }
+
+      const tokenEmail = normalizeEmail(String(token.email || ""))
+      if (isPremiumEligibleEmail(tokenEmail)) {
+        try {
+          const promotedUser = token.id
+            ? await prisma.user.update({
+                where: { id: token.id as string },
+                data: { isPro: true },
+                select: { id: true, isPro: true },
+              })
+            : await prisma.user.update({
+                where: { email: tokenEmail },
+                data: { isPro: true },
+                select: { id: true, isPro: true },
+              })
+
+          await ensurePremiumRole(promotedUser.id)
+          token.id = promotedUser.id
+          token.isPro = promotedUser.isPro
+        } catch (error) {
+          console.error("[auth] Premium role assignment via jwt failed", {
+            email: tokenEmail,
+            error: error instanceof Error ? error.message : String(error),
+          })
+        }
       }
 
       if (!token.id && token.sub) {
