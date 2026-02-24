@@ -59,12 +59,12 @@ function LoginPageContent() {
   if (status === "loading" || status === "authenticated") return null
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50">
+    <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-zinc-900">
       <AuthCard>
-        <h1 className="text-2xl font-semibold text-center">
+        <h1 className="text-2xl font-semibold text-center text-gray-900 dark:text-zinc-100">
           Welcome back
         </h1>
-        <p className="text-sm text-gray-500 text-center mt-1">
+        <p className="text-sm text-gray-500 dark:text-zinc-400 text-center mt-1">
           Log in to your account
         </p>
 
@@ -94,9 +94,9 @@ function LoginPageContent() {
         </form>
 
         <div className="flex items-center gap-4 my-6">
-          <div className="h-px bg-gray-200 flex-1" />
-          <span className="text-xs text-gray-400">OR</span>
-          <div className="h-px bg-gray-200 flex-1" />
+          <div className="h-px bg-gray-200 dark:bg-zinc-700 flex-1" />
+          <span className="text-xs text-gray-400 dark:text-zinc-500">OR</span>
+          <div className="h-px bg-gray-200 dark:bg-zinc-700 flex-1" />
         </div>
 
         <div className="space-y-3">
@@ -107,15 +107,15 @@ function LoginPageContent() {
           />
         </div>
 
-        <div className="mt-6 text-center text-sm">
+        <div className="mt-6 text-center text-sm text-gray-700 dark:text-zinc-300">
           Don't have an account?{" "}
-          <a href="/signup" className="underline">
+          <a href="/signup" className="underline text-gray-900 dark:text-zinc-100">
             Sign up
           </a>
         </div>
 
         <div className="text-center mt-2">
-          <a href="/forgot-password" className="text-sm underline text-gray-500">
+          <a href="/forgot-password" className="text-sm underline text-gray-500 dark:text-zinc-400">
             Forgot password?
           </a>
         </div>

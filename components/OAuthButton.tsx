@@ -20,7 +20,7 @@ export default function OAuthButton({
   return (
     <button
       onClick={onClick}
-      className="w-full flex items-center justify-center gap-3 border border-gray-300 rounded-md py-2 hover:bg-gray-50 transition"
+      className="w-full flex items-center justify-center gap-3 border border-gray-300 dark:border-zinc-700 rounded-md py-2 text-gray-900 dark:text-zinc-100 hover:bg-gray-50 dark:hover:bg-zinc-800 transition"
     >
       <span className="flex items-center justify-center">
         {icons[provider] || icons.google}
