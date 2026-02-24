@@ -52,12 +52,12 @@ export default function SignupPage() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50">
+    <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-zinc-900">
       <AuthCard>
-        <h1 className="text-2xl font-semibold text-center">
+        <h1 className="text-2xl font-semibold text-center text-gray-900 dark:text-zinc-100">
           Create account
         </h1>
-        <p className="text-sm text-gray-500 text-center mt-1">
+        <p className="text-sm text-gray-500 dark:text-zinc-400 text-center mt-1">
           Start your free account
         </p>
 
@@ -86,9 +86,9 @@ export default function SignupPage() {
           </button>
         </form>
 
-        <p className="mt-6 text-center text-sm text-gray-500">
+        <p className="mt-6 text-center text-sm text-gray-500 dark:text-zinc-400">
           Already have an account?{" "}
-          <Link href="/login" className="text-black underline">
+          <Link href="/login" className="text-black dark:text-zinc-100 underline">
             Log in
           </Link>
         </p>
