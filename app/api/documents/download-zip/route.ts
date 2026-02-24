@@ -1,3 +1,5 @@
+export const dynamic = "force-dynamic";
+
 import JSZip from "jszip"
 import { prisma } from "@/lib/db"
 import { checkUsage, incrementUsage } from "@/lib/usage"
