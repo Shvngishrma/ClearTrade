@@ -66,16 +66,26 @@ export async function GET(req: Request) {
       waitUntil: "networkidle0",
     })
 
+    const contentHeightPx = await page.evaluate(() => {
+      const bodyHeight = document.body?.scrollHeight || 0
+      const htmlHeight = document.documentElement?.scrollHeight || 0
+      return Math.max(bodyHeight, htmlHeight)
+    })
+
+    const a4HeightPx = 1122
+    const fitScale = Math.max(0.72, Math.min(1, a4HeightPx / Math.max(contentHeightPx, 1)))
+
     pdfData = (await page.pdf({
       format: "A4",
+      preferCSSPageSize: true,
       margin: {
-        top: "15mm",
-        right: "12mm",
-        bottom: "15mm",
-        left: "12mm",
+        top: "0mm",
+        right: "0mm",
+        bottom: "0mm",
+        left: "0mm",
       },
       printBackground: true,
-      scale: 1,
+      scale: fitScale,
     })) as any
 
     await page.close()

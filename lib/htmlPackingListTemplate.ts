@@ -291,20 +291,27 @@ export function generatePackingListHTML(invoice: any, packing: any, usage?: any)
 
     .declaration-block {
       margin-top: 8px;
-      margin-bottom: 26px;
+      margin-bottom: 14px;
       font-size: 11px;
       color: #6b7280;
       line-height: 1.5;
       border-top: 1px solid #f3f4f6;
       padding-top: 12px;
+      page-break-inside: avoid;
+      break-inside: avoid;
+      page-break-before: avoid;
+      break-before: avoid;
     }
 
     .signature-block {
-      margin-top: 48px;
-      margin-bottom: 32px;
+      margin-top: 24px;
+      margin-bottom: 16px;
       display: flex;
       justify-content: flex-end;
       page-break-inside: avoid;
+      break-inside: avoid;
+      page-break-before: avoid;
+      break-before: avoid;
     }
 
     .signature-container { width: 280px; text-align: right; }
@@ -333,8 +340,8 @@ export function generatePackingListHTML(invoice: any, packing: any, usage?: any)
     }
 
     .compliance-footer {
-      margin-top: 32px;
-      margin-bottom: 32px;
+      margin-top: 16px;
+      margin-bottom: 16px;
       display: grid;
       grid-template-columns: 1fr 1fr;
       gap: 24px 40px;
@@ -344,6 +351,9 @@ export function generatePackingListHTML(invoice: any, packing: any, usage?: any)
       border-top: 1px solid #f3f4f6;
       border-bottom: 1px solid #f3f4f6;
       page-break-inside: avoid;
+      break-inside: avoid;
+      page-break-before: avoid;
+      break-before: avoid;
     }
 
     .compliance-footer-item { display: flex; flex-direction: column; gap: 4px; }
@@ -366,13 +376,17 @@ export function generatePackingListHTML(invoice: any, packing: any, usage?: any)
     }
 
     .footer {
-      margin-top: 48px;
+      margin-top: 20px;
       padding-top: 16px;
       border-top: 1px solid #f3f4f6;
       font-size: 10px;
       color: #9ca3af;
       text-align: center;
       line-height: 1.4;
+      page-break-inside: avoid;
+      break-inside: avoid;
+      page-break-before: avoid;
+      break-before: avoid;
     }
 
     .footer-content {
@@ -390,6 +404,28 @@ export function generatePackingListHTML(invoice: any, packing: any, usage?: any)
       font-family: 'Courier New', monospace;
       color: #9ca3af;
       letter-spacing: 0.5px;
+    }
+
+    @media print {
+      body {
+        margin: 0;
+        padding: 0;
+      }
+
+      .container {
+        page-break-inside: avoid;
+        break-inside: avoid;
+      }
+
+      .declaration-block,
+      .signature-block,
+      .compliance-footer,
+      .footer {
+        page-break-inside: avoid;
+        break-inside: avoid;
+        page-break-before: avoid;
+        break-before: avoid;
+      }
     }
   </style>
 </head>
