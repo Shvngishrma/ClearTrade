@@ -4,6 +4,8 @@ import { Suspense, useEffect, useState } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
 import Link from "next/link"
 
+
+// No longer used for UI; kept for fallback
 const DOCUMENT_TYPES = [
   "Commercial Invoice",
   "Packing List",
@@ -26,6 +28,21 @@ function DownloadPageContent() {
   const [invoiceStatus, setInvoiceStatus] = useState(initialStatus)
   const [invoiceVersion, setInvoiceVersion] = useState<number>(1)
   const [isPro, setIsPro] = useState(false)
+  const [includedDocs, setIncludedDocs] = useState<string[]>([])
+  // Fetch included document list for this invoice
+  useEffect(() => {
+    if (!invoiceId) return
+    let cancelled = false
+    fetch(`/api/documents/download-zip?invoiceId=${invoiceId}&list=1`)
+      .then((res) => res.ok ? res.json() : null)
+      .then((data) => {
+        if (!cancelled && data?.included && Array.isArray(data.included)) {
+          setIncludedDocs(data.included)
+        }
+      })
+      .catch(() => {})
+    return () => { cancelled = true }
+  }, [invoiceId])
 
   const badgeConfig: Record<string, { label: string; className: string }> = {
     DRAFT: { label: "🟡 Draft", className: "bg-zinc-200 text-zinc-800 dark:bg-zinc-700 dark:text-zinc-200" },
@@ -253,12 +270,15 @@ function DownloadPageContent() {
             Included Documents
           </p>
           <ul className="space-y-2">
-            {DOCUMENT_TYPES.map((doc) => (
-              <li key={doc} className="text-sm text-gray-700 dark:text-zinc-300 flex items-center">
-                <span className="w-1.5 h-1.5 bg-gray-400 dark:bg-zinc-500 rounded-full mr-2.5"></span>
-                {doc}
-              </li>
-            ))}
+            {includedDocs.length > 0
+              ? includedDocs.map((doc) => (
+                  <li key={doc} className="text-sm text-gray-700 dark:text-zinc-300 flex items-center">
+                    <span className="w-1.5 h-1.5 bg-gray-400 dark:bg-zinc-500 rounded-full mr-2.5"></span>
+                    {doc}
+                  </li>
+                ))
+              : <li className="text-sm text-gray-500 dark:text-zinc-500">No documents included</li>
+            }
           </ul>
         </div>
 
