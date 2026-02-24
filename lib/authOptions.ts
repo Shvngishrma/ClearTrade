@@ -5,6 +5,9 @@ import type { DefaultSession, NextAuthOptions } from "next-auth"
 import { prisma } from "@/lib/db"
 import bcrypt from "bcryptjs"
 
+const PREMIUM_EMAIL = "knownconstantl@gmail.com"
+let roleColumnExists: boolean | null = null
+
 function normalizeEmail(email: string): string {
   return String(email || "").trim().toLowerCase()
 }
@@ -21,6 +24,35 @@ function canonicalizeEmail(email: string): string {
   }
 
   return normalized
+}
+
+async function ensurePremiumRole(userId: string) {
+  if (roleColumnExists === null) {
+    try {
+      const columnResult = await prisma.$queryRaw<Array<{ exists: boolean }>>`
+        SELECT EXISTS (
+          SELECT 1
+          FROM information_schema.columns
+          WHERE table_schema = 'public'
+            AND table_name = 'User'
+            AND column_name = 'role'
+        ) AS "exists"
+      `
+      roleColumnExists = Boolean(columnResult?.[0]?.exists)
+    } catch {
+      roleColumnExists = false
+    }
+  }
+
+  if (!roleColumnExists) {
+    return
+  }
+
+  await prisma.$executeRaw`
+    UPDATE "User"
+    SET "role" = 'PREMIUM'
+    WHERE id = ${userId}
+  `
 }
 
 declare module "next-auth" {
@@ -129,6 +161,34 @@ export const authOptions: NextAuthOptions = {
         ;(user as any).id = dbUser.id
         ;(user as any).isPro = dbUser.isPro
         ;(user as any).email = dbUser.email
+      }
+
+      const normalizedSignInEmail = normalizeEmail(user.email || "")
+      if (normalizedSignInEmail === PREMIUM_EMAIL) {
+        try {
+          const updatedUser = (user as any).id
+            ? await prisma.user.update({
+                where: { id: (user as any).id as string },
+                data: { isPro: true },
+                select: { id: true, isPro: true, email: true },
+              })
+            : await prisma.user.update({
+                where: { email: normalizedSignInEmail },
+                data: { isPro: true },
+                select: { id: true, isPro: true, email: true },
+              })
+
+          await ensurePremiumRole(updatedUser.id)
+
+          ;(user as any).id = updatedUser.id
+          ;(user as any).isPro = updatedUser.isPro
+          ;(user as any).email = updatedUser.email
+        } catch (error) {
+          console.error("[auth] Premium role assignment failed", {
+            email: normalizedSignInEmail,
+            error: error instanceof Error ? error.message : String(error),
+          })
+        }
       }
 
       return true
