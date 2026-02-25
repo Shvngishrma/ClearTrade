@@ -7,6 +7,27 @@ import { lockInvoiceOnFirstPdfDownload } from "@/lib/documentLifecycle"
 import { NextResponse } from "next/server"
 import puppeteer from "puppeteer"
 
+export const runtime = "nodejs"
+
+async function launchBrowser() {
+  try {
+    return await puppeteer.launch({
+      headless: true,
+      args: ["--no-sandbox", "--disable-setuid-sandbox"],
+    })
+  } catch {
+    const chromiumModule = await import("@sparticuz/chromium")
+    const chromium = chromiumModule.default
+    const executablePath = await chromium.executablePath()
+
+    return await puppeteer.launch({
+      headless: true,
+      executablePath,
+      args: [...chromium.args, "--no-sandbox", "--disable-setuid-sandbox"],
+    })
+  }
+}
+
 export async function GET(req: Request) {
   const { searchParams } = new URL(req.url)
   const invoiceId = searchParams.get("invoiceId")
@@ -59,10 +80,7 @@ export async function GET(req: Request) {
     // Use Puppeteer for modern HTML-to-PDF rendering
     const htmlContent = generateInvoiceHTML(invoice, usage)
 
-    const browser = await puppeteer.launch({
-      headless: true,
-      args: ["--no-sandbox", "--disable-setuid-sandbox"],
-    })
+    const browser = await launchBrowser()
 
     const page = await browser.newPage()
 

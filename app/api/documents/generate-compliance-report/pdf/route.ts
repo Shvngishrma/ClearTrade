@@ -119,6 +119,25 @@ async function generateFallbackPdfFromHtml(html: string, invoiceId: string): Pro
   return await pdf.save()
 }
 
+async function launchBrowser() {
+  try {
+    return await puppeteer.launch({
+      headless: true,
+      args: ["--no-sandbox", "--disable-setuid-sandbox"],
+    })
+  } catch (primaryError) {
+    const chromiumModule = await import("@sparticuz/chromium")
+    const chromium = chromiumModule.default
+    const executablePath = await chromium.executablePath()
+
+    return await puppeteer.launch({
+      headless: true,
+      executablePath,
+      args: [...chromium.args, "--no-sandbox", "--disable-setuid-sandbox"],
+    })
+  }
+}
+
 export async function GET(req: Request) {
   const user = await getCurrentUser()
   if (!user) {
@@ -153,10 +172,7 @@ export async function GET(req: Request) {
 
     let pdfData: Uint8Array
     try {
-      const browser = await puppeteer.launch({
-        headless: true,
-        args: ["--no-sandbox", "--disable-setuid-sandbox"],
-      })
+      const browser = await launchBrowser()
 
       try {
         const page = await browser.newPage()
