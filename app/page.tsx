@@ -19,7 +19,7 @@ export default function HomePage() {
         </p>
 
         <Link href="/documents">
-          <button className="px-10 py-3 rounded-lg bg-gray-900 text-white dark:bg-zinc-100 dark:text-zinc-900 hover:bg-black dark:hover:bg-white transition shadow-sm">
+          <button className="px-10 py-3 rounded-lg bg-gray-900 !text-white dark:bg-zinc-100 dark:!text-zinc-900 hover:bg-black hover:!text-white dark:hover:bg-white dark:hover:!text-zinc-900 transition shadow-sm">
             Get Started
           </button>
         </Link>

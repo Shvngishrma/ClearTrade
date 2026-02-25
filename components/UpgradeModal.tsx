@@ -69,7 +69,7 @@ export function UpgradeModal({
               // TODO: Implement payment/upgrade flow
               window.location.href = "/pricing"
             }}
-            className="flex-1 px-4 py-2 bg-gray-900 text-white rounded hover:bg-black font-medium"
+            className="flex-1 px-4 py-2 bg-gray-900 !text-white rounded hover:bg-black hover:!text-white dark:bg-zinc-100 dark:!text-zinc-900 dark:hover:bg-white dark:hover:!text-zinc-900 font-medium"
           >
             Upgrade Now
           </button>
