@@ -11,7 +11,6 @@ const DOCX_ROUTES: Record<string, string> = {
   coo: "/api/documents/generate-coo/docx",
   insurance: "/api/documents/generate-insurance/docx",
   lc: "/api/documents/generate-lc/docx",
-  complianceReport: "/api/documents/generate-compliance-report/docx",
 }
 
 const FILE_NAMES: Record<string, string> = {
@@ -22,7 +21,6 @@ const FILE_NAMES: Record<string, string> = {
   coo: "Certificate_of_Origin.docx",
   insurance: "Insurance_Certificate.docx",
   lc: "LC_Summary.docx",
-  complianceReport: "Compliance_Certificate.docx",
 }
 
 export async function GET(req: Request) {
@@ -85,7 +83,7 @@ export async function GET(req: Request) {
     }
 
     const docsToFetch = Object.keys(DOCX_ROUTES).filter((doc) => {
-      if (doc === "invoice" || doc === "complianceReport") {
+      if (doc === "invoice") {
         return true
       }
 

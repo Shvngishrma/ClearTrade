@@ -26,6 +26,7 @@ function DownloadPageContent() {
   const initialStatus = (params.get("status") || "DRAFT").toUpperCase()
   const [isDownloading, setIsDownloading] = useState(false)
   const [isDownloadingDocxZip, setIsDownloadingDocxZip] = useState(false)
+  const [isDownloadingCompliance, setIsDownloadingCompliance] = useState(false)
   const [showUpgradeModal, setShowUpgradeModal] = useState(false)
   const [upgradeContext, setUpgradeContext] = useState<{
     reason: "DOCX_RESTRICTED" | "LIMIT_EXCEEDED"
@@ -62,7 +63,9 @@ function DownloadPageContent() {
       .catch((err) => {
         if (!cancelled) {
           setIncludedDocsError(err instanceof Error ? err.message : "Failed to load included documents")
-          setIncludedDocs([])
+          setIncludedDocs([
+            "Commercial Invoice",
+          ])
         }
       })
       .finally(() => {
@@ -191,6 +194,18 @@ function DownloadPageContent() {
       const blob = await res.blob()
       console.log("[DOWNLOAD] Blob created, size:", blob.size, "type:", blob.type)
 
+      const includedHeader = res.headers.get("x-included-documents")
+      if (includedHeader) {
+        try {
+          const parsed = JSON.parse(decodeURIComponent(includedHeader))
+          if (Array.isArray(parsed) && parsed.length > 0) {
+            setIncludedDocs(parsed.map((v) => String(v)))
+          }
+        } catch {
+          // non-blocking
+        }
+      }
+
       if (blob.size === 0) {
         console.error("[DOWNLOAD] Blob size is 0")
         setDownloadError("Download failed: Empty file")
@@ -290,6 +305,55 @@ function DownloadPageContent() {
     }
   }
 
+  async function handleDownloadComplianceCertificate() {
+    if (!invoiceId) return
+
+    setIsDownloadingCompliance(true)
+    setDownloadError(null)
+
+    try {
+      const res = await fetch(`/api/documents/generate-compliance-report/pdf?invoiceId=${invoiceId}`, {
+        credentials: "include",
+      })
+
+      if (!res.ok) {
+        const errorPayload = await res.json().catch(async () => ({ message: await res.text() }))
+        const blockers = Array.isArray(errorPayload?.blockers) ? errorPayload.blockers : []
+        const blockerText = blockers.length
+          ? blockers
+              .map((b: any) => `• [${b.engine}] ${b.code}: ${b.message}${b.resolution ? `\n  Fix: ${b.resolution}` : ""}`)
+              .join("\n")
+          : null
+
+        setDownloadError(
+          blockerText
+            ? `Compliance certificate blocked by validation gate:\n\n${blockerText}`
+            : errorPayload?.message || "Compliance certificate download failed"
+        )
+        return
+      }
+
+      const blob = await res.blob()
+      if (blob.size === 0) {
+        setDownloadError("Compliance certificate download failed: Empty file")
+        return
+      }
+
+      const url = window.URL.createObjectURL(blob)
+      const a = document.createElement("a")
+      a.href = url
+      a.download = "Compliance_Certificate.pdf"
+      document.body.appendChild(a)
+      a.click()
+      a.remove()
+      window.URL.revokeObjectURL(url)
+    } catch (err) {
+      setDownloadError("Compliance certificate error: " + (err instanceof Error ? err.message : String(err)))
+    } finally {
+      setIsDownloadingCompliance(false)
+    }
+  }
+
   useEffect(() => {
     if (!invoiceId || autoDownloadTriggered) return
     if (autoDownload === "pdf") {
@@ -382,7 +446,7 @@ function DownloadPageContent() {
           type="button"
           onClick={handleDownload}
           disabled={isDownloading}
-          className="w-full px-4 py-3 bg-gray-900 text-white dark:bg-zinc-100 dark:text-zinc-900 font-medium rounded-lg transition-all disabled:opacity-60 disabled:cursor-not-allowed hover:bg-black dark:hover:bg-white mb-4"
+          className="w-full px-4 py-3 bg-gray-900 text-white dark:bg-zinc-100 dark:text-zinc-900 font-medium rounded-lg transition-all disabled:opacity-60 disabled:cursor-not-allowed hover:bg-black hover:text-white dark:hover:bg-white dark:hover:text-zinc-900 mb-4"
         >
           {isDownloading ? "Preparing ZIP…" : "Download all as ZIP"}
         </button>
@@ -391,9 +455,18 @@ function DownloadPageContent() {
           type="button"
           onClick={handleDownloadAllDocxZip}
           disabled={isDownloadingDocxZip}
-          className="w-full mt-2 px-3 py-2 bg-gray-900 text-white dark:bg-zinc-100 dark:text-zinc-900 text-sm font-medium rounded-lg transition-all disabled:opacity-60 disabled:cursor-not-allowed hover:bg-black dark:hover:bg-white"
+          className="w-full mt-2 px-3 py-2 bg-gray-900 text-white dark:bg-zinc-100 dark:text-zinc-900 text-sm font-medium rounded-lg transition-all disabled:opacity-60 disabled:cursor-not-allowed hover:bg-black hover:text-white dark:hover:bg-white dark:hover:text-zinc-900"
         >
           {isDownloadingDocxZip ? "Preparing DOCX ZIP…" : "Download all as DOCX ZIP"}
+        </button>
+
+        <button
+          type="button"
+          onClick={handleDownloadComplianceCertificate}
+          disabled={isDownloadingCompliance}
+          className="w-full mt-2 px-3 py-2 border border-gray-300 dark:border-zinc-700 text-gray-800 dark:text-zinc-200 text-sm font-medium rounded-lg transition-all disabled:opacity-60 disabled:cursor-not-allowed hover:bg-gray-100 dark:hover:bg-zinc-800"
+        >
+          {isDownloadingCompliance ? "Preparing Compliance Certificate…" : "Download Compliance Certificate (Optional)"}
         </button>
 
         {/* Upgrade Modal for DOCX ZIP restriction */}

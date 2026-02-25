@@ -850,7 +850,7 @@ function DocumentsPage() {
             className={`px-6 py-3 rounded-md transition font-medium
               ${selectedDocs.length === 0
                 ? "bg-gray-300 text-white cursor-not-allowed dark:bg-zinc-700 dark:text-zinc-300"
-                : "bg-gray-900 text-white hover:bg-black dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-white"
+                : "bg-gray-900 text-white hover:bg-black hover:text-white dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-white dark:hover:text-zinc-900"
               }`}
           >
             Continue
@@ -1340,7 +1340,7 @@ function DocumentsPage() {
                     <button
                       type="button"
                       onClick={addPackingCarton}
-                      className="px-3 py-2 rounded-md text-sm font-medium bg-gray-900 text-white hover:bg-black dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-white"
+                      className="px-3 py-2 rounded-md text-sm font-medium bg-gray-900 text-white hover:bg-black hover:text-white dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-white dark:hover:text-zinc-900"
                     >
                       + Add Carton
                     </button>
@@ -1702,7 +1702,7 @@ function DocumentsPage() {
                 className={`mt-8 px-8 py-3 rounded-md transition font-medium
                   ${isGenerating
                     ? "bg-gray-300 text-white cursor-not-allowed dark:bg-zinc-700 dark:text-zinc-300"
-                    : "bg-gray-900 text-white hover:bg-black dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-white"
+                    : "bg-gray-900 text-white hover:bg-black hover:text-white dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-white dark:hover:text-zinc-900"
                   }`}
               >
                 {isGenerating ? "Generating…" : "Generate documents"}

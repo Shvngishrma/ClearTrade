@@ -13,7 +13,6 @@
   "dependencies": {
     "@auth/prisma-adapter": "^2.11.1",
     "@prisma/client": "^5.22.0",
-    "@sparticuz/chromium": "^143.0.4",
     "bcryptjs": "^3.0.3",
     "clsx": "^2.1.1",
     "docx": "^9.5.1",
