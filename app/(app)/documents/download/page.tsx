@@ -4,6 +4,7 @@ import { Suspense, useEffect, useState } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
 import Link from "next/link"
 import { UpgradeModal } from "@/components/UpgradeModal"
+import PrimaryButton from "../../../../components/PrimaryButton"
 
 
 // No longer used for UI; kept for fallback
@@ -442,23 +443,25 @@ function DownloadPageContent() {
         </div>
 
         {/* Primary CTA */}
-        <button
+        <PrimaryButton
           type="button"
           onClick={handleDownload}
           disabled={isDownloading}
-          className="w-full px-4 py-3 bg-gray-900 text-white dark:bg-zinc-100 dark:text-zinc-900 font-medium rounded-lg transition-all disabled:opacity-60 disabled:cursor-not-allowed hover:bg-black hover:text-white dark:hover:bg-white dark:hover:text-zinc-900 mb-4"
+          fullWidth
+          className="mb-4"
         >
           {isDownloading ? "Preparing ZIP…" : "Download all as ZIP"}
-        </button>
+        </PrimaryButton>
 
-        <button
+        <PrimaryButton
           type="button"
           onClick={handleDownloadAllDocxZip}
           disabled={isDownloadingDocxZip}
-          className="w-full mt-2 px-3 py-2 bg-gray-900 text-white dark:bg-zinc-100 dark:text-zinc-900 text-sm font-medium rounded-lg transition-all disabled:opacity-60 disabled:cursor-not-allowed hover:bg-black hover:text-white dark:hover:bg-white dark:hover:text-zinc-900"
+          fullWidth
+          className="mt-2 px-3 py-2 text-sm"
         >
           {isDownloadingDocxZip ? "Preparing DOCX ZIP…" : "Download all as DOCX ZIP"}
-        </button>
+        </PrimaryButton>
 
         <button
           type="button"

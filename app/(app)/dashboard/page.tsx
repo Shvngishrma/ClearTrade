@@ -5,6 +5,7 @@ import { useSession } from "next-auth/react"
 import { StatCard } from "@/components/dashboard/StatCard"
 import { RecentRow } from "@/components/dashboard/RecentRow"
 import { ConfirmModal } from "@/components/dashboard/ConfirmModal"
+import PrimaryButton from "../../../components/PrimaryButton"
 
 type InvoiceRow = {
   id: string
@@ -167,12 +168,9 @@ export default function DashboardPage() {
 
       {/* CTA */}
       <div>
-        <a
-          href="/documents"
-          className="bg-gray-200 hover:bg-gray-300 dark:bg-zinc-800 dark:hover:bg-zinc-700 px-6 py-3 rounded-xl font-medium"
-        >
+        <PrimaryButton href="/documents">
           Create new document
-        </a>
+        </PrimaryButton>
       </div>
 
 

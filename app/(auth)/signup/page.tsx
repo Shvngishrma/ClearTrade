@@ -6,6 +6,7 @@ import AuthCard from "@/components/AuthCard"
 import AuthInput from "@/components/AuthInput"
 import Link from "next/link"
 import { signIn } from "next-auth/react"
+import PrimaryButton from "../../../components/PrimaryButton"
 
 export default function SignupPage() {
   const [email, setEmail] = useState("")
@@ -77,13 +78,14 @@ export default function SignupPage() {
 
           {error && <p className="text-red-500 text-sm">{error}</p>}
 
-          <button
+          <PrimaryButton
             type="submit"
             disabled={loading}
-            className="mt-6 w-full bg-black text-white rounded-md py-2 hover:bg-gray-900 transition disabled:opacity-50"
+            fullWidth
+            className="mt-6 py-2"
           >
             {loading ? "Creating..." : "Create account"}
-          </button>
+          </PrimaryButton>
         </form>
 
         <p className="mt-6 text-center text-sm text-gray-500 dark:text-zinc-400">

@@ -6,6 +6,7 @@ import { useRouter, useSearchParams } from "next/navigation"
 import AuthCard from "@/components/AuthCard"
 import AuthInput from "@/components/AuthInput"
 import OAuthButton from "@/components/OAuthButton"
+import PrimaryButton from "../../../components/PrimaryButton"
 
 function LoginPageContent() {
   const [email, setEmail] = useState("")
@@ -84,13 +85,14 @@ function LoginPageContent() {
 
           {error && <p className="text-red-500 text-sm">{error}</p>}
 
-          <button
+          <PrimaryButton
             type="submit"
             disabled={loading}
-            className="mt-6 w-full bg-black text-white rounded-md py-2 hover:bg-gray-900 transition disabled:opacity-50"
+            fullWidth
+            className="mt-6 py-2"
           >
             {loading ? "Loading..." : "Continue"}
-          </button>
+          </PrimaryButton>
         </form>
 
         <div className="flex items-center gap-4 my-6">

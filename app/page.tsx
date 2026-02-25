@@ -1,6 +1,7 @@
 "use client"
 
 import Link from "next/link"
+import PrimaryButton from "../components/PrimaryButton"
 
 export default function HomePage() {
   return (
@@ -18,11 +19,7 @@ export default function HomePage() {
           certificates, and more — without agents or paperwork stress.
         </p>
 
-        <Link href="/documents">
-          <button className="px-10 py-3 rounded-lg bg-gray-900 text-white dark:bg-zinc-100 dark:text-zinc-900 hover:bg-black dark:hover:bg-white transition shadow-sm">
-            Get Started
-          </button>
-        </Link>
+        <PrimaryButton href="/documents">Get Started</PrimaryButton>
 
         <div className="mt-8 text-sm text-gray-400 dark:text-zinc-500">
           Built for Indian exporters · ICEGATE-aligned drafts · No login required

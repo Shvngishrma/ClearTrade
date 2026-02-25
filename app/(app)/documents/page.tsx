@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react"
 import { useRouter } from "next/navigation"
+import PrimaryButton from "../../../components/PrimaryButton"
 
 const DOCUMENTS = [
   { key: "invoice", label: "Commercial Invoice" },
@@ -844,17 +845,13 @@ function DocumentsPage() {
 
         {/* Continue */}
         <div className="mt-10">
-          <button
+          <PrimaryButton
             disabled={selectedDocs.length === 0}
             onClick={() => setStep("details")}
-            className={`relative z-10 overflow-visible px-6 py-3 rounded-md font-medium transition-colors duration-200
-              ${selectedDocs.length === 0
-                ? "bg-neutral-300 text-neutral-600 cursor-not-allowed dark:bg-neutral-700 dark:text-neutral-300"
-                : "bg-white text-black hover:bg-neutral-200 dark:bg-neutral-800 dark:text-white dark:hover:bg-neutral-700"
-              }`}
+            className="relative z-10 overflow-visible"
           >
             Continue
-          </button>
+          </PrimaryButton>
         </div>
 
         {step === "details" && (
@@ -1337,13 +1334,13 @@ function DocumentsPage() {
                   </div>
 
                   <div className="mt-3 flex items-center justify-between">
-                    <button
+                    <PrimaryButton
                       type="button"
                       onClick={addPackingCarton}
-                      className="px-3 py-2 rounded-md text-sm font-medium bg-gray-900 text-white hover:bg-black hover:text-white dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-white dark:hover:text-zinc-900"
+                      className="px-3 py-2 text-sm"
                     >
                       + Add Carton
-                    </button>
+                    </PrimaryButton>
                   </div>
 
                   {fieldErrors.packingList && (
@@ -1696,17 +1693,13 @@ function DocumentsPage() {
 
               </div>
 
-              <button
+              <PrimaryButton
                 onClick={handleGenerate}
                 disabled={isGenerating}
-                className={`relative z-10 overflow-visible mt-8 px-8 py-3 rounded-md font-medium transition-colors duration-200
-                  ${isGenerating
-                    ? "bg-neutral-300 text-neutral-600 cursor-not-allowed dark:bg-neutral-700 dark:text-neutral-300"
-                    : "bg-white text-black hover:bg-neutral-200 dark:bg-neutral-800 dark:text-white dark:hover:bg-neutral-700"
-                  }`}
+                className="relative z-10 overflow-visible mt-8 px-8"
               >
                 {isGenerating ? "Generating…" : "Generate documents"}
-              </button>
+              </PrimaryButton>
               {formError && (
                 formErrorLines.length > 1 ? (
                   <div className="mt-3 text-sm text-red-600">

@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react"
 import { useSession, signOut } from "next-auth/react"
 import Link from "next/link"
+import PrimaryButton from "../../../components/PrimaryButton"
 
 type ThemePreference = "light" | "dark" | "system"
 
@@ -94,12 +95,12 @@ export default function SettingsPage() {
                   <p className="text-sm text-gray-500 dark:text-zinc-400">{isPro ? "Pro Plan" : "Free Plan"}</p>
                 </div>
                 {!isPro && (
-                  <Link
+                  <PrimaryButton
                     href="/pricing"
-                    className="px-3 py-2 rounded-lg bg-gray-900 text-white text-sm hover:bg-black dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-white"
+                    className="px-3 py-2 text-sm"
                   >
                     Upgrade
-                  </Link>
+                  </PrimaryButton>
                 )}
               </div>
 

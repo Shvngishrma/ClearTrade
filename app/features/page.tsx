@@ -1,4 +1,5 @@
 import Link from "next/link"
+import PrimaryButton from "../../components/PrimaryButton"
 
 const FEATURES = [
   {
@@ -48,12 +49,9 @@ export default function FeaturesPage() {
         </div>
 
         <div className="mt-12 text-center">
-          <Link
-            href="/documents"
-            className="inline-flex items-center justify-center px-8 py-3 rounded-lg bg-gray-900 text-white dark:bg-zinc-100 dark:text-zinc-900 hover:bg-black dark:hover:bg-white transition"
-          >
+          <PrimaryButton href="/documents" className="px-8">
             Start generating documents
-          </Link>
+          </PrimaryButton>
         </div>
       </section>
     </main>

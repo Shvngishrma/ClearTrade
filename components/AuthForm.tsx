@@ -1,4 +1,5 @@
 import type { FormEventHandler, ReactNode } from "react"
+import PrimaryButton from "./PrimaryButton"
 
 type AuthFormProps = {
   onSubmit: FormEventHandler<HTMLFormElement>
@@ -23,12 +24,9 @@ export default function AuthForm({
         <p className="mb-3 text-sm text-red-500">{error}</p>
       )}
 
-      <button
-        disabled={loading}
-        className="w-full rounded-md bg-black py-2 text-sm text-white disabled:opacity-50"
-      >
+      <PrimaryButton disabled={loading} fullWidth className="py-2 text-sm">
         {loading ? "Please wait…" : buttonText}
-      </button>
+      </PrimaryButton>
     </form>
   )
 }

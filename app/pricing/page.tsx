@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react"
 import { useSession } from "next-auth/react"
 import Link from "next/link"
+import PrimaryButton from "../../components/PrimaryButton"
 
 export default function PricingPage() {
   const { data: session, status } = useSession()
@@ -15,26 +16,16 @@ export default function PricingPage() {
   }, [status])
 
   function renderCTA() {
-    const btnClass = "px-6 py-3 rounded-lg bg-gray-900 text-white dark:bg-zinc-100 dark:text-zinc-900 hover:bg-black dark:hover:bg-white transition inline-block text-center font-medium"
-
     if (loading) {
-      return <button disabled className={`${btnClass} opacity-50 cursor-not-allowed`}>Loading...</button>
+      return <PrimaryButton disabled>Loading...</PrimaryButton>
     }
 
     if (status === "unauthenticated") {
-      return (
-        <Link href="/login" className={btnClass}>
-          Sign in to upgrade
-        </Link>
-      )
+      return <PrimaryButton href="/login">Sign in to upgrade</PrimaryButton>
     }
 
     if (session?.user && !(session.user as any).isPro) {
-      return (
-        <Link href="/pricing" className={btnClass}>
-          Upgrade to Pro
-        </Link>
-      )
+      return <PrimaryButton href="/pricing">Upgrade to Pro</PrimaryButton>
     }
 
     return (
