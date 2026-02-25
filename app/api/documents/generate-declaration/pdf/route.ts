@@ -21,7 +21,6 @@ export async function GET(req: Request) {
   const { searchParams } = new URL(req.url)
   const invoiceId = searchParams.get("invoiceId")
   const type = searchParams.get("type") || "fema"
-  const gstType = searchParams.get("gstType") || "registered"
 
   if (!invoiceId) {
     return new NextResponse("Missing invoiceId", { status: 400 })
@@ -34,7 +33,6 @@ export async function GET(req: Request) {
     const pdf = await generateDeclarationPdfBuffer(invoiceId, {
       usage,
       type,
-      gstType,
     })
 
     if (!isInternalZip) {
