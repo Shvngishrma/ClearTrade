@@ -847,10 +847,10 @@ function DocumentsPage() {
           <button
             disabled={selectedDocs.length === 0}
             onClick={() => setStep("details")}
-            className={`px-6 py-3 rounded-md transition font-medium
+            className={`relative z-10 overflow-visible px-6 py-3 rounded-md font-medium transition-colors duration-200
               ${selectedDocs.length === 0
-                ? "bg-gray-300 text-white cursor-not-allowed dark:bg-zinc-700 dark:text-zinc-300"
-                : "bg-gray-900 text-white hover:bg-black hover:text-white dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-white dark:hover:text-zinc-900"
+                ? "bg-neutral-300 text-neutral-600 cursor-not-allowed dark:bg-neutral-700 dark:text-neutral-300"
+                : "bg-white text-black hover:bg-neutral-200 dark:bg-neutral-800 dark:text-white dark:hover:bg-neutral-700"
               }`}
           >
             Continue
@@ -1699,10 +1699,10 @@ function DocumentsPage() {
               <button
                 onClick={handleGenerate}
                 disabled={isGenerating}
-                className={`mt-8 px-8 py-3 rounded-md transition font-medium
+                className={`relative z-10 overflow-visible mt-8 px-8 py-3 rounded-md font-medium transition-colors duration-200
                   ${isGenerating
-                    ? "bg-gray-300 text-white cursor-not-allowed dark:bg-zinc-700 dark:text-zinc-300"
-                    : "bg-gray-900 text-white hover:bg-black hover:text-white dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-white dark:hover:text-zinc-900"
+                    ? "bg-neutral-300 text-neutral-600 cursor-not-allowed dark:bg-neutral-700 dark:text-neutral-300"
+                    : "bg-white text-black hover:bg-neutral-200 dark:bg-neutral-800 dark:text-white dark:hover:bg-neutral-700"
                   }`}
               >
                 {isGenerating ? "Generating…" : "Generate documents"}
