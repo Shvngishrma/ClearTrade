@@ -39,30 +39,6 @@
 }
 
 @layer components {
-	button[class*="bg-gray-900"],
-	a[class*="bg-gray-900"],
-	button[class*="bg-black"],
-	a[class*="bg-black"] {
-		color: rgb(255 255 255) !important;
-	}
-
-	button[class*="hover:bg-black"]:hover,
-	a[class*="hover:bg-black"]:hover,
-	button[class*="hover:bg-gray-900"]:hover,
-	a[class*="hover:bg-gray-900"]:hover {
-		color: rgb(255 255 255) !important;
-	}
-
-	html.dark button[class*="dark:bg-zinc-100"],
-	html.dark a[class*="dark:bg-zinc-100"] {
-		color: rgb(24 24 27) !important;
-	}
-
-	html.dark button[class*="dark:hover:bg-white"]:hover,
-	html.dark a[class*="dark:hover:bg-white"]:hover {
-		color: rgb(24 24 27) !important;
-	}
-
 	.ui-panel {
 		@apply bg-white/95 dark:bg-zinc-900/90 border border-gray-200 dark:border-zinc-700 rounded-xl shadow-sm;
 		backdrop-filter: blur(4px);
