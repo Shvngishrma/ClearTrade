@@ -37,19 +37,39 @@ function DownloadPageContent() {
   const [invoiceVersion, setInvoiceVersion] = useState<number>(1)
   const [isPro, setIsPro] = useState(false)
   const [includedDocs, setIncludedDocs] = useState<string[]>([])
+  const [includedDocsLoading, setIncludedDocsLoading] = useState(true)
+  const [includedDocsError, setIncludedDocsError] = useState<string | null>(null)
   const [autoDownloadTriggered, setAutoDownloadTriggered] = useState(false)
   // Fetch included document list for this invoice
   useEffect(() => {
     if (!invoiceId) return
     let cancelled = false
-    fetch(`/api/documents/download-zip?invoiceId=${invoiceId}&list=1`)
-      .then((res) => res.ok ? res.json() : null)
+    setIncludedDocsLoading(true)
+    setIncludedDocsError(null)
+    fetch(`/api/documents/download-zip?invoiceId=${invoiceId}&list=1`, { credentials: "include" })
+      .then(async (res) => {
+        if (!res.ok) {
+          const payload = await res.json().catch(async () => ({ message: await res.text() }))
+          throw new Error(payload?.message || payload?.error || "Failed to load included documents")
+        }
+        return res.json()
+      })
       .then((data) => {
         if (!cancelled && data?.included && Array.isArray(data.included)) {
           setIncludedDocs(data.included)
         }
       })
-      .catch(() => {})
+      .catch((err) => {
+        if (!cancelled) {
+          setIncludedDocsError(err instanceof Error ? err.message : "Failed to load included documents")
+          setIncludedDocs([])
+        }
+      })
+      .finally(() => {
+        if (!cancelled) {
+          setIncludedDocsLoading(false)
+        }
+      })
     return () => { cancelled = true }
   }, [invoiceId])
 
@@ -330,15 +350,20 @@ function DownloadPageContent() {
             Included Documents
           </p>
           <ul className="space-y-2">
-            {includedDocs.length > 0
-              ? includedDocs.map((doc) => (
-                  <li key={doc} className="text-sm text-gray-700 dark:text-zinc-300 flex items-center">
-                    <span className="w-1.5 h-1.5 bg-gray-400 dark:bg-zinc-500 rounded-full mr-2.5"></span>
-                    {doc}
-                  </li>
-                ))
-              : <li className="text-sm text-gray-500 dark:text-zinc-500">No documents included</li>
-            }
+            {includedDocsLoading ? (
+              <li className="text-sm text-gray-500 dark:text-zinc-500">Loading included documents…</li>
+            ) : includedDocs.length > 0 ? (
+              includedDocs.map((doc) => (
+                <li key={doc} className="text-sm text-gray-700 dark:text-zinc-300 flex items-center">
+                  <span className="w-1.5 h-1.5 bg-gray-400 dark:bg-zinc-500 rounded-full mr-2.5"></span>
+                  {doc}
+                </li>
+              ))
+            ) : includedDocsError ? (
+              <li className="text-sm text-amber-700 dark:text-amber-400">Could not load included documents right now.</li>
+            ) : (
+              <li className="text-sm text-gray-500 dark:text-zinc-500">No documents included</li>
+            )}
           </ul>
         </div>
 
