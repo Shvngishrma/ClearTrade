@@ -11,7 +11,6 @@ import {
 import { generateInvoiceHTML } from "@/lib/htmlInvoiceTemplate"
 import { generatePackingListHTML } from "@/lib/htmlPackingListTemplate"
 import { validateBeforeRelease } from "@/lib/preSubmissionValidationGate"
-import { generateComplianceBlocks, formatDeclarationDocument } from "@/lib/complianceBlocks"
 import { nonRestrictedTemplate } from "@/lib/templates/nonRestricted"
 import { femaAdvanceTemplate } from "@/lib/templates/femaAdvance"
 import { femaLCTemplate } from "@/lib/templates/femaLC"
@@ -25,7 +24,6 @@ type GenerationOptions = {
 
 type DeclarationGenerationOptions = GenerationOptions & {
   type?: string
-  gstType?: string
 }
 
 export class DocumentGenerationError extends Error {
@@ -177,7 +175,14 @@ export async function generateDeclarationPdfBuffer(
   await ensureValidation(invoiceId, options.skipValidation)
 
   const declarationType = options.type || "fema"
-  const gstType = options.gstType || "registered"
+
+  if (declarationType === "compliance") {
+    throw new DocumentGenerationError(400, {
+      error: "DECLARATION_TYPE_UNSUPPORTED",
+      message:
+        "Compliance certificate generation is only available via /api/documents/generate-compliance-report/pdf.",
+    })
+  }
 
   const invoice = await prisma.invoice.findUnique({
     where: { id: invoiceId },
@@ -191,53 +196,28 @@ export async function generateDeclarationPdfBuffer(
     throw new DocumentGenerationError(404, { error: "INVOICE_NOT_FOUND", message: "Invoice not found" })
   }
 
-  let renderedText: string
+  let template = nonRestrictedTemplate
 
-  if (declarationType === "compliance") {
-    const complianceBlocks = generateComplianceBlocks({
-      paymentTerms: invoice.paymentTerms,
-      incoterm: invoice.incoterm,
-      gstType: gstType || invoice.exporter.gstType || "registered",
-      lcNumber: invoice.lcNumber || undefined,
-      portOfLoading: invoice.portOfLoading || undefined,
-      portOfDischarge: invoice.portOfDischarge || undefined,
-      currency: invoice.currency,
-      exchangeRate: 83.45,
-    })
-
-    renderedText = formatDeclarationDocument(
-      invoice.exporter.name,
-      invoice.exporter.address,
-      invoice.buyer.name,
-      invoice.buyer.country,
-      complianceBlocks,
-      new Date().toLocaleDateString(),
-      ""
-    )
-  } else {
-    let template = nonRestrictedTemplate
-
-    if (invoice.paymentTerms === "Advance") {
-      template = femaAdvanceTemplate
-    } else if (invoice.paymentTerms === "LC") {
-      template = femaLCTemplate
-    } else if (
-      invoice.paymentTerms === "DA" ||
-      invoice.paymentTerms === "DP" ||
-      invoice.paymentTerms === "CAD"
-    ) {
-      template = femaDocumentaryCollectionTemplate
-    } else if (declarationType === "accuracy") {
-    }
-
-    renderedText = template
-      .replace(/{{exporterName}}/g, invoice.exporter.name)
-      .replace(/{{exporterAddress}}/g, invoice.exporter.address)
-      .replace(/{{buyerName}}/g, invoice.buyer.name)
-      .replace(/{{buyerCountry}}/g, invoice.buyer.country)
-      .replace(/{{date}}/g, new Date().toLocaleDateString())
-      .replace(/{{place}}/g, "")
+  if (invoice.paymentTerms === "Advance") {
+    template = femaAdvanceTemplate
+  } else if (invoice.paymentTerms === "LC") {
+    template = femaLCTemplate
+  } else if (
+    invoice.paymentTerms === "DA" ||
+    invoice.paymentTerms === "DP" ||
+    invoice.paymentTerms === "CAD"
+  ) {
+    template = femaDocumentaryCollectionTemplate
+  } else if (declarationType === "accuracy") {
   }
+
+  const renderedText = template
+    .replace(/{{exporterName}}/g, invoice.exporter.name)
+    .replace(/{{exporterAddress}}/g, invoice.exporter.address)
+    .replace(/{{buyerName}}/g, invoice.buyer.name)
+    .replace(/{{buyerCountry}}/g, invoice.buyer.country)
+    .replace(/{{date}}/g, new Date().toLocaleDateString())
+    .replace(/{{place}}/g, "")
 
   const pdf = await generateDeclarationPDF(renderedText, options.usage, invoice)
   return toPdfBuffer(pdf)
