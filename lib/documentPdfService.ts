@@ -1,0 +1,325 @@
+import { prisma } from "@/lib/db"
+import {
+  generateCertificateOfOriginPDF,
+  generateDeclarationPDF,
+  generateInsurancePDF,
+  generateInvoicePDF,
+  generateLetterOfCreditPDF,
+  generatePackingListPDF,
+  generateShippingBillPDF,
+} from "@/lib/pdf"
+import { generateInvoiceHTML } from "@/lib/htmlInvoiceTemplate"
+import { generatePackingListHTML } from "@/lib/htmlPackingListTemplate"
+import { validateBeforeRelease } from "@/lib/preSubmissionValidationGate"
+import { generateComplianceBlocks, formatDeclarationDocument } from "@/lib/complianceBlocks"
+import { nonRestrictedTemplate } from "@/lib/templates/nonRestricted"
+import { femaAdvanceTemplate } from "@/lib/templates/femaAdvance"
+import { femaLCTemplate } from "@/lib/templates/femaLC"
+import { femaDocumentaryCollectionTemplate } from "@/lib/templates/femaDocumentaryCollection"
+import { renderHtmlToPdfA4AutoScale } from "@/lib/pdfBrowser"
+
+type GenerationOptions = {
+  usage?: any
+  skipValidation?: boolean
+}
+
+type DeclarationGenerationOptions = GenerationOptions & {
+  type?: string
+  gstType?: string
+}
+
+export class DocumentGenerationError extends Error {
+  status: number
+  payload: Record<string, unknown>
+
+  constructor(status: number, payload: Record<string, unknown>) {
+    super(String(payload?.message || payload?.error || "Document generation failed"))
+    this.name = "DocumentGenerationError"
+    this.status = status
+    this.payload = payload
+  }
+}
+
+function toPdfBuffer(pdfData: Uint8Array | Buffer): Uint8Array {
+  return new Uint8Array(pdfData)
+}
+
+async function ensureValidation(invoiceId: string, skipValidation?: boolean) {
+  if (skipValidation) {
+    return
+  }
+
+  const validation = await validateBeforeRelease(invoiceId)
+  if (!validation.canRelease) {
+    throw new DocumentGenerationError(400, {
+      error: "PRE_SUBMISSION_VALIDATION_FAILED",
+      message: "Critical validation failed. Fix issues before PDF generation.",
+      blockers: validation.blockers,
+      warnings: validation.warnings,
+      engines: validation.engines,
+    })
+  }
+}
+
+export async function generateInvoicePdfBuffer(invoiceId: string, options: GenerationOptions = {}): Promise<Uint8Array> {
+  await ensureValidation(invoiceId, options.skipValidation)
+
+  const invoice = await prisma.invoice.findUnique({
+    where: { id: invoiceId },
+    include: {
+      exporter: true,
+      buyer: true,
+      items: true,
+    },
+  })
+
+  if (!invoice) {
+    throw new DocumentGenerationError(404, { error: "INVOICE_NOT_FOUND", message: "Invoice not found" })
+  }
+
+  try {
+    const htmlContent = generateInvoiceHTML(invoice, options.usage)
+    return await renderHtmlToPdfA4AutoScale(htmlContent)
+  } catch (puppeteerError) {
+    console.error("[documentPdfService] Invoice Puppeteer error, falling back to pdf-lib", {
+      message: puppeteerError instanceof Error ? puppeteerError.message : String(puppeteerError),
+      stack: puppeteerError instanceof Error ? puppeteerError.stack : undefined,
+      name: (puppeteerError as any)?.name,
+      invoiceId,
+    })
+
+    const pdf = await generateInvoicePDF(invoice, options.usage)
+    return toPdfBuffer(pdf)
+  }
+}
+
+export async function generatePackingListPdfBuffer(
+  invoiceId: string,
+  options: GenerationOptions = {}
+): Promise<Uint8Array> {
+  await ensureValidation(invoiceId, options.skipValidation)
+
+  const invoice = await prisma.invoice.findUnique({
+    where: { id: invoiceId },
+    include: {
+      exporter: true,
+      buyer: true,
+      items: true,
+      packingLists: {
+        include: {
+          cartons: true,
+        },
+      },
+    },
+  })
+
+  if (!invoice || !invoice.packingLists[0]) {
+    throw new DocumentGenerationError(404, {
+      error: "PACKING_LIST_NOT_FOUND",
+      message: "Packing list not found",
+    })
+  }
+
+  try {
+    const htmlContent = generatePackingListHTML(invoice, invoice.packingLists[0], options.usage)
+    return await renderHtmlToPdfA4AutoScale(htmlContent)
+  } catch (puppeteerError) {
+    console.error("[documentPdfService] Packing list Puppeteer error, falling back to pdf-lib", {
+      message: puppeteerError instanceof Error ? puppeteerError.message : String(puppeteerError),
+      stack: puppeteerError instanceof Error ? puppeteerError.stack : undefined,
+      name: (puppeteerError as any)?.name,
+      invoiceId,
+    })
+
+    const pdf = await generatePackingListPDF(invoice, invoice.packingLists[0], options.usage)
+    return toPdfBuffer(pdf)
+  }
+}
+
+export async function generateShippingBillPdfBuffer(
+  invoiceId: string,
+  options: GenerationOptions = {}
+): Promise<Uint8Array> {
+  await ensureValidation(invoiceId, options.skipValidation)
+
+  const invoice = await prisma.invoice.findUnique({
+    where: { id: invoiceId },
+    include: {
+      exporter: {
+        include: {
+          adMappings: {
+            where: { isActive: true },
+            orderBy: { createdAt: "desc" },
+          },
+        },
+      },
+      buyer: true,
+      items: true,
+      shippingBills: true,
+    },
+  })
+
+  if (!invoice || !invoice.shippingBills.length) {
+    throw new DocumentGenerationError(404, {
+      error: "SHIPPING_BILL_NOT_FOUND",
+      message: "Shipping Bill not found",
+    })
+  }
+
+  const pdf = await generateShippingBillPDF(invoice, invoice.shippingBills[0], options.usage)
+  return toPdfBuffer(pdf)
+}
+
+export async function generateDeclarationPdfBuffer(
+  invoiceId: string,
+  options: DeclarationGenerationOptions = {}
+): Promise<Uint8Array> {
+  await ensureValidation(invoiceId, options.skipValidation)
+
+  const declarationType = options.type || "fema"
+  const gstType = options.gstType || "registered"
+
+  const invoice = await prisma.invoice.findUnique({
+    where: { id: invoiceId },
+    include: {
+      exporter: true,
+      buyer: true,
+    },
+  })
+
+  if (!invoice) {
+    throw new DocumentGenerationError(404, { error: "INVOICE_NOT_FOUND", message: "Invoice not found" })
+  }
+
+  let renderedText: string
+
+  if (declarationType === "compliance") {
+    const complianceBlocks = generateComplianceBlocks({
+      paymentTerms: invoice.paymentTerms,
+      incoterm: invoice.incoterm,
+      gstType: gstType || invoice.exporter.gstType || "registered",
+      lcNumber: invoice.lcNumber || undefined,
+      portOfLoading: invoice.portOfLoading || undefined,
+      portOfDischarge: invoice.portOfDischarge || undefined,
+      currency: invoice.currency,
+      exchangeRate: 83.45,
+    })
+
+    renderedText = formatDeclarationDocument(
+      invoice.exporter.name,
+      invoice.exporter.address,
+      invoice.buyer.name,
+      invoice.buyer.country,
+      complianceBlocks,
+      new Date().toLocaleDateString(),
+      ""
+    )
+  } else {
+    let template = nonRestrictedTemplate
+
+    if (invoice.paymentTerms === "Advance") {
+      template = femaAdvanceTemplate
+    } else if (invoice.paymentTerms === "LC") {
+      template = femaLCTemplate
+    } else if (
+      invoice.paymentTerms === "DA" ||
+      invoice.paymentTerms === "DP" ||
+      invoice.paymentTerms === "CAD"
+    ) {
+      template = femaDocumentaryCollectionTemplate
+    } else if (declarationType === "accuracy") {
+    }
+
+    renderedText = template
+      .replace(/{{exporterName}}/g, invoice.exporter.name)
+      .replace(/{{exporterAddress}}/g, invoice.exporter.address)
+      .replace(/{{buyerName}}/g, invoice.buyer.name)
+      .replace(/{{buyerCountry}}/g, invoice.buyer.country)
+      .replace(/{{date}}/g, new Date().toLocaleDateString())
+      .replace(/{{place}}/g, "")
+  }
+
+  const pdf = await generateDeclarationPDF(renderedText, options.usage, invoice)
+  return toPdfBuffer(pdf)
+}
+
+export async function generateCertificateOfOriginPdfBuffer(
+  invoiceId: string,
+  options: GenerationOptions = {}
+): Promise<Uint8Array> {
+  await ensureValidation(invoiceId, options.skipValidation)
+
+  const invoice = await prisma.invoice.findUnique({
+    where: { id: invoiceId },
+    include: {
+      exporter: true,
+      buyer: true,
+      items: true,
+      certificatesOfOrigin: true,
+    },
+  })
+
+  if (!invoice || !invoice.certificatesOfOrigin.length) {
+    throw new DocumentGenerationError(404, {
+      error: "CERTIFICATE_OF_ORIGIN_NOT_FOUND",
+      message: "Certificate of Origin not found",
+    })
+  }
+
+  const pdf = await generateCertificateOfOriginPDF(invoice, invoice.certificatesOfOrigin[0], options.usage)
+  return toPdfBuffer(pdf)
+}
+
+export async function generateInsurancePdfBuffer(
+  invoiceId: string,
+  options: GenerationOptions = {}
+): Promise<Uint8Array> {
+  await ensureValidation(invoiceId, options.skipValidation)
+
+  const invoice = await prisma.invoice.findUnique({
+    where: { id: invoiceId },
+    include: {
+      exporter: true,
+      buyer: true,
+      items: true,
+      insurances: true,
+    },
+  })
+
+  if (!invoice || !invoice.insurances.length) {
+    throw new DocumentGenerationError(404, {
+      error: "INSURANCE_DECLARATION_NOT_FOUND",
+      message: "Insurance declaration not found",
+    })
+  }
+
+  const pdf = await generateInsurancePDF(invoice, invoice.insurances[0], options.usage)
+  return toPdfBuffer(pdf)
+}
+
+export async function generateLetterOfCreditPdfBuffer(
+  invoiceId: string,
+  options: GenerationOptions = {}
+): Promise<Uint8Array> {
+  await ensureValidation(invoiceId, options.skipValidation)
+
+  const invoice = await prisma.invoice.findUnique({
+    where: { id: invoiceId },
+    include: {
+      exporter: true,
+      buyer: true,
+      items: true,
+      lettersOfCredit: true,
+    },
+  })
+
+  if (!invoice || !invoice.lettersOfCredit.length) {
+    throw new DocumentGenerationError(404, {
+      error: "LETTER_OF_CREDIT_NOT_FOUND",
+      message: "Letter of Credit not found",
+    })
+  }
+
+  const pdf = await generateLetterOfCreditPDF(invoice, invoice.lettersOfCredit[0], options.usage)
+  return toPdfBuffer(pdf)
+}

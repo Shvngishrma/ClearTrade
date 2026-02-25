@@ -1,31 +1,22 @@
-import { prisma } from "@/lib/db"
-import { generatePackingListPDF } from "@/lib/pdf"
-import { generatePackingListHTML } from "@/lib/htmlPackingListTemplate"
+import { DocumentGenerationError, generatePackingListPdfBuffer } from "@/lib/documentPdfService"
 import { checkUsage, incrementUsage } from "@/lib/usage"
-import { validateBeforeRelease } from "@/lib/preSubmissionValidationGate"
 import { lockInvoiceOnFirstPdfDownload } from "@/lib/documentLifecycle"
 import { NextResponse } from "next/server"
-import puppeteer from "puppeteer"
 
 export const runtime = "nodejs"
 
-async function launchBrowser() {
-  try {
-    return await puppeteer.launch({
-      headless: true,
-      args: ["--no-sandbox", "--disable-setuid-sandbox"],
-    })
-  } catch {
-    const chromiumModule = await import("@sparticuz/chromium")
-    const chromium = chromiumModule.default
-    const executablePath = await chromium.executablePath()
-
-    return await puppeteer.launch({
-      headless: true,
-      executablePath,
-      args: [...chromium.args, "--no-sandbox", "--disable-setuid-sandbox"],
-    })
+function toErrorResponse(error: unknown) {
+  if (error instanceof DocumentGenerationError) {
+    return NextResponse.json(error.payload, { status: error.status })
   }
+
+  return NextResponse.json(
+    {
+      error: "PACKING_LIST_PDF_GENERATION_FAILED",
+      message: error instanceof Error ? error.message : "Unable to generate packing list PDF",
+    },
+    { status: 500 }
+  )
 }
 
 export async function GET(req: Request) {
@@ -36,94 +27,22 @@ export async function GET(req: Request) {
     return new NextResponse("Missing invoiceId", { status: 400 })
   }
 
-  const invoice = await prisma.invoice.findUnique({
-    where: { id: invoiceId },
-    include: {
-      exporter: true,
-      buyer: true,
-      items: true,
-      packingLists: {
-        include: {
-          cartons: true,
-        },
-      },
-    },
-  })
-
-  if (!invoice || !invoice.packingLists[0]) {
-    return new NextResponse("Packing list not found", { status: 404 })
-  }
-
-  const validation = await validateBeforeRelease(invoiceId)
-  if (!validation.canRelease) {
-    return NextResponse.json(
-      {
-        error: "PRE_SUBMISSION_VALIDATION_FAILED",
-        message: "Critical validation failed. Fix issues before PDF generation.",
-        blockers: validation.blockers,
-        warnings: validation.warnings,
-        engines: validation.engines,
-      },
-      { status: 400 }
-    )
-  }
-
   const isInternalZip = req.headers.get("x-internal-zip") === "1"
-  const usage = !isInternalZip ? await checkUsage() : undefined
-
-  let pdfData: Uint8Array | undefined
 
   try {
-    const htmlContent = generatePackingListHTML(invoice, invoice.packingLists[0], usage)
+    const usage = !isInternalZip ? await checkUsage() : undefined
+    const pdfData = await generatePackingListPdfBuffer(invoiceId, { usage })
 
-    const browser = await launchBrowser()
+    if (!isInternalZip) {
+      await incrementUsage()
+    }
 
-    const page = await browser.newPage()
+    await lockInvoiceOnFirstPdfDownload(invoiceId)
 
-    await page.setContent(htmlContent, {
-      waitUntil: "networkidle0",
+    return new NextResponse(Buffer.from(pdfData) as any, {
+      headers: { "Content-Type": "application/pdf" },
     })
-
-    const contentHeightPx = await page.evaluate(() => {
-      const bodyHeight = document.body?.scrollHeight || 0
-      const htmlHeight = document.documentElement?.scrollHeight || 0
-      return Math.max(bodyHeight, htmlHeight)
-    })
-
-    const a4HeightPx = 1122
-    const fitScale = Math.max(0.72, Math.min(1, a4HeightPx / Math.max(contentHeightPx, 1)))
-
-    pdfData = (await page.pdf({
-      format: "A4",
-      preferCSSPageSize: true,
-      margin: {
-        top: "0mm",
-        right: "0mm",
-        bottom: "0mm",
-        left: "0mm",
-      },
-      printBackground: true,
-      scale: fitScale,
-    })) as any
-
-    await page.close()
-    await browser.close()
-  } catch {
-    pdfData = undefined
+  } catch (error) {
+    return toErrorResponse(error)
   }
-
-  if (!pdfData) {
-    const pdf = await generatePackingListPDF(invoice, invoice.packingLists[0], usage)
-    pdfData = new Uint8Array(pdf)
-  }
-
-  if (!isInternalZip) {
-    await incrementUsage()
-  }
-
-  await lockInvoiceOnFirstPdfDownload(invoiceId)
-
-  return new NextResponse(Buffer.from(pdfData) as any, {
-    headers: { "Content-Type": "application/pdf" },
-  })
 }

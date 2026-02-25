@@ -1,9 +1,9 @@
 import { NextResponse } from "next/server"
-import puppeteer from "puppeteer"
 import { PDFDocument, StandardFonts, rgb } from "pdf-lib"
 import { checkUsage } from "@/lib/usage"
 import { getCurrentUser } from "@/lib/auth"
 import { generateComplianceReport } from "@/lib/complianceReportGenerator"
+import { launchBrowser } from "@/lib/pdfBrowser"
 
 export const runtime = "nodejs"
 
@@ -117,25 +117,6 @@ async function generateFallbackPdfFromHtml(html: string, invoiceId: string): Pro
   }
 
   return await pdf.save()
-}
-
-async function launchBrowser() {
-  try {
-    return await puppeteer.launch({
-      headless: true,
-      args: ["--no-sandbox", "--disable-setuid-sandbox"],
-    })
-  } catch (primaryError) {
-    const chromiumModule = await import("@sparticuz/chromium")
-    const chromium = chromiumModule.default
-    const executablePath = await chromium.executablePath()
-
-    return await puppeteer.launch({
-      headless: true,
-      executablePath,
-      args: [...chromium.args, "--no-sandbox", "--disable-setuid-sandbox"],
-    })
-  }
 }
 
 export async function GET(req: Request) {
