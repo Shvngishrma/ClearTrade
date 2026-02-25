@@ -146,9 +146,20 @@ export async function GET(req: Request) {
 
   const { searchParams } = new URL(req.url)
   const invoiceId = searchParams.get("invoiceId")
+  const source = (searchParams.get("source") || "").toLowerCase()
 
   if (!invoiceId) {
     return new NextResponse("Missing invoiceId", { status: 400 })
+  }
+
+  if (source !== "manual_button") {
+    return NextResponse.json(
+      {
+        error: "MANUAL_TRIGGER_REQUIRED",
+        message: "Compliance certificate generation is disabled for automatic flows. Use the download button.",
+      },
+      { status: 400 }
+    )
   }
 
   const isInternalZip = req.headers.get("x-internal-zip") === "1"

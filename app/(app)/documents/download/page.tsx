@@ -313,7 +313,7 @@ function DownloadPageContent() {
     setDownloadError(null)
 
     try {
-      const res = await fetch(`/api/documents/generate-compliance-report/pdf?invoiceId=${invoiceId}`, {
+      const res = await fetch(`/api/documents/generate-compliance-report/pdf?invoiceId=${invoiceId}&source=manual_button`, {
         credentials: "include",
       })
 
@@ -449,7 +449,7 @@ function DownloadPageContent() {
             onClick={handleDownload}
             disabled={isDownloading}
           >
-            {isDownloading ? "Preparing ZIP…" : "Download all as ZIP"}
+            {isDownloading ? "Preparing ZIP…" : "Download all as PDF ZIP"}
           </PrimaryButton>
 
           <PrimaryButton
@@ -467,7 +467,7 @@ function DownloadPageContent() {
           disabled={isDownloadingCompliance}
           className="w-full mt-2 px-3 py-2 border border-gray-300 dark:border-zinc-700 text-gray-800 dark:text-zinc-200 text-sm font-medium rounded-lg transition-all disabled:opacity-60 disabled:cursor-not-allowed hover:bg-gray-100 dark:hover:bg-zinc-800"
         >
-          {isDownloadingCompliance ? "Preparing Compliance Certificate…" : "Download Compliance Certificate (Optional)"}
+          {isDownloadingCompliance ? "Preparing Compliance Certificate…" : "Download Compliance Certificate"}
         </button>
 
         {/* Upgrade Modal for DOCX ZIP restriction */}
