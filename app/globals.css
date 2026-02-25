@@ -58,8 +58,22 @@
 		color: rgb(24 24 27) !important;
 	}
 
+	html.dark button[class*="bg-zinc-100"],
+	html.dark a[class*="bg-zinc-100"],
+	html.dark button[class*="bg-white"],
+	html.dark a[class*="bg-white"] {
+		color: rgb(24 24 27) !important;
+	}
+
 	html.dark button[class*="dark:hover:bg-white"]:hover,
 	html.dark a[class*="dark:hover:bg-white"]:hover {
+		color: rgb(24 24 27) !important;
+	}
+
+	html.dark button[class*="hover:bg-white"]:hover,
+	html.dark a[class*="hover:bg-white"]:hover,
+	html.dark button[class*="hover:bg-zinc-100"]:hover,
+	html.dark a[class*="hover:bg-zinc-100"]:hover {
 		color: rgb(24 24 27) !important;
 	}
 
