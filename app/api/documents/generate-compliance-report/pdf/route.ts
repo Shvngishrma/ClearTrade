@@ -7,6 +7,22 @@ import { generateComplianceReport } from "@/lib/complianceReportGenerator"
 
 export const runtime = "nodejs"
 
+function sanitizeForWinAnsi(input: string): string {
+  return String(input || "")
+    .replace(/₹/g, "INR ")
+    .replace(/•/g, "- ")
+    .replace(/⚠/g, "WARNING")
+    .replace(/✅/g, "PASS")
+    .replace(/❌/g, "FAIL")
+    .replace(/[“”]/g, '"')
+    .replace(/[‘’]/g, "'")
+    .replace(/[–—]/g, "-")
+    .replace(/\u00A0/g, " ")
+    .replace(/[^\x20-\x7E]/g, "")
+    .replace(/\s+/g, " ")
+    .trim()
+}
+
 function htmlToTextLines(html: string): string[] {
   const normalized = String(html || "")
     .replace(/<\s*br\s*\/?>/gi, "\n")
@@ -57,10 +73,11 @@ async function generateFallbackPdfFromHtml(html: string, invoiceId: string): Pro
   })
   y -= 18
 
-  const lines = htmlToTextLines(html)
+  const lines = htmlToTextLines(html).map(sanitizeForWinAnsi).filter(Boolean)
 
   const wrapLine = (input: string): string[] => {
-    const words = input.split(" ")
+    const safeInput = sanitizeForWinAnsi(input)
+    const words = safeInput.split(" ")
     const wrapped: string[] = []
     let current = ""
 
