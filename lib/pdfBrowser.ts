@@ -9,7 +9,7 @@ export async function launchBrowser() {
     const executablePath = await chromium.executablePath()
 
     return await puppeteer.launch({
-      headless: chromium.headless,
+      headless: true,
       executablePath,
       args: chromium.args,
     })
