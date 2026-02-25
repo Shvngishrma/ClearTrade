@@ -38,7 +38,7 @@ export function ConfirmModal({
             type="button"
             onClick={onConfirm}
             disabled={isLoading}
-            className="px-3 py-2 text-sm rounded-lg bg-gray-900 !text-white dark:bg-zinc-100 dark:!text-zinc-900 hover:bg-black hover:!text-white dark:hover:bg-white dark:hover:!text-zinc-900 disabled:opacity-60"
+            className="px-3 py-2 text-sm rounded-lg bg-gray-900 text-white dark:bg-zinc-100 dark:text-zinc-900 hover:bg-black dark:hover:bg-white disabled:opacity-60"
           >
             {isLoading ? loadingLabel || confirmLabel : confirmLabel}
           </button>

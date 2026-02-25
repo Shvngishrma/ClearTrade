@@ -446,7 +446,7 @@ function DownloadPageContent() {
           type="button"
           onClick={handleDownload}
           disabled={isDownloading}
-          className="w-full px-4 py-3 bg-gray-900 !text-white dark:bg-zinc-100 dark:!text-zinc-900 font-medium rounded-lg transition-all disabled:opacity-60 disabled:cursor-not-allowed hover:bg-black hover:!text-white dark:hover:bg-white dark:hover:!text-zinc-900 mb-4"
+          className="w-full px-4 py-3 bg-gray-900 text-white dark:bg-zinc-100 dark:text-zinc-900 font-medium rounded-lg transition-all disabled:opacity-60 disabled:cursor-not-allowed hover:bg-black hover:text-white dark:hover:bg-white dark:hover:text-zinc-900 mb-4"
         >
           {isDownloading ? "Preparing ZIP…" : "Download all as ZIP"}
         </button>
@@ -455,7 +455,7 @@ function DownloadPageContent() {
           type="button"
           onClick={handleDownloadAllDocxZip}
           disabled={isDownloadingDocxZip}
-          className="w-full mt-2 px-3 py-2 bg-gray-900 !text-white dark:bg-zinc-100 dark:!text-zinc-900 text-sm font-medium rounded-lg transition-all disabled:opacity-60 disabled:cursor-not-allowed hover:bg-black hover:!text-white dark:hover:bg-white dark:hover:!text-zinc-900"
+          className="w-full mt-2 px-3 py-2 bg-gray-900 text-white dark:bg-zinc-100 dark:text-zinc-900 text-sm font-medium rounded-lg transition-all disabled:opacity-60 disabled:cursor-not-allowed hover:bg-black hover:text-white dark:hover:bg-white dark:hover:text-zinc-900"
         >
           {isDownloadingDocxZip ? "Preparing DOCX ZIP…" : "Download all as DOCX ZIP"}
         </button>

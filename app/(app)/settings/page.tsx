@@ -96,7 +96,7 @@ export default function SettingsPage() {
                 {!isPro && (
                   <Link
                     href="/pricing"
-                    className="px-3 py-2 rounded-lg bg-gray-900 !text-white text-sm hover:bg-black hover:!text-white dark:bg-zinc-100 dark:!text-zinc-900 dark:hover:bg-white dark:hover:!text-zinc-900"
+                    className="px-3 py-2 rounded-lg bg-gray-900 text-white text-sm hover:bg-black dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-white"
                   >
                     Upgrade
                   </Link>

@@ -50,7 +50,7 @@ export default function FeaturesPage() {
         <div className="mt-12 text-center">
           <Link
             href="/documents"
-            className="inline-flex items-center justify-center px-8 py-3 rounded-lg bg-gray-900 !text-white dark:bg-zinc-100 dark:!text-zinc-900 hover:bg-black hover:!text-white dark:hover:bg-white dark:hover:!text-zinc-900 transition"
+            className="inline-flex items-center justify-center px-8 py-3 rounded-lg bg-gray-900 text-white dark:bg-zinc-100 dark:text-zinc-900 hover:bg-black dark:hover:bg-white transition"
           >
             Start generating documents
           </Link>
