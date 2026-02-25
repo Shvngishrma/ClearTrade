@@ -22,6 +22,7 @@ function DownloadPageContent() {
   const router = useRouter()
   const params = useSearchParams()
   const invoiceId = params.get("invoiceId")
+  const autoDownload = (params.get("autodownload") || "").toLowerCase()
   const initialStatus = (params.get("status") || "DRAFT").toUpperCase()
   const [isDownloading, setIsDownloading] = useState(false)
   const [isDownloadingDocxZip, setIsDownloadingDocxZip] = useState(false)
@@ -36,6 +37,7 @@ function DownloadPageContent() {
   const [invoiceVersion, setInvoiceVersion] = useState<number>(1)
   const [isPro, setIsPro] = useState(false)
   const [includedDocs, setIncludedDocs] = useState<string[]>([])
+  const [autoDownloadTriggered, setAutoDownloadTriggered] = useState(false)
   // Fetch included document list for this invoice
   useEffect(() => {
     if (!invoiceId) return
@@ -255,6 +257,19 @@ function DownloadPageContent() {
       setIsDownloadingDocxZip(false)
     }
   }
+
+  useEffect(() => {
+    if (!invoiceId || autoDownloadTriggered) return
+    if (autoDownload === "pdf") {
+      setAutoDownloadTriggered(true)
+      void handleDownload()
+      return
+    }
+    if (autoDownload === "docx") {
+      setAutoDownloadTriggered(true)
+      void handleDownloadAllDocxZip()
+    }
+  }, [invoiceId, autoDownload, autoDownloadTriggered, isPro])
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-zinc-950 p-4">

@@ -40,20 +40,20 @@ export function RecentRow({ invoice, onRemove, isPro }: any) {
       </div>
 
       <div className="flex flex-wrap gap-2">
-        <a
-          href={`/api/documents/download-zip?invoiceId=${invoiceId}`}
+        <Link
+          href={`/documents/download?invoiceId=${invoiceId}&status=${invoice.status || "DRAFT"}&autodownload=pdf`}
           className="text-xs px-2.5 py-1.5 rounded-md bg-gray-100 dark:bg-zinc-800 text-gray-700 dark:text-zinc-200 hover:bg-gray-200 dark:hover:bg-zinc-700"
         >
           Download PDF ZIP
-        </a>
+        </Link>
 
         {isPro && (
-          <a
-            href={`/api/documents/download-docx-zip?invoiceId=${invoiceId}`}
+          <Link
+            href={`/documents/download?invoiceId=${invoiceId}&status=${invoice.status || "DRAFT"}&autodownload=docx`}
             className="text-xs px-2.5 py-1.5 rounded-md bg-gray-900 text-white dark:bg-zinc-100 dark:text-zinc-900 hover:bg-black dark:hover:bg-white"
           >
             Download DOCX ZIP
-          </a>
+          </Link>
         )}
 
         <Link
