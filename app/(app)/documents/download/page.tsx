@@ -62,7 +62,10 @@ function DownloadPageContent() {
       .catch((err) => {
         if (!cancelled) {
           setIncludedDocsError(err instanceof Error ? err.message : "Failed to load included documents")
-          setIncludedDocs([])
+          setIncludedDocs([
+            "Commercial Invoice",
+            "Document Compliance Certificate",
+          ])
         }
       })
       .finally(() => {
@@ -138,6 +141,7 @@ function DownloadPageContent() {
     console.log("[DOWNLOAD] Button clicked")
     setIsDownloading(true)
     setDownloadSuccess(false)
+    setDownloadError(null)
 
     try {
       console.log("[DOWNLOAD] Starting fetch to /api/documents/download-zip")
@@ -149,10 +153,22 @@ function DownloadPageContent() {
         const errorPayload = await res.json().catch(async () => ({ message: await res.text() }))
         console.error("[DOWNLOAD] Response not OK, body:", errorPayload)
 
+        const nested = errorPayload?.details || {}
+        const message =
+          nested?.message ||
+          errorPayload?.message ||
+          errorPayload?.error ||
+          `Request failed (${res.status})`
+        const blockers = Array.isArray(errorPayload?.blockers)
+          ? errorPayload.blockers
+          : Array.isArray(nested?.blockers)
+            ? nested.blockers
+            : []
+
         // Special handling for Puppeteer/Chrome missing error
         if (
-          errorPayload?.details?.message?.includes("Could not find Chrome") ||
-          errorPayload?.details?.message?.includes("puppeteer browsers install chrome")
+          message.includes("Could not find Chrome") ||
+          message.includes("puppeteer browsers install chrome")
         ) {
           setDownloadError(
             "PDF generation failed due to a missing Chrome browser on the server. " +
@@ -161,14 +177,13 @@ function DownloadPageContent() {
             "If you are self-hosting, see https://pptr.dev/guides/configuration."
           )
         } else {
-          const blockers = Array.isArray(errorPayload?.blockers) ? errorPayload.blockers : []
           const blockerText = blockers.length
             ? blockers.map((b: any) => `• [${b.engine}] ${b.code}: ${b.message}${b.resolution ? `\n  Fix: ${b.resolution}` : ""}`).join("\n")
             : null
           setDownloadError(
             blockerText
               ? `Download blocked by validation gate:\n\n${blockerText}`
-              : `Download failed: ${errorPayload?.message || res.status}`
+              : `Download failed: ${message}`
           )
         }
         setIsDownloading(false)
@@ -359,8 +374,6 @@ function DownloadPageContent() {
                   {doc}
                 </li>
               ))
-            ) : includedDocsError ? (
-              <li className="text-sm text-amber-700 dark:text-amber-400">Could not load included documents right now.</li>
             ) : (
               <li className="text-sm text-gray-500 dark:text-zinc-500">No documents included</li>
             )}
