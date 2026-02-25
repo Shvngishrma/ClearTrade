@@ -1,22 +1,23 @@
 import puppeteer from "puppeteer"
 
 export async function launchBrowser() {
-  try {
-    return await puppeteer.launch({
-      headless: true,
-      args: ["--no-sandbox", "--disable-setuid-sandbox"],
-    })
-  } catch {
+  const isProduction = process.env.VERCEL || process.env.NODE_ENV === "production"
+
+  if (isProduction) {
     const chromiumModule = await import("@sparticuz/chromium")
     const chromium = chromiumModule.default
     const executablePath = await chromium.executablePath()
 
     return await puppeteer.launch({
-      headless: true,
+      headless: chromium.headless,
       executablePath,
-      args: [...chromium.args, "--no-sandbox", "--disable-setuid-sandbox"],
+      args: chromium.args,
     })
   }
+
+  return await puppeteer.launch({
+    headless: true,
+  })
 }
 
 export async function renderHtmlToPdfA4AutoScale(htmlContent: string): Promise<Uint8Array> {
