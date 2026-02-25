@@ -3,7 +3,6 @@ import {
   generateCertificateOfOriginPDF,
   generateDeclarationPDF,
   generateInsurancePDF,
-  generateInvoicePDF,
   generateLetterOfCreditPDF,
   generatePackingListPDF,
   generateShippingBillPDF,
@@ -79,15 +78,17 @@ export async function generateInvoicePdfBuffer(invoiceId: string, options: Gener
     const htmlContent = generateInvoiceHTML(invoice, options.usage)
     return await renderHtmlToPdfA4AutoScale(htmlContent)
   } catch (puppeteerError) {
-    console.error("[documentPdfService] Invoice Puppeteer error, falling back to pdf-lib", {
+    console.error("[documentPdfService] Invoice Puppeteer error", {
       message: puppeteerError instanceof Error ? puppeteerError.message : String(puppeteerError),
       stack: puppeteerError instanceof Error ? puppeteerError.stack : undefined,
       name: (puppeteerError as any)?.name,
       invoiceId,
     })
 
-    const pdf = await generateInvoicePDF(invoice, options.usage)
-    return toPdfBuffer(pdf)
+    throw new DocumentGenerationError(500, {
+      error: "INVOICE_PDF_GENERATION_FAILED",
+      message: "PDF generation failed: Puppeteer unavailable",
+    })
   }
 }
 
