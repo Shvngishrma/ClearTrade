@@ -848,7 +848,6 @@ function DocumentsPage() {
           <PrimaryButton
             disabled={selectedDocs.length === 0}
             onClick={() => setStep("details")}
-            className="relative z-10 overflow-visible"
           >
             Continue
           </PrimaryButton>
@@ -1696,7 +1695,7 @@ function DocumentsPage() {
               <PrimaryButton
                 onClick={handleGenerate}
                 disabled={isGenerating}
-                className="relative z-10 overflow-visible mt-8 px-8"
+                className="mt-8"
               >
                 {isGenerating ? "Generating…" : "Generate documents"}
               </PrimaryButton>

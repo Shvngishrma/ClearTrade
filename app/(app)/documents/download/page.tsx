@@ -458,7 +458,7 @@ function DownloadPageContent() {
           onClick={handleDownloadAllDocxZip}
           disabled={isDownloadingDocxZip}
           fullWidth
-          className="mt-2 px-3 py-2 text-sm"
+          className="mt-2"
         >
           {isDownloadingDocxZip ? "Preparing DOCX ZIP…" : "Download all as DOCX ZIP"}
         </PrimaryButton>
