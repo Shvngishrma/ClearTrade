@@ -62,10 +62,7 @@ function DownloadPageContent() {
       .catch((err) => {
         if (!cancelled) {
           setIncludedDocsError(err instanceof Error ? err.message : "Failed to load included documents")
-          setIncludedDocs([
-            "Commercial Invoice",
-            "Document Compliance Certificate",
-          ])
+          setIncludedDocs([])
         }
       })
       .finally(() => {
