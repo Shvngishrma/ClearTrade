@@ -443,25 +443,23 @@ function DownloadPageContent() {
         </div>
 
         {/* Primary CTA */}
-        <PrimaryButton
-          type="button"
-          onClick={handleDownload}
-          disabled={isDownloading}
-          fullWidth
-          className="mb-4"
-        >
-          {isDownloading ? "Preparing ZIP…" : "Download all as ZIP"}
-        </PrimaryButton>
+        <div className="mb-4 flex flex-col items-center gap-2">
+          <PrimaryButton
+            type="button"
+            onClick={handleDownload}
+            disabled={isDownloading}
+          >
+            {isDownloading ? "Preparing ZIP…" : "Download all as ZIP"}
+          </PrimaryButton>
 
-        <PrimaryButton
-          type="button"
-          onClick={handleDownloadAllDocxZip}
-          disabled={isDownloadingDocxZip}
-          fullWidth
-          className="mt-2"
-        >
-          {isDownloadingDocxZip ? "Preparing DOCX ZIP…" : "Download all as DOCX ZIP"}
-        </PrimaryButton>
+          <PrimaryButton
+            type="button"
+            onClick={handleDownloadAllDocxZip}
+            disabled={isDownloadingDocxZip}
+          >
+            {isDownloadingDocxZip ? "Preparing DOCX ZIP…" : "Download all as DOCX ZIP"}
+          </PrimaryButton>
+        </div>
 
         <button
           type="button"

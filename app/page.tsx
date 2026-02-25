@@ -22,7 +22,7 @@ export default function HomePage() {
         <PrimaryButton href="/documents">Get Started</PrimaryButton>
 
         <div className="mt-8 text-sm text-gray-400 dark:text-zinc-500">
-          Built for Indian exporters · ICEGATE-aligned drafts · No login required
+          Built for Indian exporters · ICEGATE-aligned drafts
         </div>
       </section>
 

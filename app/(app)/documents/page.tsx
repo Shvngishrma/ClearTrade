@@ -1692,13 +1692,14 @@ function DocumentsPage() {
 
               </div>
 
-              <PrimaryButton
-                onClick={handleGenerate}
-                disabled={isGenerating}
-                className="mt-8"
-              >
-                {isGenerating ? "Generating…" : "Generate documents"}
-              </PrimaryButton>
+              <div className="mt-8">
+                <PrimaryButton
+                  onClick={handleGenerate}
+                  disabled={isGenerating}
+                >
+                  {isGenerating ? "Generating…" : "Generate documents"}
+                </PrimaryButton>
+              </div>
               {formError && (
                 formErrorLines.length > 1 ? (
                   <div className="mt-3 text-sm text-red-600">
