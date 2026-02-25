@@ -848,7 +848,7 @@ function DocumentsPage() {
           <PrimaryButton
             disabled={selectedDocs.length === 0}
             onClick={() => setStep("details")}
-            className="px-8 bg-gray-900 text-white hover:bg-black dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-white"
+            className="relative z-10 overflow-visible"
           >
             Continue
           </PrimaryButton>
@@ -1696,7 +1696,7 @@ function DocumentsPage() {
               <PrimaryButton
                 onClick={handleGenerate}
                 disabled={isGenerating}
-                className="mt-8 px-8 bg-gray-900 text-white hover:bg-black dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-white"
+                className="relative z-10 overflow-visible mt-8 px-8"
               >
                 {isGenerating ? "Generating…" : "Generate documents"}
               </PrimaryButton>
