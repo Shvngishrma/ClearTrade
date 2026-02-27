@@ -172,10 +172,10 @@ function DownloadPageContent() {
           message.includes("puppeteer browsers install chrome")
         ) {
           setDownloadError(
-            "PDF generation failed due to a missing Chrome browser on the server. " +
-            "This is a technical issue. Please contact support or your administrator and ask them to run " +
-            "'npx puppeteer browsers install chrome' on the server, or refer to the Puppeteer configuration guide. " +
-            "If you are self-hosting, see https://pptr.dev/guides/configuration."
+            "PDF generation failed because the server-side browser runtime is unavailable. " +
+            "This is not related to your local browser (Safari/Chrome). " +
+            "If self-hosting, install Chrome for Puppeteer with 'npx puppeteer browsers install chrome'. " +
+            "If deployed on Vercel/serverless, verify Chromium runtime packaging and deployment logs."
           )
         } else {
           const blockerText = blockers.length
