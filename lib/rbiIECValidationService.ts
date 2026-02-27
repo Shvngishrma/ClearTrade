@@ -14,6 +14,17 @@
 
 import { prisma } from "@/lib/db"
 
+function normalizeIEC(iec: string): string {
+  return String(iec || "")
+    .trim()
+    .replace(/\D/g, "")
+    .replace(/^0+(?=\d)/, "")
+}
+
+function iecEquals(left: string, right: string): boolean {
+  return normalizeIEC(left) === normalizeIEC(right)
+}
+
 export interface RBIIECRecord {
   iec: string           // 10-digit code
   exporterName: string
@@ -230,6 +241,15 @@ export async function queryRBIIEC(iec: string): Promise<RBIIECRecord | null> {
   // Mock: Return from master
   if (RBI_IEC_MASTER[iec]) {
     return RBI_IEC_MASTER[iec]
+  }
+
+  const normalizedInputIEC = normalizeIEC(iec)
+  const fallbackRecord = Object.values(RBI_IEC_MASTER).find((record) =>
+    iecEquals(record.iec, normalizedInputIEC)
+  )
+
+  if (fallbackRecord) {
+    return fallbackRecord
   }
 
   // PRODUCTION:
@@ -472,7 +492,7 @@ export async function validateADIECPortChain(
     }
 
     // Check IEC linkage
-    if (adRecord.ieCode !== iec) {
+    if (!iecEquals(adRecord.ieCode, iec)) {
       issues.push({
         severity: "Error",
         message: `❌ CRITICAL: AD Code ${adCode} is registered to IEC ${adRecord.ieCode}, but invoice using IEC ${iec}`,
