@@ -97,6 +97,16 @@ export async function GET(req: NextRequest) {
       });
     }
 
+    const docsToFetch = resolveDocsToFetch(invoice);
+    const includedDocs = docsToFetch.map((doc) => DOCUMENT_LABELS[doc] || doc);
+
+    if (listOnly) {
+      return new Response(JSON.stringify({ included: includedDocs }), {
+        status: 200,
+        headers: { "Content-Type": "application/json" },
+      });
+    }
+
     const validation = await validateBeforeRelease(invoiceId);
     if (!validation.canRelease) {
       return new Response(
@@ -112,16 +122,6 @@ export async function GET(req: NextRequest) {
           headers: { "Content-Type": "application/json" },
         }
       );
-    }
-
-    const docsToFetch = resolveDocsToFetch(invoice);
-    const includedDocs = docsToFetch.map((doc) => DOCUMENT_LABELS[doc] || doc);
-
-    if (listOnly) {
-      return new Response(JSON.stringify({ included: includedDocs }), {
-        status: 200,
-        headers: { "Content-Type": "application/json" },
-      });
     }
 
     const zip = new JSZip();
