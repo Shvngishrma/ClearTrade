@@ -87,7 +87,7 @@ export async function generateInvoicePdfBuffer(invoiceId: string, options: Gener
 
     throw new DocumentGenerationError(500, {
       error: "INVOICE_PDF_GENERATION_FAILED",
-      message: "Invoice HTML renderer unavailable",
+      message: `Invoice HTML renderer unavailable: ${puppeteerError instanceof Error ? puppeteerError.message : String(puppeteerError)}`,
     })
   }
 }

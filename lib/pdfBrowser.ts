@@ -5,21 +5,37 @@ export async function launchBrowser() {
 
   if (isProduction) {
     const launchErrors: string[] = []
+    const chromiumModule = await import("@sparticuz/chromium")
+    const chromium = chromiumModule.default
+    const puppeteerCoreModule = await import("puppeteer-core")
+    const puppeteerCore = puppeteerCoreModule.default
 
-    try {
-      const puppeteerCoreModule = await import("puppeteer-core")
-      const puppeteerCore = puppeteerCoreModule.default
-      const chromiumModule = await import("@sparticuz/chromium")
-      const chromium = chromiumModule.default
-      const executablePath = process.env.PUPPETEER_EXECUTABLE_PATH || (await chromium.executablePath())
+    const executablePath = process.env.PUPPETEER_EXECUTABLE_PATH || (await chromium.executablePath())
+    const launchConfigs = [
+      {
+        label: "puppeteer-core+chromium(headless:true)",
+        options: {
+          headless: true,
+          executablePath,
+          args: chromium.args,
+        },
+      },
+      {
+        label: "puppeteer-core+chromium(headless:shell)",
+        options: {
+          headless: "shell" as const,
+          executablePath,
+          args: chromium.args,
+        },
+      },
+    ]
 
-      return await puppeteerCore.launch({
-        headless: "shell",
-        executablePath,
-        args: chromium.args,
-      })
-    } catch (error) {
-      launchErrors.push(`puppeteer-core+chromium: ${error instanceof Error ? error.message : String(error)}`)
+    for (const config of launchConfigs) {
+      try {
+        return await puppeteerCore.launch(config.options as any)
+      } catch (error) {
+        launchErrors.push(`${config.label}: ${error instanceof Error ? error.message : String(error)}`)
+      }
     }
 
     try {
