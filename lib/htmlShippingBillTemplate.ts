@@ -220,10 +220,16 @@ ${sharedFooterStyles}
 
       ${renderHeaderBlock({
         exporter,
-        documentTitle: "COMMERCIAL INVOICE",
-        paymentTerms: invoice.paymentTerms,
+        documentTitle: "SHIPPING BILL (DRAFT)",
+        subtitle: "(For ICEGATE Filing Reference)",
         metadataRows: [
           { label: "SHIPPING BILL NO:", value: shippingBillNo, valueClass: "invoice-number" },
+          { label: "INVOICE REF:", value: invoice.invoiceNumber || "N/A", valueClass: "invoice-date" },
+          { label: "IEC:", value: exporter?.iec || "N/A", valueClass: "header-meta-value" },
+          { label: "AD CODE:", value: adCode, valueClass: "header-meta-value" },
+          { label: "PORT OF LOADING:", value: sb?.portOfLoading || invoice.portOfLoading || "N/A", valueClass: "header-meta-value" },
+          { label: "DESTINATION COUNTRY:", value: buyer?.country || "N/A", valueClass: "header-meta-value" },
+          { label: "SCHEME:", value: schemeCode, valueClass: "header-meta-value" },
           { label: "DATE:", value: formattedExportDate, valueClass: "invoice-date" },
         ],
       })}
@@ -269,7 +275,7 @@ ${sharedFooterStyles}
       </div>
 
       <div class="items-section">
-        ${renderSectionTitle("Invoice Items")}
+        ${renderSectionTitle("Goods Details")}
         <table>
           <thead>
             <tr>
@@ -278,8 +284,8 @@ ${sharedFooterStyles}
               <th class="text-monospace">HS Code</th>
               <th class="text-numeric">Qty</th>
               <th class="text-unit">Unit</th>
-              <th class="text-numeric">Unit Price</th>
-              <th class="text-numeric">Amount</th>
+              <th class="text-numeric">FOB Value</th>
+              <th class="text-left">Scheme</th>
             </tr>
           </thead>
           <tbody>
@@ -292,8 +298,8 @@ ${sharedFooterStyles}
               <td class="text-monospace">${item.hsCode || "—"}</td>
               <td class="text-numeric">${item.quantity || 0}</td>
               <td class="text-unit">${item.unit || "PCS"}</td>
-              <td class="text-numeric">${currency} ${formatMoney(Number(item.unitPrice) || 0)}</td>
               <td class="text-numeric">${currency} ${formatMoney(lineValueByItem[idx] || 0)}</td>
+              <td class="text-left">${schemeCode}</td>
             </tr>`
               )
               .join("")}
@@ -301,6 +307,7 @@ ${sharedFooterStyles}
         </table>
       </div>
 
+      ${renderSectionTitle("Valuation")}
       <div class="summary">
         <div class="summary-box">
           <div class="summary-row">
@@ -319,10 +326,6 @@ ${sharedFooterStyles}
           <div class="summary-row total">
             <span class="summary-label">Total Invoice Value</span>
             <span class="summary-value">${currency} ${formatMoney(totalInvoiceValue)}</span>
-          </div>
-          <div class="summary-row">
-            <span class="summary-label">Exchange Rate</span>
-            <span class="summary-value">${exchangeRate ? `1 ${currency} = INR ${exchangeRate.toFixed(2)}` : "N/A"}</span>
           </div>
         </div>
       </div>
