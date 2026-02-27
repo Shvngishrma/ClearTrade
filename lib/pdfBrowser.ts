@@ -4,17 +4,34 @@ export async function launchBrowser() {
   const isProduction = process.env.VERCEL || process.env.NODE_ENV === "production"
 
   if (isProduction) {
-    const puppeteerCoreModule = await import("puppeteer-core")
-    const puppeteerCore = puppeteerCoreModule.default
-    const chromiumModule = await import("@sparticuz/chromium")
-    const chromium = chromiumModule.default
-    const executablePath = await chromium.executablePath()
+    const launchErrors: string[] = []
 
-    return await puppeteerCore.launch({
-      headless: "shell",
-      executablePath,
-      args: chromium.args,
-    })
+    try {
+      const puppeteerCoreModule = await import("puppeteer-core")
+      const puppeteerCore = puppeteerCoreModule.default
+      const chromiumModule = await import("@sparticuz/chromium")
+      const chromium = chromiumModule.default
+      const executablePath = process.env.PUPPETEER_EXECUTABLE_PATH || (await chromium.executablePath())
+
+      return await puppeteerCore.launch({
+        headless: "shell",
+        executablePath,
+        args: chromium.args,
+      })
+    } catch (error) {
+      launchErrors.push(`puppeteer-core+chromium: ${error instanceof Error ? error.message : String(error)}`)
+    }
+
+    try {
+      return await puppeteer.launch({
+        headless: true,
+        args: ["--no-sandbox", "--disable-setuid-sandbox"],
+      })
+    } catch (error) {
+      launchErrors.push(`puppeteer bundled: ${error instanceof Error ? error.message : String(error)}`)
+    }
+
+    throw new Error(`Browser launch failed (${launchErrors.join(" | ")})`)
   }
 
   return await puppeteer.launch({
