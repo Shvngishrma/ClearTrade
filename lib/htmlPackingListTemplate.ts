@@ -9,6 +9,18 @@ export function generatePackingListHTML(invoice: any, packing: any, usage?: any)
   const exporter = invoice.exporter || {}
   const buyer = invoice.buyer || {}
   const cartons = Array.isArray(packing?.cartons) ? packing.cartons : []
+  const normalizedCartons = cartons.map((carton: any) => {
+    const netWeight = Number(carton.netWeightKg ?? carton.netWeight ?? 0)
+    const grossWeightRaw = Number(carton.grossWeightKg ?? carton.grossWeight ?? 0)
+    const correctedGrossWeight = grossWeightRaw < netWeight ? netWeight : grossWeightRaw
+
+    return {
+      ...carton,
+      netWeightKg: netWeight,
+      grossWeightKg: correctedGrossWeight,
+      _grossWasCorrected: correctedGrossWeight !== grossWeightRaw,
+    }
+  })
 
   const shouldShowWatermark = usage?.isPro === false
   const auditMetadata = getDocumentAuditMetadata("PACKING_LIST", invoice)
@@ -16,6 +28,22 @@ export function generatePackingListHTML(invoice: any, packing: any, usage?: any)
   const documentHash = (invoice.documentHash || "").toString().trim()
   const auditId = (invoice.auditId || "").toString().trim()
   const brandName = (invoice.brandName || "Export Docs").toString().trim()
+  const signatoryName = (
+    exporter.signatoryName ||
+    exporter.authorizedSignatoryName ||
+    exporter.authorizedPersonName ||
+    ""
+  )
+    .toString()
+    .trim()
+  const signatoryDesignation = (
+    exporter.signatoryDesignation ||
+    exporter.designation ||
+    exporter.authorizedPersonDesignation ||
+    ""
+  )
+    .toString()
+    .trim()
 
   const invoiceDateValue = invoice.invoiceDate ? new Date(invoice.invoiceDate) : new Date()
   const formattedInvoiceDate = new Intl.DateTimeFormat("en-GB", {
@@ -26,10 +54,10 @@ export function generatePackingListHTML(invoice: any, packing: any, usage?: any)
 
   const poRef = (invoice.poReference || invoice.poRef || invoice.purchaseOrderRef || "").toString().trim()
 
-  const totalNetWeight = Number(packing?.netWeight || 0)
-  const totalGrossWeight = Number(packing?.grossWeight || 0)
+  const totalNetWeight = normalizedCartons.reduce((sum: number, carton: any) => sum + Number(carton.netWeightKg || 0), 0)
+  const totalGrossWeight = normalizedCartons.reduce((sum: number, carton: any) => sum + Number(carton.grossWeightKg || 0), 0)
   const totalCBM = Number(packing?.totalCBM || 0)
-  const totalBoxes = Number(packing?.totalBoxes || cartons.length || 0)
+  const totalBoxes = Number(packing?.totalBoxes || normalizedCartons.length || 0)
 
   const formattedTimestamp = new Intl.DateTimeFormat("en-US", {
     year: "numeric",
@@ -339,6 +367,13 @@ export function generatePackingListHTML(invoice: any, packing: any, usage?: any)
       min-width: 190px;
     }
 
+    .signature-name {
+      font-size: 11px;
+      font-weight: 500;
+      color: #374151;
+      margin-bottom: 16px;
+    }
+
     .compliance-footer {
       margin-top: 16px;
       margin-bottom: 16px;
@@ -454,10 +489,12 @@ export function generatePackingListHTML(invoice: any, packing: any, usage?: any)
             <span class="header-meta-label">DATE:</span>
             <span class="invoice-date">${formattedInvoiceDate}</span>
           </div>
+          ${poRef ? `
           <div class="header-meta-row">
             <span class="header-meta-label">PO REF:</span>
             <span class="invoice-date">${poRef}</span>
           </div>
+          ` : ""}
         </div>
       </div>
     </div>
@@ -513,14 +550,14 @@ export function generatePackingListHTML(invoice: any, packing: any, usage?: any)
           <tr>
             <th>Carton No</th>
             <th>Marks</th>
-            <th>Dimensions (cm)</th>
+            <th class="text-right">Dimensions (cm)</th>
             <th class="text-right">Net Wt</th>
             <th class="text-right">Gross Wt</th>
             <th class="text-right">CBM</th>
           </tr>
         </thead>
         <tbody>
-          ${cartons
+          ${normalizedCartons
             .map((carton: any) => {
               const dimensions =
                 carton.lengthCm && carton.widthCm && carton.heightCm
@@ -531,7 +568,7 @@ export function generatePackingListHTML(invoice: any, packing: any, usage?: any)
               <tr>
                 <td>${carton.cartonNumber ?? ""}</td>
                 <td>${carton.marks || ""}</td>
-                <td>${dimensions}</td>
+                <td class="text-right">${dimensions}</td>
                 <td class="text-right">${Number(carton.netWeightKg || 0).toFixed(3)}</td>
                 <td class="text-right">${Number(carton.grossWeightKg || 0).toFixed(3)}</td>
                 <td class="text-right">${Number(carton.cbm || 0).toFixed(6)}</td>
@@ -573,7 +610,10 @@ export function generatePackingListHTML(invoice: any, packing: any, usage?: any)
       <div class="signature-container">
         <div class="signature-label">For ${exporter.name || "Exporter"}</div>
         <div class="signature-space"></div>
+        <div class="signature-name">__________________________</div>
         <div class="signature-title">Authorized Signatory</div>
+        ${signatoryName ? `<div class="signature-name">${signatoryName}</div>` : ""}
+        ${signatoryDesignation ? `<div class="signature-name">${signatoryDesignation}</div>` : ""}
       </div>
     </div>
 
