@@ -9,6 +9,7 @@ import {
 } from "@/lib/pdf"
 import { generateInvoiceHTML } from "@/lib/htmlInvoiceTemplate"
 import { generatePackingListHTML } from "@/lib/htmlPackingListTemplate"
+import { generateShippingBillHTML } from "@/lib/htmlShippingBillTemplate"
 import { validateBeforeRelease } from "@/lib/preSubmissionValidationGate"
 import { nonRestrictedTemplate } from "@/lib/templates/nonRestricted"
 import { femaAdvanceTemplate } from "@/lib/templates/femaAdvance"
@@ -165,8 +166,20 @@ export async function generateShippingBillPdfBuffer(
     })
   }
 
-  const pdf = await generateShippingBillPDF(invoice, invoice.shippingBills[0], options.usage)
-  return toPdfBuffer(pdf)
+  try {
+    const htmlContent = generateShippingBillHTML(invoice, invoice.shippingBills[0], options.usage)
+    return await renderHtmlToPdfA4AutoScale(htmlContent)
+  } catch (puppeteerError) {
+    console.error("[documentPdfService] Shipping bill Puppeteer error, falling back to pdf-lib", {
+      message: puppeteerError instanceof Error ? puppeteerError.message : String(puppeteerError),
+      stack: puppeteerError instanceof Error ? puppeteerError.stack : undefined,
+      name: (puppeteerError as any)?.name,
+      invoiceId,
+    })
+
+    const pdf = await generateShippingBillPDF(invoice, invoice.shippingBills[0], options.usage)
+    return toPdfBuffer(pdf)
+  }
 }
 
 export async function generateDeclarationPdfBuffer(
