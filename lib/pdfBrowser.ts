@@ -4,12 +4,14 @@ export async function launchBrowser() {
   const isProduction = process.env.VERCEL || process.env.NODE_ENV === "production"
 
   if (isProduction) {
+    const puppeteerCoreModule = await import("puppeteer-core")
+    const puppeteerCore = puppeteerCoreModule.default
     const chromiumModule = await import("@sparticuz/chromium")
     const chromium = chromiumModule.default
     const executablePath = await chromium.executablePath()
 
-    return await puppeteer.launch({
-      headless: true,
+    return await puppeteerCore.launch({
+      headless: "shell",
       executablePath,
       args: chromium.args,
     })
@@ -21,10 +23,10 @@ export async function launchBrowser() {
 }
 
 export async function renderHtmlToPdfA4AutoScale(htmlContent: string): Promise<Uint8Array> {
-  const browser = await launchBrowser()
+  const browser: any = await launchBrowser()
 
   try {
-    const page = await browser.newPage()
+    const page: any = await browser.newPage()
 
     try {
       await page.setContent(htmlContent, {
