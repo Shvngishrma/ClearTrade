@@ -134,6 +134,12 @@ export function generateInvoiceHTML(invoice: any, usage?: any): string {
       box-sizing: border-box;
     }
 
+    html, body {
+      width: 210mm;
+      height: 297mm;
+      overflow: hidden;
+    }
+
     body {
       font-family: Inter, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Helvetica Neue', sans-serif;
       font-size: 13px;
@@ -144,7 +150,7 @@ export function generateInvoiceHTML(invoice: any, usage?: any): string {
 
     @page {
       size: A4;
-      margin: 20mm 18mm 20mm 18mm;
+      margin: 0;
     }
 
     .container {

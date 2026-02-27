@@ -70,20 +70,9 @@ export async function renderHtmlToPdfA4AutoScale(htmlContent: string): Promise<U
         waitUntil: "networkidle0",
       })
 
-      const contentHeightPx = await page.evaluate(() => {
-        const bodyHeight = document.body?.scrollHeight || 0
-        const htmlHeight = document.documentElement?.scrollHeight || 0
-        return Math.max(bodyHeight, htmlHeight)
-      })
-
-      const a4HeightPx = 1122
-      const safetyPaddingRatio = 0.96
-      const computedScale = (a4HeightPx / Math.max(contentHeightPx, 1)) * safetyPaddingRatio
-      const fitScale = Math.max(0.5, Math.min(1, computedScale))
-
       const pdfData = (await page.pdf({
         format: "A4",
-        preferCSSPageSize: true,
+        preferCSSPageSize: false,
         margin: {
           top: "0mm",
           right: "0mm",
@@ -91,7 +80,7 @@ export async function renderHtmlToPdfA4AutoScale(htmlContent: string): Promise<U
           left: "0mm",
         },
         printBackground: true,
-        scale: fitScale,
+        scale: 0.95,
       })) as Uint8Array
 
       return new Uint8Array(pdfData)
