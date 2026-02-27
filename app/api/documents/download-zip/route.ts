@@ -16,7 +16,6 @@ const DOC_ROUTES: Record<string, string> = {
   coo: "/api/documents/generate-coo/pdf",
   insurance: "/api/documents/generate-insurance/pdf",
   lc: "/api/documents/generate-lc/pdf",
-  complianceReport: "/api/documents/generate-compliance-report/pdf",
 };
 
 const FILE_NAMES: Record<string, string> = {
@@ -27,8 +26,39 @@ const FILE_NAMES: Record<string, string> = {
   coo: "Certificate_of_Origin_Draft.pdf",
   insurance: "Insurance_Declaration.pdf",
   lc: "LC_Supporting_Document.pdf",
-  complianceReport: "Compliance_Certificate.pdf",
 };
+
+const DOCUMENT_LABELS: Record<string, string> = {
+  invoice: "Commercial Invoice",
+  packingList: "Packing List",
+  shippingBill: "Shipping Bill",
+  declaration: "Declaration",
+  coo: "Certificate of Origin",
+  insurance: "Insurance Declaration",
+  lc: "LC Supporting Documents",
+};
+
+function resolveDocsToFetch(invoice: {
+  packingLists: unknown[];
+  shippingBills: unknown[];
+  declarations: unknown[];
+  certificatesOfOrigin: unknown[];
+  insurances: unknown[];
+  lettersOfCredit: unknown[];
+}) {
+  const docsToFetch = Object.keys(DOC_ROUTES).filter((doc) => {
+    if (doc === "invoice") return true;
+    if (doc === "packingList") return invoice.packingLists.length > 0;
+    if (doc === "shippingBill") return invoice.shippingBills.length > 0;
+    if (doc === "declaration") return invoice.declarations.length > 0;
+    if (doc === "coo") return invoice.certificatesOfOrigin.length > 0;
+    if (doc === "insurance") return invoice.insurances.length > 0;
+    if (doc === "lc") return invoice.lettersOfCredit.length > 0;
+    return false;
+  });
+
+  return docsToFetch;
+}
 
 export async function GET(req: NextRequest) {
   console.log("[ZIP] GET /api/documents/download-zip called");
@@ -36,6 +66,7 @@ export async function GET(req: NextRequest) {
   try {
     const invoiceId = req.nextUrl.searchParams.get("invoiceId");
     const baseUrl = req.nextUrl.origin;
+    const listOnly = req.nextUrl.searchParams.get("list") === "1";
 
     console.log("[ZIP] invoiceId from query:", invoiceId);
 
@@ -83,18 +114,17 @@ export async function GET(req: NextRequest) {
       );
     }
 
-    const zip = new JSZip();
+    const docsToFetch = resolveDocsToFetch(invoice);
+    const includedDocs = docsToFetch.map((doc) => DOCUMENT_LABELS[doc] || doc);
 
-    const docsToFetch = Object.keys(DOC_ROUTES).filter((doc) => {
-      if (doc === "invoice" || doc === "complianceReport") return true;
-      if (doc === "packingList") return invoice.packingLists.length > 0;
-      if (doc === "shippingBill") return invoice.shippingBills.length > 0;
-      if (doc === "declaration") return invoice.declarations.length > 0;
-      if (doc === "coo") return invoice.certificatesOfOrigin.length > 0;
-      if (doc === "insurance") return invoice.insurances.length > 0;
-      if (doc === "lc") return invoice.lettersOfCredit.length > 0;
-      return false;
-    });
+    if (listOnly) {
+      return new Response(JSON.stringify({ included: includedDocs }), {
+        status: 200,
+        headers: { "Content-Type": "application/json" },
+      });
+    }
+
+    const zip = new JSZip();
 
     let filesAdded = 0;
 
@@ -162,6 +192,7 @@ export async function GET(req: NextRequest) {
         "Content-Type": "application/zip",
         "Content-Disposition": 'attachment; filename="export-documents.zip"',
         "Content-Length": zipBuffer.length.toString(),
+        "x-included-documents": encodeURIComponent(JSON.stringify(includedDocs)),
       },
     });
   } catch (err) {
