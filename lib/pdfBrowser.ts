@@ -77,7 +77,9 @@ export async function renderHtmlToPdfA4AutoScale(htmlContent: string): Promise<U
       })
 
       const a4HeightPx = 1122
-      const fitScale = Math.max(0.72, Math.min(1, a4HeightPx / Math.max(contentHeightPx, 1)))
+      const safetyPaddingRatio = 0.96
+      const computedScale = (a4HeightPx / Math.max(contentHeightPx, 1)) * safetyPaddingRatio
+      const fitScale = Math.max(0.5, Math.min(1, computedScale))
 
       const pdfData = (await page.pdf({
         format: "A4",
