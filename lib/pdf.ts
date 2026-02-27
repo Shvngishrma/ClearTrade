@@ -130,7 +130,7 @@ export async function generateInvoicePDF(invoice: any, usage?: any) {
     }).format(referenceDate)
 
     y -= 14
-    page.drawText(`Exchange Rate: 1 ${invoice.currency} = ₹${derivedExchangeRate.toFixed(2)}`, {
+    page.drawText(`Exchange Rate: 1 ${invoice.currency} = INR ${derivedExchangeRate.toFixed(2)}`, {
       x: 50,
       y,
       size: 8,
