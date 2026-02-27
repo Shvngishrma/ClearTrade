@@ -46,7 +46,7 @@ export default function PricingPage() {
       ) : (
         <>
           <h1 className="text-4xl font-bold text-center mb-10">
-            Simple pricing. No bullshit.
+            Simple, transparent pricing.
           </h1>
           <p className="text-center text-gray-500 dark:text-zinc-400 mb-10 max-w-2xl mx-auto">
             Start free, upgrade when you need unlimited generation and editable document workflows.
