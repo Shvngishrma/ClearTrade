@@ -85,15 +85,10 @@ export async function generateInvoicePdfBuffer(invoiceId: string, options: Gener
       invoiceId,
     })
 
-    const isProduction = Boolean(process.env.VERCEL || process.env.NODE_ENV === "production")
-    if (isProduction) {
-      throw new DocumentGenerationError(500, {
-        error: "INVOICE_PDF_GENERATION_FAILED",
-        message: "Invoice PDF generation failed in HTML renderer",
-      })
-    }
-
-    throw puppeteerError
+    throw new DocumentGenerationError(500, {
+      error: "INVOICE_PDF_GENERATION_FAILED",
+      message: "Invoice HTML renderer unavailable",
+    })
   }
 }
 
