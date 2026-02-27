@@ -687,11 +687,22 @@ export async function POST(req: Request) {
     const staleInvoiceIds = invoicesToRetain.slice(7).map((record) => record.id)
 
     if (staleInvoiceIds.length > 0) {
-      await prisma.invoice.deleteMany({
-        where: {
-          id: { in: staleInvoiceIds },
-          userId: user.id,
-        },
+      await prisma.$transaction(async (tx) => {
+        await tx.item.deleteMany({ where: { invoiceId: { in: staleInvoiceIds } } })
+        await tx.carton.deleteMany({ where: { packingList: { invoiceId: { in: staleInvoiceIds } } } })
+        await tx.packingList.deleteMany({ where: { invoiceId: { in: staleInvoiceIds } } })
+        await tx.shippingBill.deleteMany({ where: { invoiceId: { in: staleInvoiceIds } } })
+        await tx.declaration.deleteMany({ where: { invoiceId: { in: staleInvoiceIds } } })
+        await tx.certificateOfOrigin.deleteMany({ where: { invoiceId: { in: staleInvoiceIds } } })
+        await tx.insurance.deleteMany({ where: { invoiceId: { in: staleInvoiceIds } } })
+        await tx.letterOfCredit.deleteMany({ where: { invoiceId: { in: staleInvoiceIds } } })
+        await tx.invoiceVersion.deleteMany({ where: { invoiceId: { in: staleInvoiceIds } } })
+        await tx.invoice.deleteMany({
+          where: {
+            id: { in: staleInvoiceIds },
+            userId: user.id,
+          },
+        })
       })
     }
 
