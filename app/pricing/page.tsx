@@ -49,7 +49,7 @@ export default function PricingPage() {
             Simple, transparent pricing.
           </h1>
           <p className="text-center text-gray-500 dark:text-zinc-400 mb-10 max-w-2xl mx-auto">
-            Start free, upgrade when you need unlimited generation and editable document workflows.
+            Start free. Upgrade for unlimited generation and professional document workflows.
           </p>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
