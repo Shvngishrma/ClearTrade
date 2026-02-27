@@ -80,7 +80,7 @@ export async function renderHtmlToPdfA4AutoScale(htmlContent: string): Promise<U
           left: "0mm",
         },
         printBackground: true,
-        scale: 0.95,
+        scale: 0.94,
       })) as Uint8Array
 
       return new Uint8Array(pdfData)

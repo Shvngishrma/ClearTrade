@@ -774,6 +774,12 @@ export function generateInvoiceHTML(invoice: any, usage?: any): string {
       position: relative;
     }
 
+    .invoice-wrapper {
+      transform: scale(0.96);
+      transform-origin: top left;
+      width: calc(100% / 0.96);
+    }
+
     /* Print safely */
     @media print {
       body {
@@ -797,6 +803,7 @@ export function generateInvoiceHTML(invoice: any, usage?: any): string {
   </style>
 </head>
 <body>
+  <div class="invoice-wrapper">
   <div class="container">
     ${shouldShowWatermark ? `<div class="document-watermark">GENERATED VIA PLATFORM</div>` : ''}
 
@@ -1015,6 +1022,7 @@ export function generateInvoiceHTML(invoice: any, usage?: any): string {
       </div>
     </div>
   </div>
+</div>
 </body>
 </html>
   `.trim()
