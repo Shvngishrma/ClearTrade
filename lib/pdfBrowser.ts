@@ -61,6 +61,11 @@ export async function launchBrowser() {
 
 export async function renderHtmlToPdfA4AutoScale(htmlContent: string): Promise<Uint8Array> {
   const browser: any = await launchBrowser()
+  const strictA4Css = `
+    @page { size: A4; margin: 0; }
+    html, body { width: 210mm; height: 297mm; overflow: hidden; }
+    * { page-break-inside: avoid !important; break-inside: avoid !important; }
+  `
 
   try {
     const page: any = await browser.newPage()
@@ -69,6 +74,8 @@ export async function renderHtmlToPdfA4AutoScale(htmlContent: string): Promise<U
       await page.setContent(htmlContent, {
         waitUntil: "networkidle0",
       })
+
+      await page.addStyleTag({ content: strictA4Css })
 
       const pdfData = (await page.pdf({
         format: "A4",

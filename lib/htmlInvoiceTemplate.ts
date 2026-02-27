@@ -508,6 +508,12 @@ export function generateInvoiceHTML(invoice: any, usage?: any): string {
       font-weight: 500;
       color: #111827;
       font-variant-numeric: tabular-nums;
+      white-space: nowrap;
+    }
+
+    th.text-numeric,
+    td.text-numeric {
+      text-align: right;
     }
 
     .text-monospace {
@@ -566,8 +572,8 @@ export function generateInvoiceHTML(invoice: any, usage?: any): string {
 
     .summary-row.total {
       padding: 12px 0 8px 0;
-      font-size: 16px;
-      font-weight: 700;
+      font-size: 13px;
+      font-weight: 600;
       color: #111827;
     }
 
@@ -586,7 +592,7 @@ export function generateInvoiceHTML(invoice: any, usage?: any): string {
     .summary-row.total .summary-label,
     .summary-row.total .summary-value {
       color: #111827;
-      font-weight: 700;
+      font-weight: 600;
     }
 
     .exchange-disclosure {
@@ -704,9 +710,10 @@ export function generateInvoiceHTML(invoice: any, usage?: any): string {
     }
 
     .compliance-footer-text {
-      font-size: 10px;
+      font-size: 9.5px;
       font-weight: 400;
       color: #6b7280;
+      opacity: 0.85;
       line-height: 1.5;
       grid-column: 1 / -1;
     }
@@ -775,9 +782,7 @@ export function generateInvoiceHTML(invoice: any, usage?: any): string {
     }
 
     .invoice-wrapper {
-      transform: scale(0.96);
-      transform-origin: top left;
-      width: calc(100% / 0.96);
+      width: 100%;
     }
 
     /* Print safely */
