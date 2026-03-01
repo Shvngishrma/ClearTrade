@@ -9,6 +9,7 @@ import {
   sharedTableStyles,
 } from "@/lib/renderDocumentLayout"
 import { renderSignatureBlock, signatureBlockStyles } from "@/lib/renderSignatureBlock"
+import { normalizeShippingBillCargoType } from "@/lib/shippingBillCargoType"
 
 export function generateShippingBillHTML(invoice: any, sb: any, usage?: any): string {
   const {
@@ -75,6 +76,7 @@ export function generateShippingBillHTML(invoice: any, sb: any, usage?: any): st
       : null
 
   const schemeCode = sb?.schemeCode || (sb?.drawback ? "Drawback" : "N/A")
+  const cargoType = normalizeShippingBillCargoType(sb?.cargoType)
 
   return `
 <!DOCTYPE html>
@@ -141,7 +143,7 @@ ${sharedSectionStyles}
       display: grid;
       grid-template-columns: 1fr 1fr 1fr;
       gap: 40px;
-      margin-bottom: 24px;
+      margin-bottom: 32px;
       page-break-inside: avoid;
     }
 
@@ -225,7 +227,6 @@ ${sharedFooterStyles}
         metadataRows: [
           { label: "SHIPPING BILL NO:", value: shippingBillNo, valueClass: "invoice-number" },
           { label: "INVOICE REF:", value: invoice.invoiceNumber || "N/A", valueClass: "invoice-date" },
-          { label: "IEC:", value: exporter?.iec || "N/A", valueClass: "header-meta-value" },
           { label: "AD CODE:", value: adCode, valueClass: "header-meta-value" },
           { label: "PORT OF LOADING:", value: sb?.portOfLoading || invoice.portOfLoading || "N/A", valueClass: "header-meta-value" },
           { label: "DESTINATION COUNTRY:", value: buyer?.country || "N/A", valueClass: "header-meta-value" },
@@ -257,16 +258,12 @@ ${sharedFooterStyles}
 
       <div class="shipment-details">
         <div class="shipment-item">
-          <span class="shipment-item-label">Port of Loading</span>
-          <span class="shipment-item-value">${sb?.portOfLoading || invoice.portOfLoading || "Not specified"}</span>
-        </div>
-        <div class="shipment-item">
           <span class="shipment-item-label">Port of Discharge</span>
           <span class="shipment-item-value">${sb?.portOfDischarge || invoice.portOfDischarge || "Not specified"}</span>
         </div>
         <div class="shipment-item">
           <span class="shipment-item-label">Cargo Type</span>
-          <span class="shipment-item-value">${sb?.cargoType || "Not specified"}</span>
+          <span class="shipment-item-value">${cargoType}</span>
         </div>
         <div class="shipment-item">
           <span class="shipment-item-label">Scheme</span>
@@ -324,7 +321,7 @@ ${sharedFooterStyles}
           </div>
           <div class="summary-row divider"></div>
           <div class="summary-row total">
-            <span class="summary-label">Total Invoice Value</span>
+            <span class="summary-label">Total Invoice Value:</span>
             <span class="summary-value">${currency} ${formatMoney(totalInvoiceValue)}</span>
           </div>
         </div>

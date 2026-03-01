@@ -7,6 +7,7 @@ import { calculateInvoiceTotals } from "@/lib/calculations"
 import { validateInvoicePackingAlignment } from "@/lib/documentConsistencyEngine"
 import { runMasterCompliancePipeline, canGenerateDocuments, getAllBlockers } from "@/lib/masterCompliancePipeline"
 import { initializeInvoiceLifecycle } from "@/lib/documentLifecycle"
+import { normalizeShippingBillCargoType } from "@/lib/shippingBillCargoType"
 
 const DEFAULT_EXCHANGE_RATES = {
   USD: 83.5,
@@ -596,12 +597,14 @@ export async function POST(req: Request) {
   }
 
   if (selectedDocs.includes("shippingBill")) {
+    const cargoType = normalizeShippingBillCargoType(docDetails.shippingBill.cargoType)
+
     await prisma.shippingBill.create({
       data: {
         invoiceId: invoice.id,
         portOfLoading: docDetails.shippingBill.portOfLoading,
         portOfDischarge: docDetails.shippingBill.portOfDischarge,
-        cargoType: docDetails.shippingBill.cargoType,
+        cargoType,
         schemeCode: docDetails.shippingBill.schemeCode || null,
         drawback: docDetails.shippingBill.drawback || false,
       },

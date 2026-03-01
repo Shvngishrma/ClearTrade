@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react"
 import { useRouter } from "next/navigation"
 import PrimaryButton from "../../../components/PrimaryButton"
+import { SHIPPING_BILL_CARGO_TYPES } from "@/lib/shippingBillCargoType"
 
 const DOCUMENTS = [
   { key: "invoice", label: "Commercial Invoice" },
@@ -79,7 +80,7 @@ function DocumentsPage() {
     shippingBill: {
       portOfLoading: "",
       portOfDischarge: "",
-      cargoType: "",
+      cargoType: "General",
       schemeCode: "",
       drawback: false,
     },
@@ -1394,17 +1395,22 @@ function DocumentsPage() {
                       className="border rounded-md px-3 py-2 bg-gray-50 text-gray-700 cursor-not-allowed"
                       value={docDetails.shippingBill.portOfDischarge}
                     />
-                    <input
-                      placeholder="Cargo type"
+                    <select
                       className="border rounded-md px-3 py-2"
-                      value={docDetails.shippingBill.cargoType}
+                      value={docDetails.shippingBill.cargoType || "General"}
                       onChange={e =>
                         setDocDetails({
                           ...docDetails,
-                          shippingBill: { ...docDetails.shippingBill, cargoType: e.target.value },
+                          shippingBill: { ...docDetails.shippingBill, cargoType: e.target.value || "General" },
                         })
                       }
-                    />
+                    >
+                      {SHIPPING_BILL_CARGO_TYPES.map(type => (
+                        <option key={type} value={type}>
+                          {type}
+                        </option>
+                      ))}
+                    </select>
                   </div>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-4">
                     <input
