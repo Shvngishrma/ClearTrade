@@ -7,15 +7,25 @@ import { prisma } from "@/lib/db";
 import { checkUsage, incrementUsage } from "@/lib/usage";
 import { validateBeforeRelease } from "@/lib/preSubmissionValidationGate";
 import { lockInvoiceOnFirstPdfDownload } from "@/lib/documentLifecycle";
+import {
+  DocumentGenerationError,
+  generateCertificateOfOriginPdfBuffer,
+  generateDeclarationPdfBuffer,
+  generateInsurancePdfBuffer,
+  generateInvoicePdfBuffer,
+  generateLetterOfCreditPdfBuffer,
+  generatePackingListPdfBuffer,
+  generateShippingBillPdfBuffer,
+} from "@/lib/documentPdfService";
 
-const DOC_ROUTES: Record<string, string> = {
-  invoice: "/api/documents/generate-invoice/pdf",
-  packingList: "/api/documents/generate-packing-list/pdf",
-  shippingBill: "/api/documents/generate-shipping-bill/pdf",
-  declaration: "/api/documents/generate-declaration/pdf",
-  coo: "/api/documents/generate-coo/pdf",
-  insurance: "/api/documents/generate-insurance/pdf",
-  lc: "/api/documents/generate-lc/pdf",
+const DOC_GENERATORS: Record<string, (invoiceId: string, usage: any) => Promise<Uint8Array>> = {
+  invoice: (invoiceId, usage) => generateInvoicePdfBuffer(invoiceId, { usage, skipValidation: true }),
+  packingList: (invoiceId, usage) => generatePackingListPdfBuffer(invoiceId, { usage, skipValidation: true }),
+  shippingBill: (invoiceId, usage) => generateShippingBillPdfBuffer(invoiceId, { usage, skipValidation: true }),
+  declaration: (invoiceId, usage) => generateDeclarationPdfBuffer(invoiceId, { usage, skipValidation: true }),
+  coo: (invoiceId, usage) => generateCertificateOfOriginPdfBuffer(invoiceId, { usage, skipValidation: true }),
+  insurance: (invoiceId, usage) => generateInsurancePdfBuffer(invoiceId, { usage, skipValidation: true }),
+  lc: (invoiceId, usage) => generateLetterOfCreditPdfBuffer(invoiceId, { usage, skipValidation: true }),
 };
 
 const FILE_NAMES: Record<string, string> = {
@@ -28,7 +38,7 @@ const FILE_NAMES: Record<string, string> = {
   lc: "LC_Supporting_Document.pdf",
 };
 
-const DOCUMENT_LABELS: Record<string, string> = {
+const DISPLAY_NAMES: Record<string, string> = {
   invoice: "Commercial Invoice",
   packingList: "Packing List",
   shippingBill: "Shipping Bill",
@@ -46,7 +56,7 @@ function resolveDocsToFetch(invoice: {
   insurances: unknown[];
   lettersOfCredit: unknown[];
 }) {
-  const docsToFetch = Object.keys(DOC_ROUTES).filter((doc) => {
+  const docsToFetch = Object.keys(DOC_GENERATORS).filter((doc) => {
     if (doc === "invoice") return true;
     if (doc === "packingList") return invoice.packingLists.length > 0;
     if (doc === "shippingBill") return invoice.shippingBills.length > 0;
@@ -63,9 +73,9 @@ function resolveDocsToFetch(invoice: {
 export async function GET(req: NextRequest) {
   console.log("[ZIP] GET /api/documents/download-zip called");
 
+
   try {
     const invoiceId = req.nextUrl.searchParams.get("invoiceId");
-    const baseUrl = req.nextUrl.origin;
     const listOnly = req.nextUrl.searchParams.get("list") === "1";
 
     console.log("[ZIP] invoiceId from query:", invoiceId);
@@ -98,7 +108,7 @@ export async function GET(req: NextRequest) {
     }
 
     const docsToFetch = resolveDocsToFetch(invoice);
-    const includedDocs = docsToFetch.map((doc) => DOCUMENT_LABELS[doc] || doc);
+    const includedDocs = docsToFetch.map((doc) => DISPLAY_NAMES[doc] || doc);
 
     if (listOnly) {
       return new Response(JSON.stringify({ included: includedDocs }), {
@@ -128,44 +138,67 @@ export async function GET(req: NextRequest) {
 
     let filesAdded = 0;
 
-    await checkUsage();
+    const usage = await checkUsage();
 
     for (const doc of docsToFetch) {
-      const url = `${baseUrl}${DOC_ROUTES[doc]}?invoiceId=${invoiceId}`;
-
       try {
-        const res = await fetch(url, {
-          headers: {
-            cookie: req.headers.get("cookie") ?? "",
-            "x-internal-zip": "1",
-          },
-        });
+        const generator = DOC_GENERATORS[doc];
+        const buffer = await generator(invoiceId, usage);
 
-        if (!res.ok) {
-          const errorPayload = await res
-            .json()
-            .catch(async () => ({ message: await res.text() }));
-
-          return new Response(
-            JSON.stringify({
-              error: "PDF_GENERATION_BLOCKED",
-              document: doc,
-              status: res.status,
-              details: errorPayload,
-            }),
-            {
-              status: 400,
-              headers: { "Content-Type": "application/json" },
-            }
-          );
+        if (!buffer || buffer.length === 0) {
+          throw new Error(`Generated empty PDF buffer for ${doc}`);
         }
 
-        const buffer = Buffer.from(await res.arrayBuffer());
         zip.file(FILE_NAMES[doc], buffer);
         filesAdded++;
       } catch (err) {
         console.error(`[ZIP] Error fetching ${doc}:`, err);
+
+        const details = err instanceof DocumentGenerationError
+          ? err.payload
+          : err instanceof Error
+            ? err.message
+            : String(err);
+
+        const message = err instanceof DocumentGenerationError
+          ? String(err.payload?.message || err.payload?.error || `Failed to generate ${doc}`)
+          : `Failed to generate ${doc}`;
+
+        const blockers = err instanceof DocumentGenerationError && Array.isArray((err.payload as any)?.blockers)
+          ? (err.payload as any).blockers
+          : [];
+
+        return new Response(
+          JSON.stringify({
+            error: "PDF_GENERATION_BLOCKED",
+            document: doc,
+            status: err instanceof DocumentGenerationError ? err.status : 500,
+            message,
+            blockers,
+            details,
+          }),
+          {
+            status: 400,
+            headers: { "Content-Type": "application/json" },
+          }
+        );
       }
+    }
+
+    if (filesAdded !== docsToFetch.length) {
+      return new Response(
+        JSON.stringify({
+          error: "PDF_GENERATION_BLOCKED",
+          message: "One or more documents could not be generated.",
+          expected: docsToFetch.length,
+          generated: filesAdded,
+          requestedDocuments: docsToFetch,
+        }),
+        {
+          status: 400,
+          headers: { "Content-Type": "application/json" },
+        }
+      );
     }
 
     const zipBuffer = await zip.generateAsync({ type: "nodebuffer" });
