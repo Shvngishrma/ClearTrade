@@ -223,7 +223,7 @@ ${sharedFooterStyles}
       ${renderHeaderBlock({
         exporter,
         documentTitle: "SHIPPING BILL (DRAFT)",
-        subtitle: "(For ICEGATE Filing Reference)",
+        subtitle: "(For ICEGATE Filing Reference Only)",
         metadataRows: [
           { label: "SHIPPING BILL NO:", value: shippingBillNo, valueClass: "invoice-number" },
           { label: "INVOICE REF:", value: invoice.invoiceNumber || "N/A", valueClass: "invoice-date" },
@@ -263,10 +263,6 @@ ${sharedFooterStyles}
         <div class="shipment-item">
           <span class="shipment-item-label">Cargo Type</span>
           <span class="shipment-item-value">${cargoType}</span>
-        </div>
-        <div class="shipment-item">
-          <span class="shipment-item-label">Scheme</span>
-          <span class="shipment-item-value">${schemeCode}</span>
         </div>
       </div>
 
@@ -326,12 +322,12 @@ ${sharedFooterStyles}
         </div>
       </div>
 
-      ${renderSignatureBlock(exporter)}
-
       ${renderSectionTitle("Declaration")}
       <p class="declaration">
         We hereby declare that the particulars given above are true and correct, and the goods are intended for export as per applicable customs and FEMA regulations.
       </p>
+
+      ${renderSignatureBlock(exporter)}
 
       <div class="footer">
         <div class="footer-content">
