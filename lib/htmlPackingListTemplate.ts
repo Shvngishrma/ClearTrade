@@ -5,10 +5,24 @@
 
 import { getDocumentAuditMetadata } from "@/lib/auditMetadata"
 import { renderSignatureBlock, signatureBlockStyles } from "@/lib/renderSignatureBlock"
+import {
+  renderHeaderBlock,
+  renderSectionTitle,
+  sharedFooterStyles,
+  sharedHeaderStyles,
+  sharedSectionStyles,
+  sharedSummaryStyles,
+  sharedTableStyles,
+} from "@/lib/renderDocumentLayout"
 
 export function generatePackingListHTML(invoice: any, packing: any, usage?: any): string {
   const exporter = invoice.exporter || {}
   const buyer = invoice.buyer || {}
+  const layoutExporter = {
+    ...exporter,
+    iec: exporter.iec || exporter.iecNo,
+    gstIN: exporter.gstIN || exporter.gstin,
+  }
   const cartons = Array.isArray(packing?.cartons) ? packing.cartons : []
   const normalizedCartons = cartons.map((carton: any) => {
     const netWeight = Number(carton.netWeightKg ?? carton.netWeight ?? 0)
@@ -101,124 +115,8 @@ export function generatePackingListHTML(invoice: any, packing: any, usage?: any)
       color: #9ca3af;
     }
 
-    .document-header {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 40px;
-      margin-bottom: 40px;
-      page-break-inside: avoid;
-    }
-
-    .header-left {
-      display: flex;
-      flex-direction: column;
-      justify-content: flex-start;
-      gap: 12px;
-    }
-
-    .header-right {
-      display: flex;
-      flex-direction: column;
-      justify-content: flex-start;
-      gap: 8px;
-      border-left: 2px solid #e5e7eb;
-      padding-left: 24px;
-      align-items: flex-end;
-    }
-
-    .document-title {
-      font-size: 26px;
-      font-weight: 700;
-      color: #111827;
-      letter-spacing: 0.5px;
-      line-height: 1.2;
-      margin: 0;
-      padding-bottom: 12px;
-      border-bottom: 1px solid #111827;
-    }
-
-    .regulatory-subtitle {
-      font-size: 10px;
-      color: #111827;
-      text-align: center;
-      margin-top: 8px;
-      margin-bottom: 16px;
-      letter-spacing: 0.3px;
-    }
-
-    .invoice-meta-block {
-      display: flex;
-      flex-direction: column;
-      gap: 8px;
-      margin-top: 12px;
-      align-items: flex-end;
-    }
-
-    .header-meta-row {
-      display: flex;
-      justify-content: space-between;
-      align-items: baseline;
-      gap: 12px;
-    }
-
-    .header-meta-label {
-      font-size: 12px;
-      font-weight: 700;
-      color: #111827;
-      letter-spacing: 0.8px;
-    }
-
-    .invoice-number, .invoice-date {
-      font-size: 13px;
-      font-weight: 700;
-      color: #000;
-      letter-spacing: 1.1px;
-      text-align: right;
-    }
-
-    .exporter-name {
-      font-size: 13px;
-      font-weight: 600;
-      color: #111827;
-      line-height: 1.4;
-    }
-
-    .exporter-iec, .exporter-gstin, .payment-terms {
-      font-size: 12px;
-      font-weight: 500;
-      color: #111827;
-      letter-spacing: 0.3px;
-    }
-
-    .payment-terms {
-      padding: 8px 0;
-      border-top: 1px solid #e5e7eb;
-      margin-top: 4px;
-      font-weight: 600;
-    }
-
-    .info-grid {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 32px;
-      margin-bottom: 32px;
-    }
-
-    .info-section h3, .items-section h3 {
-      font-size: 12px;
-      font-weight: 600;
-      color: #6b7280;
-      text-transform: uppercase;
-      letter-spacing: 0.6px;
-      margin-bottom: 12px;
-      padding-bottom: 12px;
-      border-bottom: 1px solid #e5e7eb;
-      margin-top: 0;
-    }
-
-    .info-content { line-height: 1.8; font-size: 13px; color: #374151; }
-    .info-content p { margin-bottom: 8px; }
-    .info-content strong { color: #111827; font-weight: 600; }
+${sharedHeaderStyles}
+${sharedSectionStyles}
 
     .shipment-details {
       display: grid;
@@ -242,65 +140,14 @@ export function generatePackingListHTML(invoice: any, packing: any, usage?: any)
 
     .items-section { margin-bottom: 24px; page-break-inside: avoid; }
 
-    table { width: 100%; border-collapse: collapse; margin-top: 16px; }
-
-    th {
-      padding: 12px 8px;
-      text-align: left;
-      font-weight: 600;
-      font-size: 12px;
-      text-transform: uppercase;
-      letter-spacing: 0.6px;
-      color: #111827;
-      border-bottom: 1px solid #d1d5db;
-    }
-
-    td {
-      padding: 12px 8px;
-      font-size: 12.5px;
-      border-bottom: 1px solid #f3f4f6;
-      color: #374151;
-    }
+${sharedTableStyles}
 
     tbody tr:last-child td { border-bottom: 1px solid #d1d5db; }
 
     .text-right { text-align: right; font-weight: 500; color: #111827; }
     .text-center { text-align: center; }
 
-    .summary {
-      display: flex;
-      justify-content: flex-end;
-      margin-top: 24px;
-      margin-bottom: 28px;
-      page-break-inside: avoid;
-    }
-
-    .summary-box { width: 320px; }
-
-    .summary-row {
-      display: flex;
-      justify-content: space-between;
-      padding: 8px 0;
-      font-size: 13px;
-      gap: 20px;
-    }
-
-    .summary-row.divider {
-      border-top: 1px solid #d1d5db;
-      padding: 12px 0 8px 0;
-      margin: 4px 0;
-      height: 0;
-    }
-
-    .summary-row.total {
-      padding: 12px 0 8px 0;
-      font-size: 16px;
-      font-weight: 700;
-      color: #111827;
-    }
-
-    .summary-label { color: #374151; }
-    .summary-value { color: #111827; text-align: right; font-weight: 500; }
+${sharedSummaryStyles}
 
     .declaration-block {
       margin-top: 8px;
@@ -354,36 +201,7 @@ ${signatureBlockStyles}
       grid-column: 1 / -1;
     }
 
-    .footer {
-      margin-top: 20px;
-      padding-top: 16px;
-      border-top: 1px solid #f3f4f6;
-      font-size: 10px;
-      color: #9ca3af;
-      text-align: center;
-      line-height: 1.4;
-      page-break-inside: avoid;
-      break-inside: avoid;
-      page-break-before: avoid;
-      break-before: avoid;
-    }
-
-    .footer-content {
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      gap: 12px;
-      flex-wrap: wrap;
-    }
-
-    .footer-item { display: inline; }
-    .footer-brand { font-weight: 500; color: #374151; }
-    .footer-separator { color: #d1d5db; }
-    .footer-hash {
-      font-family: 'Courier New', monospace;
-      color: #9ca3af;
-      letter-spacing: 0.5px;
-    }
+${sharedFooterStyles}
 
     @media print {
       body {
@@ -413,39 +231,20 @@ ${signatureBlockStyles}
     ${shouldShowWatermark ? `<div class="document-watermark">GENERATED VIA PLATFORM</div>` : ""}
     <div class="page-number">Page 1 of 1</div>
 
-    <div class="document-header">
-      <div class="header-left">
-        <div class="exporter-name">${exporter.name || "Exporter"}</div>
-        ${exporter.iec ? `<div class="exporter-iec">IEC: ${exporter.iec}</div>` : ""}
-        ${exporter.gstin ? `<div class="exporter-gstin">GSTIN: ${exporter.gstin}</div>` : ""}
-        ${invoice.paymentTerms ? `<div class="payment-terms">Payment: ${invoice.paymentTerms}</div>` : ""}
-      </div>
-
-      <div class="header-right">
-        <h1 class="document-title">PACKING LIST</h1>
-        <div class="regulatory-subtitle">(Issued under FEMA & RBI Guidelines)</div>
-        <div class="invoice-meta-block">
-          <div class="header-meta-row">
-            <span class="header-meta-label">INVOICE NO:</span>
-            <span class="invoice-number">${invoice.invoiceNumber || ""}</span>
-          </div>
-          <div class="header-meta-row">
-            <span class="header-meta-label">DATE:</span>
-            <span class="invoice-date">${formattedInvoiceDate}</span>
-          </div>
-          ${poRef ? `
-          <div class="header-meta-row">
-            <span class="header-meta-label">PO REF:</span>
-            <span class="invoice-date">${poRef}</span>
-          </div>
-          ` : ""}
-        </div>
-      </div>
-    </div>
+    ${renderHeaderBlock({
+      exporter: layoutExporter,
+      documentTitle: "PACKING LIST",
+      paymentTerms: invoice.paymentTerms,
+      metadataRows: [
+        { label: "INVOICE NO:", value: invoice.invoiceNumber || "", valueClass: "invoice-number" },
+        { label: "DATE:", value: formattedInvoiceDate, valueClass: "invoice-date" },
+        ...(poRef ? [{ label: "PO REF:", value: poRef, valueClass: "invoice-date" }] : []),
+      ],
+    })}
 
     <div class="info-grid">
       <div class="info-section">
-        <h3>Exporter / Shipper</h3>
+        ${renderSectionTitle("Exporter / Shipper")}
         <div class="info-content">
           <p><strong>${exporter.name || "N/A"}</strong></p>
           <p>${exporter.address || "Address not provided"}</p>
@@ -455,7 +254,7 @@ ${signatureBlockStyles}
       </div>
 
       <div class="info-section">
-        <h3>Buyer / Importer</h3>
+        ${renderSectionTitle("Buyer / Importer")}
         <div class="info-content">
           <p><strong>${buyer.name || "N/A"}</strong></p>
           <p>${buyer.address || "Address not provided"}</p>
@@ -488,7 +287,7 @@ ${signatureBlockStyles}
     </div>
 
     <div class="items-section">
-      <h3>Carton Details</h3>
+      ${renderSectionTitle("Carton Details")}
       <table>
         <thead>
           <tr>

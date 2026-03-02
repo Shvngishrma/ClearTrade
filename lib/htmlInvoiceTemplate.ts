@@ -117,7 +117,7 @@ export function generateInvoiceHTML(invoice: any, usage?: any): string {
   const transportDetailsHTML = transportDetailsRows.length > 0
     ? `
     <div class="transport-details">
-      <div class="transport-title">Transport Details</div>
+      ${renderSectionTitle('Transport Details')}
       ${transportDetailsRows
         .map(
           row => `
@@ -225,15 +225,6 @@ ${sharedSectionStyles}
       padding-top: 12px;
       border-top: 1px solid #e5e7eb;
       page-break-inside: avoid;
-    }
-
-    .transport-title {
-      font-size: 12px;
-      font-weight: 700;
-      text-transform: uppercase;
-      letter-spacing: 0.7px;
-      color: #111827;
-      margin-bottom: 8px;
     }
 
     .transport-item {
@@ -511,7 +502,7 @@ ${sharedFooterStyles}
         ` : ''}
         <div class="summary-row divider"></div>
         <div class="summary-row total">
-          <span class="summary-label">Total Invoice Value</span>
+          <span class="summary-label">Total Invoice Value:</span>
           <span class="summary-value">${currency} ${formattedTotalValue}</span>
         </div>
         ${hasExchangeDisclosure ? `

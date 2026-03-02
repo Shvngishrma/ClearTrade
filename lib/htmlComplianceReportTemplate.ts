@@ -1,4 +1,13 @@
 import type { ComplianceReportData } from "@/lib/complianceReport"
+import {
+  renderSectionTitle,
+  sharedFooterStyles,
+  sharedHeaderStyles,
+  sharedSectionStyles,
+  sharedSummaryStyles,
+  sharedTableStyles,
+} from "@/lib/renderDocumentLayout"
+import { renderSignatureBlock } from "@/lib/renderSignatureBlock"
 
 function formatDateTimeIST(date: Date): string {
   const formatted = new Intl.DateTimeFormat("en-GB", {
@@ -99,13 +108,6 @@ export function generateComplianceReportHTML(data: ComplianceReportData): string
       margin-bottom: 18px;
     }
 
-    .title {
-      font-size: 20px;
-      font-weight: 700;
-      letter-spacing: 0.4px;
-      margin-bottom: 8px;
-    }
-
     .meta-grid {
       display: grid;
       grid-template-columns: 1fr 1fr;
@@ -152,35 +154,10 @@ export function generateComplianceReportHTML(data: ComplianceReportData): string
       color: #111827;
     }
 
-    .section-title {
-      margin-top: 12px;
-      margin-bottom: 8px;
-      font-size: 12px;
-      font-weight: 700;
-      color: #111827;
-      text-transform: uppercase;
-      letter-spacing: 0.4px;
-    }
-
     .table {
       width: 100%;
       border-collapse: collapse;
       margin-bottom: 14px;
-    }
-
-    .table th,
-    .table td {
-      border: 1px solid #e5e7eb;
-      padding: 8px;
-      text-align: left;
-      vertical-align: top;
-      font-size: 11px;
-    }
-
-    .table th {
-      background: #f9fafb;
-      font-weight: 700;
-      color: #374151;
     }
 
     .pill {
@@ -210,36 +187,25 @@ export function generateComplianceReportHTML(data: ComplianceReportData): string
       min-height: 120px;
     }
 
-    .box h4 {
-      font-size: 11px;
-      margin-bottom: 6px;
-      color: #374151;
-      text-transform: uppercase;
-      letter-spacing: 0.4px;
-    }
-
     .list-item { margin-bottom: 6px; font-size: 11px; color: #1f2937; }
-
-    .footer {
-      margin-top: 18px;
-      border-top: 1px solid #e5e7eb;
-      padding-top: 8px;
-      font-size: 9px;
-      color: #374151;
-      text-align: center;
-    }
 
     .page-break {
       break-before: page;
       page-break-before: always;
       margin-top: 8px;
     }
+
+${sharedHeaderStyles}
+${sharedSectionStyles}
+${sharedTableStyles}
+${sharedSummaryStyles}
+${sharedFooterStyles}
   </style>
 </head>
 <body>
   <div class="certificate">
     <div class="header">
-      <div class="title">DOCUMENT COMPLIANCE CERTIFICATE</div>
+      <h1 class="document-title">DOCUMENT COMPLIANCE CERTIFICATE</h1>
       <div class="meta-grid">
         <div><strong>Certificate ID:</strong> ${data.certificateId}</div>
         <div><strong>Invoice Ref:</strong> ${data.invoiceRef}</div>
@@ -257,7 +223,7 @@ export function generateComplianceReportHTML(data: ComplianceReportData): string
       </div>
     </div>
 
-    <div class="section-title">2. Engine Score Matrix</div>
+    ${renderSectionTitle("2. Engine Score Matrix")}
     <table class="table">
       <thead>
         <tr>
@@ -283,7 +249,7 @@ export function generateComplianceReportHTML(data: ComplianceReportData): string
       </tbody>
     </table>
 
-    <div class="section-title">Compliance Controls</div>
+    ${renderSectionTitle("Compliance Controls")}
     <table class="table">
       <thead>
         <tr>
@@ -309,7 +275,7 @@ export function generateComplianceReportHTML(data: ComplianceReportData): string
 
     <div class="split">
       <div class="box">
-        <h4>Critical Blockers</h4>
+        ${renderSectionTitle("Critical Blockers")}
         ${
           data.blockers.length === 0
             ? `<div class="list-item">No critical blockers at report generation time.</div>`
@@ -322,7 +288,7 @@ export function generateComplianceReportHTML(data: ComplianceReportData): string
         }
       </div>
       <div class="box">
-        <h4>Warnings / Observations</h4>
+        ${renderSectionTitle("Warnings / Observations")}
         ${
           data.warnings.length === 0
             ? `<div class="list-item">No warnings.</div>`
@@ -335,14 +301,14 @@ export function generateComplianceReportHTML(data: ComplianceReportData): string
     </div>
 
     ${data.advisories.length > 0 ? `
-    <div class="section-title">3. Advisories</div>
+    ${renderSectionTitle("3. Advisories")}
     <div class="box" style="min-height: auto;">
       ${data.advisories.map((advisory) => `<div class="list-item">• ${advisory}</div>`).join("")}
     </div>
     ` : ""}
 
     ${data.riskFlags.length > 0 ? `
-    <div class="section-title">Risk Flags</div>
+    ${renderSectionTitle("Risk Flags")}
     <table class="table">
       <thead>
         <tr>
@@ -367,9 +333,9 @@ export function generateComplianceReportHTML(data: ComplianceReportData): string
 
     <div class="page-break"></div>
 
-    <div class="section-title">4. Proof Layer</div>
+    ${renderSectionTitle("4. Proof Layer")}
 
-    <div class="section-title">Exchange Rate Proof</div>
+    ${renderSectionTitle("Exchange Rate Proof")}
     <table class="table">
       <tbody>
         <tr>
@@ -391,7 +357,7 @@ export function generateComplianceReportHTML(data: ComplianceReportData): string
       </tbody>
     </table>
 
-    <div class="section-title">LC Snapshot</div>
+    ${renderSectionTitle("LC Snapshot")}
     <table class="table">
       <tbody>
         <tr>
@@ -417,7 +383,7 @@ export function generateComplianceReportHTML(data: ComplianceReportData): string
       </tbody>
     </table>
 
-    <div class="section-title">IEC–AD–Port</div>
+    ${renderSectionTitle("IEC–AD–Port")}
     <table class="table">
       <tbody>
         <tr>
@@ -439,7 +405,7 @@ export function generateComplianceReportHTML(data: ComplianceReportData): string
       </tbody>
     </table>
 
-    <div class="section-title">🧾 Cross-Document Validation</div>
+    ${renderSectionTitle("🧾 Cross-Document Validation")}
     <table class="table">
       <tbody>
         ${data.crossDocumentValidation
@@ -455,7 +421,7 @@ export function generateComplianceReportHTML(data: ComplianceReportData): string
       </tbody>
     </table>
 
-    <div class="section-title">5. Integrity Seal</div>
+    ${renderSectionTitle("5. Integrity Seal")}
     <table class="table">
       <tbody>
         <tr>

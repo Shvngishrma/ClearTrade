@@ -242,7 +242,6 @@ ${sharedFooterStyles}
             <p><strong>${exporter?.name || "N/A"}</strong></p>
             <p>${exporter?.address || "Address not provided"}</p>
             ${exporter?.iec ? `<p><strong>IEC:</strong> ${exporter.iec}</p>` : ""}
-            <p><strong>AD Code:</strong> ${adCode}</p>
           </div>
         </div>
 
@@ -327,12 +326,12 @@ ${sharedFooterStyles}
         </div>
       </div>
 
+      ${renderSignatureBlock(exporter)}
+
       ${renderSectionTitle("Declaration")}
       <p class="declaration">
         We hereby declare that the particulars given above are true and correct, and the goods are intended for export as per applicable customs and FEMA regulations.
       </p>
-
-      ${renderSignatureBlock(exporter)}
 
       <div class="footer">
         <div class="footer-content">

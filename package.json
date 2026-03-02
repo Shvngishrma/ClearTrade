@@ -8,7 +8,8 @@
     "start": "next start",
     "lint": "next lint",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "audit:document-layout": "node scripts/documentLayoutContractAudit.mjs"
   },
   "dependencies": {
     "@auth/prisma-adapter": "^2.11.1",
