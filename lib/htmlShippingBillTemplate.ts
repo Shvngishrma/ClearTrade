@@ -322,12 +322,12 @@ ${sharedFooterStyles}
         </div>
       </div>
 
+      ${renderSignatureBlock(exporter)}
+
       ${renderSectionTitle("Declaration")}
       <p class="declaration">
         We hereby declare that the particulars given above are true and correct, and the goods are intended for export as per applicable customs and FEMA regulations.
       </p>
-
-      ${renderSignatureBlock(exporter)}
 
       <div class="footer">
         <div class="footer-content">
