@@ -26,7 +26,7 @@ export const sharedPageStyles = `
 
     @page {
       size: A4;
-      margin: 10mm 12mm 10mm 12mm;
+      margin: 20mm;
     }
 
     .container {
