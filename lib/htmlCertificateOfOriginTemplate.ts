@@ -40,7 +40,13 @@ export function generateCertificateOfOriginHTML(invoice: any, coo: any): string 
 
     @page {
       size: A4;
-      margin: 8mm 10mm 8mm 10mm;
+      margin: 20mm;
+    }
+
+    .container {
+      width: 100%;
+      max-width: 100%;
+      padding: 0;
     }
 
 ${sharedHeaderStyles}
@@ -55,6 +61,11 @@ ${sharedFooterStyles}
       line-height: 1.5;
       margin-top: 8px;
       page-break-inside: avoid;
+    }
+
+    .signature-block {
+      page-break-inside: avoid;
+      break-inside: avoid;
     }
 
     .coo-origin-field {
@@ -107,6 +118,11 @@ ${sharedFooterStyles}
     .authority-value {
       color: #374151;
       font-size: 12px;
+    }
+
+    .issuing-authority-section {
+      page-break-inside: avoid;
+      break-inside: avoid;
     }
   </style>
 </head>
@@ -189,7 +205,7 @@ ${sharedFooterStyles}
     ` : ""}
 
     ${coo?.chamberName ? `
-    <div style="display: flex; gap: 30px; margin-top: 16px; page-break-inside: avoid;">
+    <div class="issuing-authority-section" style="display: flex; gap: 30px; margin-top: 16px;">
       <div style="flex: 1;">
         ${renderSectionTitle("Issuing Authority")}
         <div style="margin-top: 10px; padding: 14px 16px; background: #f9fafb; border: 1px solid #d1d5db;">
