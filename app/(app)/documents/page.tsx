@@ -87,6 +87,7 @@ function DocumentsPage() {
     coo: {
       originCountry: "",
       chamberName: "",
+      registrationNumber: "",
     },
     insurance: {
       policyNumber: "",
@@ -1469,6 +1470,17 @@ function DocumentsPage() {
                     {fieldErrors.chamberName && (
                       <p className="text-xs text-red-500 mt-1 sm:col-span-2">{fieldErrors.chamberName}</p>
                     )}
+                    <input
+                      placeholder="Chamber registration number (optional)"
+                      className="border rounded-md px-3 py-2"
+                      value={docDetails.coo.registrationNumber}
+                      onChange={e =>
+                        setDocDetails({
+                          ...docDetails,
+                          coo: { ...docDetails.coo, registrationNumber: e.target.value },
+                        })
+                      }
+                    />
                   </div>
                 </div>
               )}

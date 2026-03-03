@@ -9,6 +9,7 @@ export async function POST(req: Request) {
       invoiceId: body.invoiceId,
       originCountry: body.originCountry,
       chamberName: body.chamberName,
+      registrationNumber: body.registrationNumber || null,
     },
   })
 

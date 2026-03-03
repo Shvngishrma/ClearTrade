@@ -207,7 +207,7 @@ ${sharedFooterStyles}
           
           <div class="authority-detail-row">
             <div class="authority-label">PLACE</div>
-            <div class="authority-value">${coo.exporterCity || coo.exporterCountry || "India"}</div>
+            <div class="authority-value">${exporter?.address?.split(",").pop()?.trim() || exporter?.country || "India"}</div>
           </div>
           
           <div class="authority-detail-row">

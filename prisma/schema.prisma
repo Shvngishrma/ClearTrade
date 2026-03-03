@@ -240,12 +240,13 @@ model Declaration {
 }
 
 model CertificateOfOrigin {
-  id            String   @id @default(uuid())
-  invoiceId     String
-  originCountry String
-  chamberName   String
-  createdAt     DateTime @default(now())
-  invoice       Invoice  @relation(fields: [invoiceId], references: [id])
+  id                  String   @id @default(uuid())
+  invoiceId           String
+  originCountry       String
+  chamberName         String
+  registrationNumber  String?
+  createdAt           DateTime @default(now())
+  invoice             Invoice  @relation(fields: [invoiceId], references: [id])
 }
 
 model Insurance {
