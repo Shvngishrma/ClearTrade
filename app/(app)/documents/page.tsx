@@ -486,11 +486,13 @@ function DocumentsPage() {
       }
       
       const registrationNumber = (docDetails.coo?.registrationNumber || "").trim()
-      if (registrationNumber) {
+      if (!registrationNumber) {
+        errors.registrationNumber = "Chamber registration number is required. Please add the registration number."
+      } else if (registrationNumber.length < 3) {
+        errors.registrationNumber = "Registration number must be at least 3 characters."
+      } else {
         const regNumberPattern = /^[A-Z0-9][A-Z0-9\/\-\s]*[A-Z0-9]$/i
-        if (registrationNumber.length < 3) {
-          errors.registrationNumber = "Registration number must be at least 3 characters."
-        } else if (!regNumberPattern.test(registrationNumber)) {
+        if (!regNumberPattern.test(registrationNumber)) {
           errors.registrationNumber = "Use format like REG/2024/001, REG-123456, or ICC0001234 (alphanumeric with / or - allowed)."
         }
       }
@@ -1500,7 +1502,7 @@ function DocumentsPage() {
                       <p className="text-xs text-red-500 mt-1 sm:col-span-2">{fieldErrors.chamberName}</p>
                     )}
                     <input
-                      placeholder="Chamber registration number (optional)"
+                      placeholder="Chamber registration number"
                       className={`border rounded-md px-3 py-2 ${fieldErrors.registrationNumber ? "border-red-500" : ""}`}
                       value={docDetails.coo.registrationNumber}
                       onChange={e =>
