@@ -129,6 +129,7 @@ function DocumentsPage() {
     portOfDischarge?: string
     lcNumber?: string
     chamberName?: string
+    chamberRegistrationNumber?: string
     insuredValue?: string
     freight?: string
     hsCodeErrors: string[]
@@ -137,6 +138,7 @@ function DocumentsPage() {
   const [fieldErrors, setFieldErrors] = useState<FieldErrors>({ hsCodeErrors: [] })
 
   const invoiceNumberPattern = /^INV\/\d{4}\/\d{4}$/
+  const chamberRegistrationPattern = /^[A-Z0-9\-\/]{3,20}$/
 
   const validPaymentTerms = ["Advance", "LC", "DA", "DP", "COD", "Credit"]
 
@@ -470,6 +472,11 @@ function DocumentsPage() {
       if (chamberName && chamberName.length < 3) {
         errors.chamberName = "Chamber name must be at least 3 characters."
       }
+
+      const chamberRegNo = (docDetails.coo?.registrationNumber || "").trim()
+      if (chamberRegNo && !chamberRegistrationPattern.test(chamberRegNo.toUpperCase())) {
+        errors.chamberRegistrationNumber = "Chamber registration format: REG/YYYY/NNNN or alphanumeric (3-20 chars, A-Z, 0-9, hyphens, slashes)."
+      }
     }
 
     if (selectedDocs.includes("insurance")) {
@@ -566,6 +573,7 @@ function DocumentsPage() {
       errors.portOfDischarge ||
       errors.lcNumber ||
       errors.chamberName ||
+      errors.chamberRegistrationNumber ||
       errors.insuredValue ||
       errors.freight ||
       errors.hsCodeErrors.some(Boolean)
@@ -1472,15 +1480,18 @@ function DocumentsPage() {
                     )}
                     <input
                       placeholder="Chamber registration number (optional)"
-                      className="border rounded-md px-3 py-2"
+                      className={`border rounded-md px-3 py-2 ${fieldErrors.chamberRegistrationNumber ? "border-red-500" : ""}`}
                       value={docDetails.coo.registrationNumber}
                       onChange={e =>
                         setDocDetails({
                           ...docDetails,
-                          coo: { ...docDetails.coo, registrationNumber: e.target.value },
+                          coo: { ...docDetails.coo, registrationNumber: e.target.value.toUpperCase() },
                         })
                       }
                     />
+                    {fieldErrors.chamberRegistrationNumber && (
+                      <p className="text-xs text-red-500 mt-1 sm:col-span-2">{fieldErrors.chamberRegistrationNumber}</p>
+                    )}
                   </div>
                 </div>
               )}
