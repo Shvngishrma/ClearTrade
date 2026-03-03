@@ -68,26 +68,6 @@ ${sharedFooterStyles}
       break-inside: avoid;
     }
 
-    .coo-origin-field {
-      display: flex;
-      justify-content: space-between;
-      margin-top: 12px;
-      margin-bottom: 12px;
-      padding: 8px 0;
-      border-bottom: 1px solid #e5e7eb;
-    }
-
-    .coo-origin-label {
-      font-weight: 600;
-      color: #6b7280;
-      font-size: 12px;
-    }
-
-    .coo-origin-value {
-      color: #374151;
-      font-size: 13px;
-    }
-
     .issuing-authority-seal {
       width: 70px;
       height: 70px;
@@ -160,10 +140,6 @@ ${sharedFooterStyles}
     </div>
 
     ${renderSectionTitle("Goods Details")}
-    <p class="coo-origin-field">
-      <span class="coo-origin-label">Country of Origin:</span>
-      <span class="coo-origin-value">${originCountry}</span>
-    </p>
 
     <table>
       <thead>
