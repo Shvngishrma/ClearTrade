@@ -80,11 +80,18 @@ ${sharedTableStyles}
 ${sharedSummaryStyles}
 ${signatureBlockStyles}
 ${sharedFooterStyles}
+
+    .document-title {
+      white-space: nowrap;
+      font-weight: 800;
+      font-size: 24px;
+      letter-spacing: 0.4px;
+    }
   </style>
 </head>
 <body>
   <div class="container">
-    <div style="display: flex; flex-direction: column; gap: 18px;">
+    <div style="display: flex; flex-direction: column;">
       ${renderHeaderBlock({
         exporter,
         documentTitle: "MARINE INSURANCE CERTIFICATE",
@@ -133,6 +140,7 @@ ${sharedFooterStyles}
             <p><strong>Risk Coverage:</strong> ${coverageType}</p>
             <p><strong>Policy Number:</strong> ${policyNo}</p>
             <p><strong>Transit Reference:</strong> ${vesselOrVoyage}</p>
+            <p>This certificate confirms that the goods referenced above are insured under the stated marine policy subject to terms and conditions.</p>
           </div>
         </div>
       </div>
@@ -143,7 +151,7 @@ ${sharedFooterStyles}
             <th class="text-serial">Sr</th>
             <th class="text-left">Description</th>
             <th class="text-numeric">Insured Amount</th>
-            <th class="text-numeric">Risk Coverage</th>
+            <th class="text-left">Risk Coverage</th>
           </tr>
         </thead>
         <tbody>
@@ -154,19 +162,19 @@ ${sharedFooterStyles}
             <td class="text-serial">${item.serial}</td>
             <td class="text-left">${item.description}</td>
             <td class="text-numeric">${invoice?.currency || "USD"} ${formatMoney(item.insuredAmount)}</td>
-            <td class="text-numeric">${item.riskCoverage}</td>
+            <td class="text-left">${item.riskCoverage}</td>
           </tr>`
             )
             .join("")}
         </tbody>
       </table>
 
-      <div class="summary" style="margin-top: 18px; margin-bottom: 18px;">
+      <div class="summary">
         <div class="summary-box">
           <div class="summary-row divider"></div>
           <div class="summary-row total">
             <span class="summary-label">Total Insured Value</span>
-            <span class="summary-value"><strong>${invoice?.currency || "USD"} ${formatMoney(insuredValue)}</strong></span>
+            <span class="summary-value">${invoice?.currency || "USD"} ${formatMoney(insuredValue)}</span>
           </div>
         </div>
       </div>
