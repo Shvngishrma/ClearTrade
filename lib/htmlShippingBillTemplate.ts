@@ -148,21 +148,85 @@ ${sharedSummaryStyles}
 ${signatureBlockStyles}
 ${sharedFooterStyles}
 
-    .declaration {
-      margin-top: 6px;
-      font-size: 11px;
-      color: #374151;
-      line-height: 1.5;
-      page-break-inside: avoid;
+    @page {
+      size: A4;
+      margin: 6mm 10mm 6mm 10mm;
     }
 
-    .page-number {
-      position: absolute;
-      bottom: 20px;
-      right: 20px;
-      font-size: 10px;
-      font-weight: 400;
-      color: #9ca3af;
+    .document-header {
+      margin-bottom: 24px;
+    }
+
+    .info-grid {
+      margin-bottom: 20px;
+    }
+
+    .info-content {
+      line-height: 1.55;
+    }
+
+    .info-content p {
+      margin-bottom: 4px;
+    }
+
+    .shipment-details {
+      margin-bottom: 18px;
+      gap: 24px;
+    }
+
+    .items-section {
+      margin-bottom: 14px;
+    }
+
+    .section-title {
+      margin-bottom: 8px;
+      padding-bottom: 8px;
+    }
+
+    table {
+      margin-top: 10px;
+    }
+
+    th,
+    td {
+      padding-top: 8px;
+      padding-bottom: 8px;
+    }
+
+    .summary {
+      margin-top: 14px;
+      margin-bottom: 14px;
+    }
+
+    .summary-row {
+      padding: 6px 0;
+    }
+
+    .summary-row.divider {
+      padding: 8px 0 6px 0;
+      margin: 2px 0;
+    }
+
+    .summary-row.total {
+      padding: 8px 0 6px 0;
+    }
+
+    .signature-block {
+      margin-top: 12px;
+      margin-bottom: 10px;
+    }
+
+    .footer {
+      margin-top: 10px;
+      padding-top: 10px;
+    }
+
+    .declaration {
+      margin-top: 4px;
+      font-size: 11px;
+      color: #374151;
+      line-height: 1.4;
+      page-break-inside: avoid;
     }
 
     .document-wrapper {
@@ -189,8 +253,6 @@ ${sharedFooterStyles}
   <div class="document-wrapper">
     <div class="container">
       ${shouldShowWatermark ? `<div class="document-watermark">GENERATED VIA PLATFORM</div>` : ""}
-      <div class="page-number">Page 1 of 1</div>
-
       ${renderHeaderBlock({
         exporter,
         documentTitle: "SHIPPING BILL (DRAFT)",
