@@ -70,6 +70,38 @@ ${sharedFooterStyles}
       color: #374151;
       font-size: 13px;
     }
+
+    .issuing-authority-seal {
+      width: 100px;
+      height: 100px;
+      border: 2px solid #6b7280;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin: 12px 0;
+      background: #f9fafb;
+      font-size: 40px;
+      color: #9ca3af;
+    }
+
+    .authority-detail-row {
+      display: flex;
+      justify-content: space-between;
+      margin-bottom: 10px;
+      padding: 6px 0;
+    }
+
+    .authority-label {
+      font-weight: 600;
+      color: #6b7280;
+      font-size: 12px;
+    }
+
+    .authority-value {
+      color: #374151;
+      font-size: 13px;
+    }
   </style>
 </head>
 <body>
@@ -151,10 +183,47 @@ ${sharedFooterStyles}
     ` : ""}
 
     ${coo?.chamberName ? `
-    ${renderSectionTitle("Issuing Authority")}
-    <div class="info-content">
-      <p><strong>${coo.chamberName}</strong></p>
-      ${coo?.registrationNumber ? `<p><strong>Registration Number:</strong> ${coo.registrationNumber}</p>` : ""}
+    <div style="display: flex; gap: 30px; margin-top: 20px;">
+      <div style="flex: 1;">
+        ${renderSectionTitle("Issuing Authority")}
+        <div style="margin-top: 12px; padding: 20px; background: #f9fafb; border: 1px solid #d1d5db;">
+          <!-- Chamber Seal/Stamp Representation -->
+          <div style="text-align: center; margin-bottom: 16px;">
+            <div class="issuing-authority-seal">⊕</div>
+          </div>
+          
+          <!-- Authority Details -->
+          <div class="authority-detail-row">
+            <div class="authority-label">CHAMBER OF COMMERCE</div>
+            <div class="authority-value">${coo.chamberName}</div>
+          </div>
+          
+          ${coo.registrationNumber ? `
+          <div class="authority-detail-row">
+            <div class="authority-label">REGISTRATION NUMBER</div>
+            <div class="authority-value">${coo.registrationNumber}</div>
+          </div>
+          ` : ""}
+          
+          <div class="authority-detail-row">
+            <div class="authority-label">PLACE</div>
+            <div class="authority-value">${coo.exporterCity || coo.exporterCountry || "India"}</div>
+          </div>
+          
+          <div class="authority-detail-row">
+            <div class="authority-label">DATE</div>
+            <div class="authority-value">${coo.createdAt ? new Date(coo.createdAt).toLocaleDateString("en-IN", {
+              day: "2-digit",
+              month: "short",
+              year: "numeric"
+            }) : new Date().toLocaleDateString("en-IN", {
+              day: "2-digit",
+              month: "short",
+              year: "numeric"
+            })}</div>
+          </div>
+        </div>
+      </div>
     </div>
     ` : ""}
 
