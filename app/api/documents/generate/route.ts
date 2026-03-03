@@ -649,9 +649,11 @@ export async function POST(req: Request) {
     })
   }
 
-  const documentEntries = [
-    { type: "Invoice", status: "COMPLETED", userId: user.id },
-  ]
+  const documentEntries: Array<{ type: string; status: string; userId: string }> = []
+
+  if (selectedDocs.includes("invoice")) {
+    documentEntries.push({ type: "Invoice", status: "COMPLETED", userId: user.id })
+  }
 
   if (selectedDocs.includes("packingList")) {
     documentEntries.push({ type: "Packing List", status: "COMPLETED", userId: user.id })
@@ -728,7 +730,7 @@ export async function POST(req: Request) {
         executionTime: pipelineResult.executionTime
       },
       documents: {
-        invoice: true,
+        invoice: selectedDocs.includes("invoice"),
         packingList: selectedDocs.includes("packingList"),
         shippingBill: selectedDocs.includes("shippingBill"),
         coo: selectedDocs.includes("coo"),

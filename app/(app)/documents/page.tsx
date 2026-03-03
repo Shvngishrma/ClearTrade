@@ -824,7 +824,8 @@ function DocumentsPage() {
       }
 
       const statusParam = status ? `&status=${encodeURIComponent(String(status))}` : ""
-      router.push(`/documents/download?invoiceId=${invoiceId}${statusParam}`)
+      const docsParam = selectedDocs.length > 0 ? `&docs=${encodeURIComponent(selectedDocs.join(","))}` : ""
+      router.push(`/documents/download?invoiceId=${invoiceId}${statusParam}${docsParam}`)
 
     } catch (err: any) {
       setFormError(err.message)

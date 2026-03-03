@@ -19,10 +19,31 @@ const DOCUMENT_TYPES = [
   "Document Compliance Certificate",
 ]
 
+const DOC_LABELS: Record<string, string> = {
+  invoice: "Commercial Invoice",
+  packingList: "Packing List",
+  shippingBill: "Shipping Bill",
+  declaration: "Declaration",
+  coo: "Certificate of Origin",
+  insurance: "Insurance Declaration",
+  lc: "LC Supporting Documents",
+}
+
 function DownloadPageContent() {
   const router = useRouter()
   const params = useSearchParams()
   const invoiceId = params.get("invoiceId")
+  const requestedDocs = (params.get("docs") || "").trim()
+  const requestedDocLabels = requestedDocs
+    ? new Set(
+        requestedDocs
+          .split(",")
+          .map((value) => value.trim())
+          .filter(Boolean)
+          .map((value) => DOC_LABELS[value])
+          .filter(Boolean)
+      )
+    : null
   const autoDownload = (params.get("autodownload") || "").toLowerCase()
   const initialStatus = (params.get("status") || "DRAFT").toUpperCase()
   const [isDownloading, setIsDownloading] = useState(false)
@@ -48,7 +69,8 @@ function DownloadPageContent() {
     let cancelled = false
     setIncludedDocsLoading(true)
     setIncludedDocsError(null)
-    fetch(`/api/documents/download-zip?invoiceId=${invoiceId}&list=1`, { credentials: "include" })
+    const docsQuery = requestedDocs ? `&docs=${encodeURIComponent(requestedDocs)}` : ""
+    fetch(`/api/documents/download-zip?invoiceId=${invoiceId}&list=1${docsQuery}`, { credentials: "include" })
       .then(async (res) => {
         if (!res.ok) {
           const payload = await res.json().catch(async () => ({ message: await res.text() }))
@@ -58,15 +80,17 @@ function DownloadPageContent() {
       })
       .then((data) => {
         if (!cancelled && data?.included && Array.isArray(data.included)) {
-          setIncludedDocs(data.included)
+          const normalized = data.included.map((value: unknown) => String(value))
+          const filtered = requestedDocLabels
+            ? normalized.filter((doc) => requestedDocLabels.has(doc))
+            : normalized
+          setIncludedDocs(filtered)
         }
       })
       .catch((err) => {
         if (!cancelled) {
           setIncludedDocsError(err instanceof Error ? err.message : "Failed to load included documents")
-          setIncludedDocs([
-            "Commercial Invoice",
-          ])
+          setIncludedDocs([])
         }
       })
       .finally(() => {
@@ -75,7 +99,7 @@ function DownloadPageContent() {
         }
       })
     return () => { cancelled = true }
-  }, [invoiceId])
+  }, [invoiceId, requestedDocs])
 
   const badgeConfig: Record<string, { label: string; className: string }> = {
     DRAFT: { label: "🟡 Draft", className: "bg-zinc-200 text-zinc-800 dark:bg-zinc-700 dark:text-zinc-200" },
@@ -146,7 +170,8 @@ function DownloadPageContent() {
 
     try {
       console.log("[DOWNLOAD] Starting fetch to /api/documents/download-zip")
-      const res = await fetch(`/api/documents/download-zip?invoiceId=${invoiceId}`)
+      const docsQuery = requestedDocs ? `&docs=${encodeURIComponent(requestedDocs)}` : ""
+      const res = await fetch(`/api/documents/download-zip?invoiceId=${invoiceId}${docsQuery}`)
 
       console.log("[DOWNLOAD] Fetch response received, status:", res.status)
 
@@ -200,7 +225,11 @@ function DownloadPageContent() {
         try {
           const parsed = JSON.parse(decodeURIComponent(includedHeader))
           if (Array.isArray(parsed) && parsed.length > 0) {
-            setIncludedDocs(parsed.map((v) => String(v)))
+            const normalized = parsed.map((v) => String(v))
+            const filtered = requestedDocLabels
+              ? normalized.filter((doc) => requestedDocLabels.has(doc))
+              : normalized
+            setIncludedDocs(filtered)
           }
         } catch {
           // non-blocking
@@ -256,7 +285,8 @@ function DownloadPageContent() {
     setIsDownloadingDocxZip(true)
 
     try {
-      const res = await fetch(`/api/documents/download-docx-zip?invoiceId=${invoiceId}`)
+      const docsQuery = requestedDocs ? `&docs=${encodeURIComponent(requestedDocs)}` : ""
+      const res = await fetch(`/api/documents/download-docx-zip?invoiceId=${invoiceId}${docsQuery}`)
 
       if (!res.ok) {
         const errorPayload = await res.json().catch(async () => ({ message: await res.text() }))

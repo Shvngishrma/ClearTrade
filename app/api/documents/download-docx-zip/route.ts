@@ -23,10 +23,20 @@ const FILE_NAMES: Record<string, string> = {
   lc: "LC_Summary.docx",
 }
 
+function parseRequestedDocs(raw: string | null): string[] {
+  if (!raw) return []
+
+  return raw
+    .split(",")
+    .map((value) => value.trim())
+    .filter((value) => value.length > 0 && value in DOCX_ROUTES)
+}
+
 export async function GET(req: Request) {
   try {
     const { searchParams } = new URL(req.url)
     const invoiceId = searchParams.get("invoiceId")
+    const requestedDocs = parseRequestedDocs(searchParams.get("docs"))
 
     if (!invoiceId) {
       return new Response(JSON.stringify({ error: "Missing invoiceId" }), {
@@ -82,7 +92,7 @@ export async function GET(req: Request) {
       )
     }
 
-    const docsToFetch = Object.keys(DOCX_ROUTES).filter((doc) => {
+    const availableDocs = Object.keys(DOCX_ROUTES).filter((doc) => {
       if (doc === "invoice") {
         return true
       }
@@ -96,6 +106,10 @@ export async function GET(req: Request) {
 
       return false
     })
+
+    const docsToFetch = requestedDocs.length > 0
+      ? availableDocs.filter((doc) => requestedDocs.includes(doc))
+      : availableDocs
 
     const zip = new JSZip()
     const baseUrl = new URL(req.url).origin

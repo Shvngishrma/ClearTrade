@@ -48,6 +48,15 @@ const DISPLAY_NAMES: Record<string, string> = {
   lc: "LC Supporting Documents",
 };
 
+function parseRequestedDocs(raw: string | null): string[] {
+  if (!raw) return []
+
+  return raw
+    .split(",")
+    .map((value) => value.trim())
+    .filter((value) => value.length > 0 && value in DOC_GENERATORS)
+}
+
 function resolveDocsToFetch(invoice: {
   packingLists: unknown[];
   shippingBills: unknown[];
@@ -55,8 +64,8 @@ function resolveDocsToFetch(invoice: {
   certificatesOfOrigin: unknown[];
   insurances: unknown[];
   lettersOfCredit: unknown[];
-}) {
-  const docsToFetch = Object.keys(DOC_GENERATORS).filter((doc) => {
+}, requestedDocs: string[]) {
+  const availableDocs = Object.keys(DOC_GENERATORS).filter((doc) => {
     if (doc === "invoice") return true;
     if (doc === "packingList") return invoice.packingLists.length > 0;
     if (doc === "shippingBill") return invoice.shippingBills.length > 0;
@@ -67,7 +76,11 @@ function resolveDocsToFetch(invoice: {
     return false;
   });
 
-  return docsToFetch;
+  if (requestedDocs.length === 0) {
+    return availableDocs
+  }
+
+  return availableDocs.filter((doc) => requestedDocs.includes(doc))
 }
 
 export async function GET(req: NextRequest) {
@@ -77,6 +90,7 @@ export async function GET(req: NextRequest) {
   try {
     const invoiceId = req.nextUrl.searchParams.get("invoiceId");
     const listOnly = req.nextUrl.searchParams.get("list") === "1";
+    const requestedDocs = parseRequestedDocs(req.nextUrl.searchParams.get("docs"))
 
     console.log("[ZIP] invoiceId from query:", invoiceId);
 
@@ -107,7 +121,7 @@ export async function GET(req: NextRequest) {
       });
     }
 
-    const docsToFetch = resolveDocsToFetch(invoice);
+    const docsToFetch = resolveDocsToFetch(invoice, requestedDocs);
     const includedDocs = docsToFetch.map((doc) => DISPLAY_NAMES[doc] || doc);
 
     if (listOnly) {
