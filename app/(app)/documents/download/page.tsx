@@ -82,7 +82,7 @@ function DownloadPageContent() {
         if (!cancelled && data?.included && Array.isArray(data.included)) {
           const normalized = data.included.map((value: unknown) => String(value))
           const filtered = requestedDocLabels
-            ? normalized.filter((doc) => requestedDocLabels.has(doc))
+            ? normalized.filter((doc: string) => requestedDocLabels.has(doc))
             : normalized
           setIncludedDocs(filtered)
         }
@@ -227,7 +227,7 @@ function DownloadPageContent() {
           if (Array.isArray(parsed) && parsed.length > 0) {
             const normalized = parsed.map((v) => String(v))
             const filtered = requestedDocLabels
-              ? normalized.filter((doc) => requestedDocLabels.has(doc))
+              ? normalized.filter((doc: string) => requestedDocLabels.has(doc))
               : normalized
             setIncludedDocs(filtered)
           }
