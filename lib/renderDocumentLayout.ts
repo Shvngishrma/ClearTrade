@@ -32,7 +32,6 @@ export const sharedPageStyles = `
     .container {
       width: 100%;
       max-width: 100%;
-      page-break-inside: avoid;
       position: relative;
     }
 `

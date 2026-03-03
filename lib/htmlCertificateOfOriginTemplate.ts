@@ -43,10 +43,31 @@ export function generateCertificateOfOriginHTML(invoice: any, coo: any): string 
       margin: 20mm;
     }
 
+    body {
+      font-family: Inter, system-ui, sans-serif;
+      font-size: 13px;
+      line-height: 1.6;
+      color: #374151;
+      margin: 0;
+    }
+
     .container {
       width: 100%;
       max-width: 100%;
       padding: 0;
+    }
+
+    .page-wrapper {
+      min-height: 257mm;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+    }
+
+    .page-content {
+      display: flex;
+      flex-direction: column;
+      gap: 18px;
     }
 
 ${sharedHeaderStyles}
@@ -61,6 +82,19 @@ ${sharedFooterStyles}
       line-height: 1.5;
       margin-top: 8px;
       page-break-inside: avoid;
+    }
+
+    .signature-block {
+      margin-top: 14px;
+      margin-bottom: 10px;
+    }
+
+    .signature-block .signature-label {
+      margin-bottom: 10px;
+    }
+
+    .signature-block .signature-space {
+      height: 36px;
     }
 
     .signature-block {
@@ -104,10 +138,24 @@ ${sharedFooterStyles}
       page-break-inside: avoid;
       break-inside: avoid;
     }
+
+    .signature-section {
+      margin-top: 30px;
+      page-break-inside: avoid;
+    }
+
+    .issuing-authority-card {
+      margin-top: 8px;
+      padding: 10px 12px;
+      background: #f9fafb;
+      border: 1px solid #d1d5db;
+    }
   </style>
 </head>
 <body>
-  <div class="container">
+  <div class="page-wrapper">
+    <div class="page-content">
+      <div class="container">
     ${renderHeaderBlock({
       exporter: layoutExporter,
       documentTitle: "CERTIFICATE OF ORIGIN",
@@ -146,7 +194,6 @@ ${sharedFooterStyles}
         <tr>
           <th class="text-left">Description</th>
           <th class="text-monospace">HS Code</th>
-          <th class="text-left">Country of Origin</th>
         </tr>
       </thead>
       <tbody>
@@ -156,7 +203,6 @@ ${sharedFooterStyles}
         <tr>
           <td class="text-left">${item.description || "Unspecified"}</td>
           <td class="text-monospace">${item.hsCode || "—"}</td>
-          <td class="text-left">${originCountry}</td>
         </tr>`
           )
           .join("")}
@@ -168,62 +214,64 @@ ${sharedFooterStyles}
       We certify that the above-mentioned goods originate from the stated country of origin and are true to the best of our knowledge and records.
     </div>
 
-    ${renderSignatureBlock(layoutExporter)}
+    <div class="signature-section">
+      ${renderSignatureBlock(layoutExporter)}
 
-    ${coo?.chamberName ? `
-    <div class="signature-block">
-      <div class="signature-container">
-        <div class="signature-label">For ${coo.chamberName || "Issuing Authority"}</div>
-        <div class="signature-space"></div>
-        <div class="signature-title">Chamber Certification</div>
+      ${coo?.chamberName ? `
+      <div class="signature-block">
+        <div class="signature-container">
+          <div class="signature-label">For ${coo.chamberName || "Issuing Authority"}</div>
+          <div class="signature-space"></div>
+          <div class="signature-title">Chamber Certification</div>
+        </div>
       </div>
-    </div>
-    ` : ""}
+      ` : ""}
 
-    ${coo?.chamberName ? `
-    <div class="issuing-authority-section" style="display: flex; gap: 30px; margin-top: 16px;">
-      <div style="flex: 1;">
-        ${renderSectionTitle("Issuing Authority")}
-        <div style="margin-top: 10px; padding: 14px 16px; background: #f9fafb; border: 1px solid #d1d5db;">
-          <!-- Chamber Seal/Stamp Representation -->
-          <div style="text-align: center; margin-bottom: 12px;">
-            <div class="issuing-authority-seal">⊕</div>
-          </div>
-          
-          <!-- Authority Details -->
-          <div class="authority-detail-row">
-            <div class="authority-label">CHAMBER OF COMMERCE</div>
-            <div class="authority-value">${coo.chamberName}</div>
-          </div>
-          
-          ${coo.registrationNumber ? `
-          <div class="authority-detail-row">
-            <div class="authority-label">REGISTRATION NUMBER</div>
-            <div class="authority-value">${coo.registrationNumber}</div>
-          </div>
-          ` : ""}
-          
-          <div class="authority-detail-row">
-            <div class="authority-label">PLACE</div>
-            <div class="authority-value">${exporter?.address?.split(",").pop()?.trim() || exporter?.country || "India"}</div>
-          </div>
-          
-          <div class="authority-detail-row">
-            <div class="authority-label">DATE</div>
-            <div class="authority-value">${coo.createdAt ? new Date(coo.createdAt).toLocaleDateString("en-IN", {
-              day: "2-digit",
-              month: "short",
-              year: "numeric"
-            }) : new Date().toLocaleDateString("en-IN", {
-              day: "2-digit",
-              month: "short",
-              year: "numeric"
-            })}</div>
+      ${coo?.chamberName ? `
+      <div class="issuing-authority-section" style="display: flex; gap: 20px; margin-top: 10px;">
+        <div style="flex: 1;">
+          ${renderSectionTitle("Issuing Authority")}
+          <div class="issuing-authority-card">
+            <!-- Chamber Seal/Stamp Representation -->
+            <div style="text-align: center; margin-bottom: 8px;">
+              <div class="issuing-authority-seal">⊕</div>
+            </div>
+            
+            <!-- Authority Details -->
+            <div class="authority-detail-row">
+              <div class="authority-label">CHAMBER OF COMMERCE</div>
+              <div class="authority-value">${coo.chamberName}</div>
+            </div>
+            
+            ${coo.registrationNumber ? `
+            <div class="authority-detail-row">
+              <div class="authority-label">REGISTRATION NUMBER</div>
+              <div class="authority-value">${coo.registrationNumber}</div>
+            </div>
+            ` : ""}
+            
+            <div class="authority-detail-row">
+              <div class="authority-label">PLACE</div>
+              <div class="authority-value">${exporter?.address?.split(",").pop()?.trim() || exporter?.country || "India"}</div>
+            </div>
+            
+            <div class="authority-detail-row">
+              <div class="authority-label">DATE</div>
+              <div class="authority-value">${coo.createdAt ? new Date(coo.createdAt).toLocaleDateString("en-IN", {
+                day: "2-digit",
+                month: "short",
+                year: "numeric"
+              }) : new Date().toLocaleDateString("en-IN", {
+                day: "2-digit",
+                month: "short",
+                year: "numeric"
+              })}</div>
+            </div>
           </div>
         </div>
       </div>
+      ` : ""}
     </div>
-    ` : ""}
 
     <div class="footer">
       <div class="footer-content">
@@ -232,6 +280,8 @@ ${sharedFooterStyles}
         <span class="footer-item">Document ID: ${auditMetadata.documentId}</span>
         <span class="footer-separator">|</span>
         <span class="footer-item footer-hash">Hash: ${auditMetadata.hash}</span>
+      </div>
+    </div>
       </div>
     </div>
   </div>
