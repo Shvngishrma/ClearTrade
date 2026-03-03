@@ -11,6 +11,7 @@ import { generateInvoiceHTML } from "@/lib/htmlInvoiceTemplate"
 import { generatePackingListHTML } from "@/lib/htmlPackingListTemplate"
 import { generateShippingBillHTML } from "@/lib/htmlShippingBillTemplate"
 import { generateDeclarationHTML } from "@/lib/htmlDeclarationTemplate"
+import { generateCertificateOfOriginHTML } from "@/lib/htmlCertificateOfOriginTemplate"
 import { validateBeforeRelease } from "@/lib/preSubmissionValidationGate"
 import { nonRestrictedTemplate } from "@/lib/templates/nonRestricted"
 import { femaAdvanceTemplate } from "@/lib/templates/femaAdvance"
@@ -273,8 +274,20 @@ export async function generateCertificateOfOriginPdfBuffer(
     })
   }
 
-  const pdf = await generateCertificateOfOriginPDF(invoice, invoice.certificatesOfOrigin[0], options.usage)
-  return toPdfBuffer(pdf)
+  try {
+    const htmlContent = generateCertificateOfOriginHTML(invoice, invoice.certificatesOfOrigin[0])
+    return await renderHtmlToPdfA4AutoScale(htmlContent)
+  } catch (puppeteerError) {
+    console.error("[documentPdfService] Certificate of Origin Puppeteer error, falling back to pdf-lib", {
+      message: puppeteerError instanceof Error ? puppeteerError.message : String(puppeteerError),
+      stack: puppeteerError instanceof Error ? puppeteerError.stack : undefined,
+      name: (puppeteerError as any)?.name,
+      invoiceId,
+    })
+
+    const pdf = await generateCertificateOfOriginPDF(invoice, invoice.certificatesOfOrigin[0], options.usage)
+    return toPdfBuffer(pdf)
+  }
 }
 
 export async function generateInsurancePdfBuffer(
