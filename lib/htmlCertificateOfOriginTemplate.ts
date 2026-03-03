@@ -37,6 +37,12 @@ export function generateCertificateOfOriginHTML(invoice: any, coo: any): string 
   <title>Certificate of Origin</title>
   <style>
     ${sharedPageStyles}
+
+    @page {
+      size: A4;
+      margin: 8mm 10mm 8mm 10mm;
+    }
+
 ${sharedHeaderStyles}
 ${sharedSectionStyles}
 ${sharedTableStyles}
@@ -72,35 +78,35 @@ ${sharedFooterStyles}
     }
 
     .issuing-authority-seal {
-      width: 100px;
-      height: 100px;
+      width: 70px;
+      height: 70px;
       border: 2px solid #6b7280;
       border-radius: 50%;
       display: flex;
       align-items: center;
       justify-content: center;
-      margin: 12px 0;
+      margin: 10px 0;
       background: #f9fafb;
-      font-size: 40px;
+      font-size: 32px;
       color: #9ca3af;
     }
 
     .authority-detail-row {
       display: flex;
       justify-content: space-between;
-      margin-bottom: 10px;
-      padding: 6px 0;
+      margin-bottom: 8px;
+      padding: 4px 0;
     }
 
     .authority-label {
       font-weight: 600;
       color: #6b7280;
-      font-size: 12px;
+      font-size: 11px;
     }
 
     .authority-value {
       color: #374151;
-      font-size: 13px;
+      font-size: 12px;
     }
   </style>
 </head>
@@ -183,12 +189,12 @@ ${sharedFooterStyles}
     ` : ""}
 
     ${coo?.chamberName ? `
-    <div style="display: flex; gap: 30px; margin-top: 20px;">
+    <div style="display: flex; gap: 30px; margin-top: 16px; page-break-inside: avoid;">
       <div style="flex: 1;">
         ${renderSectionTitle("Issuing Authority")}
-        <div style="margin-top: 12px; padding: 20px; background: #f9fafb; border: 1px solid #d1d5db;">
+        <div style="margin-top: 10px; padding: 14px 16px; background: #f9fafb; border: 1px solid #d1d5db;">
           <!-- Chamber Seal/Stamp Representation -->
-          <div style="text-align: center; margin-bottom: 16px;">
+          <div style="text-align: center; margin-bottom: 12px;">
             <div class="issuing-authority-seal">⊕</div>
           </div>
           
