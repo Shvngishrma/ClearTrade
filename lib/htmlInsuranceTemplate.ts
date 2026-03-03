@@ -30,6 +30,14 @@ export function generateInsuranceHTML(invoice: any, insurance: any): string {
     year: "numeric",
   }).format(new Date(dateValue))
 
+  const certificateDate = new Date(dateValue)
+  const certificateYear = certificateDate.getFullYear()
+  const invoiceSequenceMatch = String(invoiceRef).match(/(\d+)(?!.*\d)/)
+  const numericSequence = invoiceSequenceMatch?.[1] ? invoiceSequenceMatch[1].slice(-3).padStart(3, "0") : ""
+  const fallbackSequence = String(invoiceRef).replace(/[^A-Za-z0-9]/g, "").slice(-3).toUpperCase()
+  const certificateSequence = numericSequence || fallbackSequence || "001"
+  const insuranceCertificateNo = `IC-${certificateYear}-${certificateSequence}`
+
   const formattedTimestamp = new Intl.DateTimeFormat("en-US", {
     year: "numeric",
     month: "short",
@@ -97,6 +105,7 @@ ${sharedFooterStyles}
         documentTitle: "MARINE INSURANCE CERTIFICATE",
         subtitle: "(Issued for Trade Risk Coverage)",
         metadataRows: [
+          { label: "INSURANCE CERTIFICATE NO:", value: insuranceCertificateNo, valueClass: "invoice-number" },
           { label: "POLICY NO:", value: policyNo, valueClass: "invoice-number" },
           { label: "INVOICE REF:", value: invoiceRef, valueClass: "header-meta-value" },
           { label: "INSURED VALUE:", value: `${invoice?.currency || "USD"} ${formatMoney(insuredValue)}`, valueClass: "header-meta-value" },
@@ -145,7 +154,7 @@ ${sharedFooterStyles}
         </div>
       </div>
 
-      <table>
+      <table style="margin-top: 18px;">
         <thead>
           <tr>
             <th class="text-serial">Sr</th>
@@ -161,7 +170,7 @@ ${sharedFooterStyles}
           <tr>
             <td class="text-serial">${item.serial}</td>
             <td class="text-left">${item.description}</td>
-            <td class="text-numeric">${invoice?.currency || "USD"} ${formatMoney(item.insuredAmount)}</td>
+            <td class="text-numeric"><strong>${invoice?.currency || "USD"} ${formatMoney(item.insuredAmount)}</strong></td>
             <td class="text-left">${item.riskCoverage}</td>
           </tr>`
             )
@@ -173,13 +182,13 @@ ${sharedFooterStyles}
         <div class="summary-box">
           <div class="summary-row divider"></div>
           <div class="summary-row total">
-            <span class="summary-label">Total Insured Value</span>
+            <span class="summary-label">Total Insured Value:</span>
             <span class="summary-value">${invoice?.currency || "USD"} ${formatMoney(insuredValue)}</span>
           </div>
         </div>
       </div>
 
-      ${renderSignatureBlock({ ...exporter, name: "Insurance Provider" })}
+      ${renderSignatureBlock(exporter, { labelOverride: "For Insurance Provider" })}
 
       <div class="footer">
         <div class="footer-content">

@@ -131,6 +131,7 @@ function DocumentsPage() {
     lcNumber?: string
     chamberName?: string
     registrationNumber?: string
+    policyNumber?: string
     insuredValue?: string
     freight?: string
     hsCodeErrors: string[]
@@ -140,6 +141,7 @@ function DocumentsPage() {
 
   const invoiceNumberPattern = /^INV\/\d{4}\/\d{4}$/
   const gstinPattern = /^[0-9A-Z]{15}$/i
+  const policyNumberPattern = /^[A-Z0-9][A-Z0-9/-]{4,28}[A-Z0-9]$/i
 
   const validPaymentTerms = ["Advance", "LC", "DA", "DP", "COD", "Credit"]
 
@@ -499,6 +501,13 @@ function DocumentsPage() {
     }
 
     if (selectedDocs.includes("insurance")) {
+      const policyNumber = (docDetails.insurance?.policyNumber || "").trim()
+      if (!policyNumber) {
+        errors.policyNumber = "Policy number is required for insurance declaration."
+      } else if (!policyNumberPattern.test(policyNumber)) {
+        errors.policyNumber = "Use 6-30 characters: letters, numbers, '/' or '-' (example: POL-2026-001)."
+      }
+
       const insuredValueRaw = String(docDetails.insurance?.insuredValue || "").trim()
       if (insuredValueRaw) {
         const insuredValue = Number(insuredValueRaw)
@@ -594,6 +603,7 @@ function DocumentsPage() {
       errors.chamberName ||
       errors.registrationNumber ||
       errors.exporterGSTIN ||
+      errors.policyNumber ||
       errors.insuredValue ||
       errors.freight ||
       errors.hsCodeErrors.some(Boolean)
@@ -1526,7 +1536,7 @@ function DocumentsPage() {
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <input
                       placeholder="Policy number"
-                      className="border rounded-md px-3 py-2"
+                      className={`border rounded-md px-3 py-2 ${fieldErrors.policyNumber ? "border-red-500" : ""}`}
                       value={docDetails.insurance.policyNumber}
                       onChange={e =>
                         setDocDetails({
@@ -1535,6 +1545,9 @@ function DocumentsPage() {
                         })
                       }
                     />
+                    {fieldErrors.policyNumber && (
+                      <p className="text-xs text-red-500 mt-1 sm:col-span-2">{fieldErrors.policyNumber}</p>
+                    )}
                     <input
                       placeholder="Insured value"
                       className={`border rounded-md px-3 py-2 ${fieldErrors.insuredValue ? "border-red-500" : ""}`}

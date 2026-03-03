@@ -60,11 +60,17 @@ export const signatureBlockStyles = `
     }
 `
 
-export function renderSignatureBlock(exporter: any): string {
+type SignatureBlockOptions = {
+  labelOverride?: string
+}
+
+export function renderSignatureBlock(exporter: any, options?: SignatureBlockOptions): string {
+  const labelText = options?.labelOverride || `For ${exporter?.name || "Exporter"}`
+
   return `
     <div class="signature-block">
       <div class="signature-container">
-        <div class="signature-label">For ${exporter?.name || "Exporter"}</div>
+        <div class="signature-label">${labelText}</div>
         <div class="signature-space"></div>
         <div class="signature-title">Authorized Signatory</div>
       </div>
