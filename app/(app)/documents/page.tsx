@@ -121,6 +121,7 @@ function DocumentsPage() {
     invoiceDate?: string
     exporterName?: string
     exporterIEC?: string
+    exporterGSTIN?: string
     buyerName?: string
     incoterm?: string
     paymentTerms?: string
@@ -129,7 +130,7 @@ function DocumentsPage() {
     portOfDischarge?: string
     lcNumber?: string
     chamberName?: string
-    chamberRegistrationNumber?: string
+    registrationNumber?: string
     insuredValue?: string
     freight?: string
     hsCodeErrors: string[]
@@ -138,7 +139,7 @@ function DocumentsPage() {
   const [fieldErrors, setFieldErrors] = useState<FieldErrors>({ hsCodeErrors: [] })
 
   const invoiceNumberPattern = /^INV\/\d{4}\/\d{4}$/
-  const chamberRegistrationPattern = /^[A-Z0-9\-\/]{3,20}$/
+  const gstinPattern = /^[0-9A-Z]{15}$/i
 
   const validPaymentTerms = ["Advance", "LC", "DA", "DP", "COD", "Credit"]
 
@@ -397,6 +398,17 @@ function DocumentsPage() {
       errors.exporterIEC = "Exporter IEC is required for AD/IEC validation."
     } else if (!/^\d{10}$/.test(normalizedIEC)) {
       errors.exporterIEC = "Exporter IEC must be 10 digits."
+    }
+
+    const normalizedGSTIN = (sharedDetails.exporterGSTIN || "").trim()
+    if (normalizedGSTIN && normalizedGSTIN.length !== 15) {
+      errors.exporterGSTIN = "GSTIN must be exactly 15 characters."
+    } else if (normalizedGSTIN && !gstinPattern.test(normalizedGSTIN)) {
+      errors.exporterGSTIN = "GSTIN format: 2 digits (state) + 10 alphanumeric (PAN) + 3 chars (entity/check/reserved). Example: 27AABCT1234H1Z0." 
+    }
+
+    if (!normalizedIEC) {
+      // Already handled above
     } else {
       const normalizedLoadingPort = (sharedDetails.portOfLoading || "").trim().toUpperCase()
 
@@ -472,10 +484,15 @@ function DocumentsPage() {
       if (chamberName && chamberName.length < 3) {
         errors.chamberName = "Chamber name must be at least 3 characters."
       }
-
-      const chamberRegNo = (docDetails.coo?.registrationNumber || "").trim()
-      if (chamberRegNo && !chamberRegistrationPattern.test(chamberRegNo.toUpperCase())) {
-        errors.chamberRegistrationNumber = "Chamber registration format: REG/YYYY/NNNN or alphanumeric (3-20 chars, A-Z, 0-9, hyphens, slashes)."
+      
+      const registrationNumber = (docDetails.coo?.registrationNumber || "").trim()
+      if (registrationNumber) {
+        const regNumberPattern = /^[A-Z0-9][A-Z0-9\/\-\s]*[A-Z0-9]$/i
+        if (registrationNumber.length < 3) {
+          errors.registrationNumber = "Registration number must be at least 3 characters."
+        } else if (!regNumberPattern.test(registrationNumber)) {
+          errors.registrationNumber = "Use format like REG/2024/001, REG-123456, or ICC0001234 (alphanumeric with / or - allowed)."
+        }
       }
     }
 
@@ -573,7 +590,8 @@ function DocumentsPage() {
       errors.portOfDischarge ||
       errors.lcNumber ||
       errors.chamberName ||
-      errors.chamberRegistrationNumber ||
+      errors.registrationNumber ||
+      errors.exporterGSTIN ||
       errors.insuredValue ||
       errors.freight ||
       errors.hsCodeErrors.some(Boolean)
@@ -941,12 +959,15 @@ function DocumentsPage() {
 
                 <input
                   placeholder="GSTIN (optional)"
-                  className="border rounded-md px-3 py-2"
+                  className={`border rounded-md px-3 py-2 ${fieldErrors.exporterGSTIN ? "border-red-500" : ""}`}
                   value={sharedDetails.exporterGSTIN}
                   onChange={e =>
                     setSharedDetails({ ...sharedDetails, exporterGSTIN: e.target.value })
                   }
                 />
+                {fieldErrors.exporterGSTIN && (
+                  <p className="text-xs text-red-500 mt-1">{fieldErrors.exporterGSTIN}</p>
+                )}
               </div>
             </div>
 
@@ -1480,17 +1501,17 @@ function DocumentsPage() {
                     )}
                     <input
                       placeholder="Chamber registration number (optional)"
-                      className={`border rounded-md px-3 py-2 ${fieldErrors.chamberRegistrationNumber ? "border-red-500" : ""}`}
+                      className={`border rounded-md px-3 py-2 ${fieldErrors.registrationNumber ? "border-red-500" : ""}`}
                       value={docDetails.coo.registrationNumber}
                       onChange={e =>
                         setDocDetails({
                           ...docDetails,
-                          coo: { ...docDetails.coo, registrationNumber: e.target.value.toUpperCase() },
+                          coo: { ...docDetails.coo, registrationNumber: e.target.value },
                         })
                       }
                     />
-                    {fieldErrors.chamberRegistrationNumber && (
-                      <p className="text-xs text-red-500 mt-1 sm:col-span-2">{fieldErrors.chamberRegistrationNumber}</p>
+                    {fieldErrors.registrationNumber && (
+                      <p className="text-xs text-red-500 mt-1 sm:col-span-2">{fieldErrors.registrationNumber}</p>
                     )}
                   </div>
                 </div>
