@@ -158,7 +158,6 @@ export async function GET(req: Request) {
       headers: {
         "Content-Type": "application/zip",
         "Content-Disposition": 'attachment; filename="export-documents-docx.zip"',
-        "Content-Length": zipBuffer.length.toString(),
       },
     })
   } catch (err) {

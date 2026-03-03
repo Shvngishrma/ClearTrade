@@ -171,7 +171,9 @@ function DownloadPageContent() {
     try {
       console.log("[DOWNLOAD] Starting fetch to /api/documents/download-zip")
       const docsQuery = requestedDocs ? `&docs=${encodeURIComponent(requestedDocs)}` : ""
-      const res = await fetch(`/api/documents/download-zip?invoiceId=${invoiceId}${docsQuery}`)
+      const res = await fetch(`/api/documents/download-zip?invoiceId=${invoiceId}${docsQuery}`, {
+        credentials: "include",
+      })
 
       console.log("[DOWNLOAD] Fetch response received, status:", res.status)
 

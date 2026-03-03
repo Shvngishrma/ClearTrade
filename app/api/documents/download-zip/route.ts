@@ -238,7 +238,6 @@ export async function GET(req: NextRequest) {
       headers: {
         "Content-Type": "application/zip",
         "Content-Disposition": 'attachment; filename="export-documents.zip"',
-        "Content-Length": zipBuffer.length.toString(),
         "x-included-documents": encodeURIComponent(JSON.stringify(includedDocs)),
       },
     });
