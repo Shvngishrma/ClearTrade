@@ -10,6 +10,7 @@ import {
 import { generateInvoiceHTML } from "@/lib/htmlInvoiceTemplate"
 import { generatePackingListHTML } from "@/lib/htmlPackingListTemplate"
 import { generateShippingBillHTML } from "@/lib/htmlShippingBillTemplate"
+import { generateDeclarationHTML } from "@/lib/htmlDeclarationTemplate"
 import { validateBeforeRelease } from "@/lib/preSubmissionValidationGate"
 import { nonRestrictedTemplate } from "@/lib/templates/nonRestricted"
 import { femaAdvanceTemplate } from "@/lib/templates/femaAdvance"
@@ -233,8 +234,20 @@ export async function generateDeclarationPdfBuffer(
     .replace(/{{date}}/g, new Date().toLocaleDateString())
     .replace(/{{place}}/g, "")
 
-  const pdf = await generateDeclarationPDF(renderedText, options.usage, invoice)
-  return toPdfBuffer(pdf)
+  try {
+    const htmlContent = generateDeclarationHTML(invoice)
+    return await renderHtmlToPdfA4AutoScale(htmlContent)
+  } catch (puppeteerError) {
+    console.error("[documentPdfService] Declaration Puppeteer error, falling back to pdf-lib", {
+      message: puppeteerError instanceof Error ? puppeteerError.message : String(puppeteerError),
+      stack: puppeteerError instanceof Error ? puppeteerError.stack : undefined,
+      name: (puppeteerError as any)?.name,
+      invoiceId,
+    })
+
+    const pdf = await generateDeclarationPDF(renderedText, options.usage, invoice)
+    return toPdfBuffer(pdf)
+  }
 }
 
 export async function generateCertificateOfOriginPdfBuffer(
