@@ -99,8 +99,7 @@ ${sharedFooterStyles}
 </head>
 <body>
   <div class="container">
-    <div style="display: flex; flex-direction: column;">
-      ${renderHeaderBlock({
+    ${renderHeaderBlock({
         exporter,
         documentTitle: "MARINE INSURANCE CERTIFICATE",
         subtitle: "(Issued for Trade Risk Coverage)",
@@ -201,7 +200,6 @@ ${sharedFooterStyles}
           <span class="footer-item footer-hash">Hash: ${auditMetadata.hash}</span>
         </div>
       </div>
-    </div>
   </div>
 </body>
 </html>
