@@ -149,7 +149,7 @@ ${sharedFooterStyles}
         <tbody>
           ${insuranceItems
             .map(
-              (item) => `
+                (item: { serial: number; description: string; insuredAmount: number; riskCoverage: string }) => `
           <tr>
             <td class="text-serial">${item.serial}</td>
             <td class="text-left">${item.description}</td>
