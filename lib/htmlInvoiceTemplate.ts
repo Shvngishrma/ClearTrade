@@ -11,6 +11,7 @@ import {
   renderSectionTitle,
   sharedFooterStyles,
   sharedHeaderStyles,
+  sharedPageStyles,
   sharedSectionStyles,
   sharedSummaryStyles,
   sharedTableStyles,
@@ -138,36 +139,7 @@ export function generateInvoiceHTML(invoice: any, usage?: any): string {
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Commercial Invoice</title>
   <style>
-    * {
-      margin: 0;
-      padding: 0;
-      box-sizing: border-box;
-    }
-
-    html, body {
-      width: 210mm;
-      height: 297mm;
-      overflow: hidden;
-    }
-
-    body {
-      font-family: Inter, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Helvetica Neue', sans-serif;
-      font-size: 13px;
-      line-height: 1.6;
-      color: #374151;
-      background: white;
-    }
-
-    @page {
-      size: A4;
-      margin: 0;
-    }
-
-    .container {
-      width: 100%;
-      max-width: 100%;
-      page-break-inside: avoid;
-    }
+    ${sharedPageStyles}
 
     .document-watermark {
       position: absolute;

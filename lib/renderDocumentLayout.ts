@@ -1,3 +1,42 @@
+/**
+ * Shared page and viewport styles for A4 documents
+ * Ensures consistent layout across all templates with proper pagination
+ * Uses @page rule with margins to allow natural content flow instead of clipping
+ */
+export const sharedPageStyles = `
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    html, body {
+      width: 100%;
+      height: 100%;
+      overflow: auto;
+    }
+
+    body {
+      font-family: Inter, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Helvetica Neue', sans-serif;
+      font-size: 13px;
+      line-height: 1.6;
+      color: #374151;
+      background: white;
+    }
+
+    @page {
+      size: A4;
+      margin: 10mm 12mm 10mm 12mm;
+    }
+
+    .container {
+      width: 100%;
+      max-width: 100%;
+      page-break-inside: avoid;
+      position: relative;
+    }
+`
+
 export const sharedHeaderStyles = `
     .document-header {
       display: grid;

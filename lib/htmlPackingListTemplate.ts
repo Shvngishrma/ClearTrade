@@ -10,6 +10,7 @@ import {
   renderSectionTitle,
   sharedFooterStyles,
   sharedHeaderStyles,
+  sharedPageStyles,
   sharedSectionStyles,
   sharedSummaryStyles,
   sharedTableStyles,
@@ -76,19 +77,7 @@ export function generatePackingListHTML(invoice: any, packing: any, usage?: any)
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Packing List</title>
   <style>
-    * { margin: 0; padding: 0; box-sizing: border-box; }
-
-    body {
-      font-family: Inter, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Helvetica Neue', sans-serif;
-      font-size: 13px;
-      line-height: 1.6;
-      color: #374151;
-      background: white;
-    }
-
-    @page { size: A4; margin: 20mm 18mm 20mm 18mm; }
-
-    .container { width: 100%; max-width: 100%; page-break-inside: avoid; position: relative; }
+    ${sharedPageStyles}
 
     .document-watermark {
       position: absolute;
