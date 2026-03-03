@@ -248,7 +248,6 @@ ${sharedFooterStyles}
               <th class="text-numeric">Qty</th>
               <th class="text-unit">Unit</th>
               <th class="text-numeric">FOB Value</th>
-              <th class="text-left">Scheme</th>
             </tr>
           </thead>
           <tbody>
@@ -262,7 +261,6 @@ ${sharedFooterStyles}
               <td class="text-numeric">${item.quantity || 0}</td>
               <td class="text-unit">${item.unit || "PCS"}</td>
               <td class="text-numeric">${currency} ${formatMoney(lineValueByItem[idx] || 0)}</td>
-              <td class="text-left">${schemeCode}</td>
             </tr>`
               )
               .join("")}
