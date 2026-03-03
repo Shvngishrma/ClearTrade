@@ -14,6 +14,8 @@ const declarationClauses = [
   "Export proceeds will be realized within the prescribed period under FEMA regulations.",
   "No prohibited or restricted goods are included in this shipment.",
   "Details furnished in this declaration are true and correct to the best of our knowledge.",
+  "The export value declared represents the full and true value of the goods.",
+  "All information furnished herein is in compliance with FEMA, RBI and Customs regulations.",
 ]
 
 export function generateDeclarationHTML(invoice: any): string {
@@ -55,7 +57,6 @@ ${sharedFooterStyles}
       subtitle: "(Under FEMA Regulations)",
       metadataRows: [
         { label: "INVOICE REF:", value: invoice?.invoiceNumber || "N/A", valueClass: "invoice-number" },
-        { label: "IEC:", value: layoutExporter?.iec || "N/A", valueClass: "header-meta-value" },
         { label: "DATE:", value: declarationDate, valueClass: "invoice-date" },
       ],
     })}
