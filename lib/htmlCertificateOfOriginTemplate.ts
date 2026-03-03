@@ -76,30 +76,30 @@ ${sharedTableStyles}
 ${signatureBlockStyles}
 ${sharedFooterStyles}
 
+    .document-title {
+      white-space: nowrap;
+      font-weight: 800;
+      letter-spacing: 0.4px;
+    }
+
+    .document-header {
+      margin-bottom: 18px;
+    }
+
+    .info-grid {
+      margin-bottom: 18px;
+    }
+
+    table {
+      margin-top: 18px;
+    }
+
     .coo-certification-text {
       font-size: 13px;
       color: #374151;
       line-height: 1.5;
-      margin-top: 8px;
+      margin-top: 0;
       page-break-inside: avoid;
-    }
-
-    .signature-block {
-      margin-top: 14px;
-      margin-bottom: 10px;
-    }
-
-    .signature-block .signature-label {
-      margin-bottom: 10px;
-    }
-
-    .signature-block .signature-space {
-      height: 36px;
-    }
-
-    .signature-block {
-      page-break-inside: avoid;
-      break-inside: avoid;
     }
 
     .issuing-authority-seal {
@@ -140,8 +140,63 @@ ${sharedFooterStyles}
     }
 
     .signature-section {
-      margin-top: 30px;
+      margin-top: 18px;
+      display: flex;
+      flex-direction: column;
+      gap: 18px;
       page-break-inside: avoid;
+    }
+
+    .signature-section > .signature-block {
+      margin-top: 0;
+      margin-bottom: 0;
+    }
+
+    .chamber-signature-block {
+      margin-top: 0;
+      margin-bottom: 0;
+      display: flex;
+      justify-content: flex-end;
+      page-break-inside: avoid;
+      break-inside: avoid;
+    }
+
+    .chamber-signature-container {
+      width: 280px;
+      text-align: right;
+    }
+
+    .chamber-signature-label {
+      font-size: 12px;
+      color: #000000;
+      font-weight: 500;
+      margin-bottom: 10px;
+      line-height: 1.4;
+    }
+
+    .chamber-signature-space {
+      height: 36px;
+    }
+
+    .chamber-signature-title {
+      font-size: 11px;
+      font-weight: 600;
+      color: #000000;
+      letter-spacing: 0.5px;
+      margin-bottom: 2px;
+      border-top: 1px solid #111827;
+      padding-top: 8px;
+      display: inline-block;
+      min-width: 190px;
+      text-transform: uppercase;
+    }
+
+    .chamber-signature-subtitle {
+      font-size: 10px;
+      font-weight: 600;
+      color: #6b7280;
+      letter-spacing: 0.5px;
+      text-transform: uppercase;
     }
 
     .issuing-authority-card {
@@ -194,6 +249,7 @@ ${sharedFooterStyles}
         <tr>
           <th class="text-left">Description</th>
           <th class="text-monospace">HS Code</th>
+          <th class="text-left">Country of Origin</th>
         </tr>
       </thead>
       <tbody>
@@ -203,6 +259,7 @@ ${sharedFooterStyles}
         <tr>
           <td class="text-left">${item.description || "Unspecified"}</td>
           <td class="text-monospace">${item.hsCode || "—"}</td>
+          <td class="text-left">${originCountry}</td>
         </tr>`
           )
           .join("")}
@@ -218,19 +275,19 @@ ${sharedFooterStyles}
       ${renderSignatureBlock(layoutExporter)}
 
       ${coo?.chamberName ? `
-      <div class="signature-block">
-        <div class="signature-container">
-          <div class="signature-label">For ${coo.chamberName || "Issuing Authority"}</div>
-          <div class="signature-space"></div>
-          <div class="signature-title">Chamber Certification</div>
+      <div class="chamber-signature-block">
+        <div class="chamber-signature-container">
+          <div class="chamber-signature-label">For ${coo.chamberName || "Issuing Authority"}</div>
+          <div class="chamber-signature-space"></div>
+          <div class="chamber-signature-title">Authorized Officer</div>
+          <div class="chamber-signature-subtitle">Issuing Authority</div>
         </div>
       </div>
       ` : ""}
 
       ${coo?.chamberName ? `
-      <div class="issuing-authority-section" style="display: flex; gap: 20px; margin-top: 10px;">
+      <div class="issuing-authority-section" style="display: flex; gap: 20px; margin-top: 0;">
         <div style="flex: 1;">
-          ${renderSectionTitle("Issuing Authority")}
           <div class="issuing-authority-card">
             <!-- Chamber Seal/Stamp Representation -->
             <div style="text-align: center; margin-bottom: 8px;">
