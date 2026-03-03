@@ -141,6 +141,16 @@ ${sharedFooterStyles}
     ${renderSignatureBlock(layoutExporter)}
 
     ${coo?.chamberName ? `
+    <div class="signature-block">
+      <div class="signature-container">
+        <div class="signature-label">For ${coo.chamberName || "Issuing Authority"}</div>
+        <div class="signature-space"></div>
+        <div class="signature-title">Chamber Certification</div>
+      </div>
+    </div>
+    ` : ""}
+
+    ${coo?.chamberName ? `
     ${renderSectionTitle("Issuing Authority")}
     <div class="info-content">
       <p><strong>${coo.chamberName}</strong></p>
