@@ -12,6 +12,7 @@ import { generatePackingListHTML } from "@/lib/htmlPackingListTemplate"
 import { generateShippingBillHTML } from "@/lib/htmlShippingBillTemplate"
 import { generateDeclarationHTML } from "@/lib/htmlDeclarationTemplate"
 import { generateCertificateOfOriginHTML } from "@/lib/htmlCertificateOfOriginTemplate"
+import { generateInsuranceHTML } from "@/lib/htmlInsuranceTemplate"
 import { validateBeforeRelease } from "@/lib/preSubmissionValidationGate"
 import { nonRestrictedTemplate } from "@/lib/templates/nonRestricted"
 import { femaAdvanceTemplate } from "@/lib/templates/femaAdvance"
@@ -313,8 +314,20 @@ export async function generateInsurancePdfBuffer(
     })
   }
 
-  const pdf = await generateInsurancePDF(invoice, invoice.insurances[0], options.usage)
-  return toPdfBuffer(pdf)
+  try {
+    const htmlContent = generateInsuranceHTML(invoice, invoice.insurances[0])
+    return await renderHtmlToPdfA4AutoScale(htmlContent)
+  } catch (puppeteerError) {
+    console.error("[documentPdfService] Insurance Puppeteer error, falling back to pdf-lib", {
+      message: puppeteerError instanceof Error ? puppeteerError.message : String(puppeteerError),
+      stack: puppeteerError instanceof Error ? puppeteerError.stack : undefined,
+      name: (puppeteerError as any)?.name,
+      invoiceId,
+    })
+
+    const pdf = await generateInsurancePDF(invoice, invoice.insurances[0], options.usage)
+    return toPdfBuffer(pdf)
+  }
 }
 
 export async function generateLetterOfCreditPdfBuffer(
