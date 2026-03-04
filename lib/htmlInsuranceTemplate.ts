@@ -95,6 +95,23 @@ ${sharedFooterStyles}
       font-size: 24px;
       letter-spacing: 0.4px;
     }
+
+    .container {
+      height: auto !important;
+      min-height: auto !important;
+      overflow: visible !important;
+    }
+
+    .summary {
+      page-break-inside: avoid;
+      break-inside: avoid;
+    }
+
+    .signature-block {
+      page-break-inside: avoid;
+      break-inside: avoid;
+      margin-top: 24px;
+    }
   </style>
 </head>
 <body>
