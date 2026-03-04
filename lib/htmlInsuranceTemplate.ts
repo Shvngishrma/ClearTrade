@@ -1,7 +1,6 @@
 import { getDocumentAuditMetadata } from "@/lib/auditMetadata"
-import { renderSignatureBlock, signatureBlockStyles } from "@/lib/renderSignatureBlock"
+import { signatureBlockStyles } from "@/lib/renderSignatureBlock"
 import {
-  renderHeaderBlock,
   renderSectionTitle,
   sharedFooterStyles,
   sharedHeaderStyles,
@@ -10,6 +9,7 @@ import {
   sharedSummaryStyles,
   sharedTableStyles,
 } from "@/lib/renderDocumentLayout"
+import { documentSkeletonStyles, renderDocumentSkeleton } from "@/lib/renderDocumentSkeleton"
 
 export function generateInsuranceHTML(invoice: any, insurance: any): string {
   const exporter = invoice?.exporter || {}
@@ -87,6 +87,7 @@ ${sharedSectionStyles}
 ${sharedTableStyles}
 ${sharedSummaryStyles}
 ${signatureBlockStyles}
+${documentSkeletonStyles}
 ${sharedFooterStyles}
 
     .document-title {
@@ -106,18 +107,13 @@ ${sharedFooterStyles}
       page-break-inside: avoid;
       break-inside: avoid;
     }
-
-    .signature-block {
-      page-break-inside: avoid;
-      break-inside: avoid;
-      margin-top: 24px;
-    }
   </style>
 </head>
 <body>
   <div class="container">
-    ${renderHeaderBlock({
-        exporter,
+    ${renderDocumentSkeleton({
+      exporter,
+      headerData: {
         documentTitle: "MARINE INSURANCE CERTIFICATE",
         subtitle: "(Issued for Trade Risk Coverage)",
         metadataRows: [
@@ -129,94 +125,92 @@ ${sharedFooterStyles}
           { label: "VESSEL / VOYAGE:", value: vesselOrVoyage, valueClass: "header-meta-value" },
           { label: "DATE:", value: formattedDate, valueClass: "invoice-date" },
         ],
-      })}
+      },
+      content: `
+        <div class="info-grid" style="margin-bottom: 8px; gap: 24px;">
+          <div class="info-section">
+            ${renderSectionTitle("Insured Party")}
+            <div class="info-content">
+              <p><strong>${exporter?.name || "N/A"}</strong></p>
+              <p>${exporter?.address || "Address not provided"}</p>
+              ${exporter?.iec ? `<p><strong>IEC:</strong> ${exporter.iec}</p>` : ""}
+            </div>
+          </div>
 
-      <div class="info-grid" style="margin-bottom: 8px; gap: 24px;">
-        <div class="info-section">
-          ${renderSectionTitle("Insured Party")}
-          <div class="info-content">
-            <p><strong>${exporter?.name || "N/A"}</strong></p>
-            <p>${exporter?.address || "Address not provided"}</p>
-            ${exporter?.iec ? `<p><strong>IEC:</strong> ${exporter.iec}</p>` : ""}
+          <div class="info-section">
+            ${renderSectionTitle("Beneficiary")}
+            <div class="info-content">
+              <p><strong>${buyer?.name || "N/A"}</strong></p>
+              <p>${buyer?.address || "Address not provided"}</p>
+              ${buyer?.country ? `<p><strong>Country:</strong> ${buyer.country}</p>` : ""}
+            </div>
           </div>
         </div>
 
-        <div class="info-section">
-          ${renderSectionTitle("Beneficiary")}
-          <div class="info-content">
-            <p><strong>${buyer?.name || "N/A"}</strong></p>
-            <p>${buyer?.address || "Address not provided"}</p>
-            ${buyer?.country ? `<p><strong>Country:</strong> ${buyer.country}</p>` : ""}
+        <div class="info-grid" style="margin-bottom: 8px; gap: 24px;">
+          <div class="info-section">
+            ${renderSectionTitle("Goods Insured")}
+            <div class="info-content">
+              <p>${goodsSummary}</p>
+            </div>
+          </div>
+
+          <div class="info-section">
+            ${renderSectionTitle("Coverage Details")}
+            <div class="info-content">
+              <p><strong>Risk Coverage:</strong> ${coverageType}</p>
+              <p><strong>Policy Number:</strong> ${policyNo}</p>
+              <p><strong>Transit Reference:</strong> ${vesselOrVoyage}</p>
+              <p>This certificate confirms that the goods referenced above are insured under the stated marine policy subject to terms and conditions.</p>
+            </div>
           </div>
         </div>
-      </div>
 
-      <div class="info-grid" style="margin-bottom: 8px; gap: 24px;">
-        <div class="info-section">
-          ${renderSectionTitle("Goods Insured")}
-          <div class="info-content">
-            <p>${goodsSummary}</p>
+        <table style="margin-top: 12px;">
+          <thead>
+            <tr>
+              <th class="text-serial">Sr</th>
+              <th class="text-left">Description</th>
+              <th class="text-numeric">Insured Amount</th>
+              <th class="text-left">Risk Coverage</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${insuranceItems
+              .map(
+                  (item: { serial: number; description: string; insuredAmount: number; riskCoverage: string }) => `
+            <tr>
+              <td class="text-serial">${item.serial}</td>
+              <td class="text-left">${item.description}</td>
+              <td class="text-numeric"><strong>${invoice?.currency || "USD"} ${formatMoney(item.insuredAmount)}</strong></td>
+              <td class="text-left">${item.riskCoverage}</td>
+            </tr>`
+              )
+              .join("")}
+          </tbody>
+        </table>
+      `,
+      summarySection: `
+        <div class="summary" style="margin-top: 12px; margin-bottom: 12px;">
+          <div class="summary-box">
+            <div class="summary-row divider"></div>
+            <div class="summary-row total">
+              <span class="summary-label">Total Insured Value:</span>
+              <span class="summary-value">${invoice?.currency || "USD"} ${formatMoney(insuredValue)}</span>
+            </div>
           </div>
         </div>
-
-        <div class="info-section">
-          ${renderSectionTitle("Coverage Details")}
-          <div class="info-content">
-            <p><strong>Risk Coverage:</strong> ${coverageType}</p>
-            <p><strong>Policy Number:</strong> ${policyNo}</p>
-            <p><strong>Transit Reference:</strong> ${vesselOrVoyage}</p>
-            <p>This certificate confirms that the goods referenced above are insured under the stated marine policy subject to terms and conditions.</p>
-          </div>
-        </div>
-      </div>
-
-      <table style="margin-top: 12px;">
-        <thead>
-          <tr>
-            <th class="text-serial">Sr</th>
-            <th class="text-left">Description</th>
-            <th class="text-numeric">Insured Amount</th>
-            <th class="text-left">Risk Coverage</th>
-          </tr>
-        </thead>
-        <tbody>
-          ${insuranceItems
-            .map(
-                (item: { serial: number; description: string; insuredAmount: number; riskCoverage: string }) => `
-          <tr>
-            <td class="text-serial">${item.serial}</td>
-            <td class="text-left">${item.description}</td>
-            <td class="text-numeric"><strong>${invoice?.currency || "USD"} ${formatMoney(item.insuredAmount)}</strong></td>
-            <td class="text-left">${item.riskCoverage}</td>
-          </tr>`
-            )
-            .join("")}
-        </tbody>
-      </table>
-
-      <div class="summary" style="margin-top: 12px; margin-bottom: 12px;">
-        <div class="summary-box">
-          <div class="summary-row divider"></div>
-          <div class="summary-row total">
-            <span class="summary-label">Total Insured Value:</span>
-            <span class="summary-value">${invoice?.currency || "USD"} ${formatMoney(insuredValue)}</span>
-          </div>
-        </div>
-      </div>
-
-      ${renderSignatureBlock(exporter, { labelOverride: "For Insurance Provider" })}
-
-      <div class="footer">
-        <div class="footer-content">
-          <span class="footer-item">Generated by <span class="footer-brand">${brandName}</span></span>
-          <span class="footer-separator">|</span>
-          <span class="footer-item">Timestamp: ${formattedTimestamp}</span>
-          <span class="footer-separator">|</span>
-          <span class="footer-item">Document ID: ${auditMetadata.documentId}</span>
-          <span class="footer-separator">|</span>
-          <span class="footer-item footer-hash">Hash: ${auditMetadata.hash}</span>
-        </div>
-      </div>
+      `,
+      signatureOptions: {
+        labelOverride: "For Insurance Provider",
+      },
+      footerData: {
+        brandName,
+        timestamp: formattedTimestamp,
+        documentId: auditMetadata.documentId,
+        hash: auditMetadata.hash,
+      },
+    })}
   </div>
 </body>
 </html>

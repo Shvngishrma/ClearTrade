@@ -3,7 +3,7 @@ import { PDFDocument, StandardFonts, rgb } from "pdf-lib"
 import { checkUsage } from "@/lib/usage"
 import { getCurrentUser } from "@/lib/auth"
 import { generateComplianceReport } from "@/lib/complianceReportGenerator"
-import { launchBrowser } from "@/lib/pdfBrowser"
+import { renderHtmlToPdfA4AutoScale } from "@/lib/pdfBrowser"
 
 export const runtime = "nodejs"
 
@@ -164,27 +164,7 @@ export async function GET(req: Request) {
 
     let pdfData: Uint8Array
     try {
-      const browser = await launchBrowser()
-
-      try {
-        const page = await browser.newPage()
-        await page.setContent(report.html, { waitUntil: "networkidle0" })
-
-        pdfData = (await page.pdf({
-          format: "A4",
-          printBackground: true,
-          margin: {
-            top: "10mm",
-            right: "10mm",
-            bottom: "10mm",
-            left: "10mm",
-          },
-        })) as Uint8Array
-
-        await page.close()
-      } finally {
-        await browser.close()
-      }
+      pdfData = await renderHtmlToPdfA4AutoScale(report.html)
     } catch (puppeteerError: any) {
       console.error("[generate-compliance-report/pdf] Puppeteer unavailable, using pdf-lib fallback", {
         message: puppeteerError?.message || String(puppeteerError),

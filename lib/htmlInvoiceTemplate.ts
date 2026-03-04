@@ -5,9 +5,8 @@
  */
 
 import { getDocumentAuditMetadata } from "@/lib/auditMetadata"
-import { renderSignatureBlock, signatureBlockStyles } from "@/lib/renderSignatureBlock"
+import { signatureBlockStyles } from "@/lib/renderSignatureBlock"
 import {
-  renderHeaderBlock,
   renderSectionTitle,
   sharedFooterStyles,
   sharedHeaderStyles,
@@ -16,6 +15,7 @@ import {
   sharedSummaryStyles,
   sharedTableStyles,
 } from "@/lib/renderDocumentLayout"
+import { documentSkeletonStyles, renderDocumentSkeleton } from "@/lib/renderDocumentSkeleton"
 
 export function generateInvoiceHTML(invoice: any, usage?: any): string {
   const {
@@ -243,6 +243,7 @@ ${sharedSummaryStyles}
     }
 
 ${signatureBlockStyles}
+${documentSkeletonStyles}
 
     /* Compliance Footer Block */
     .compliance-footer {
@@ -341,192 +342,179 @@ ${sharedFooterStyles}
     <!-- Page Number -->
     <div class="page-number">Page 1 of 1</div>
     
-    ${renderHeaderBlock({
+    ${renderDocumentSkeleton({
       exporter,
-      documentTitle: 'COMMERCIAL INVOICE',
-      paymentTerms: invoice.paymentTerms,
-      metadataRows: [
-        { label: 'INVOICE NO:', value: invoice.invoiceNumber, valueClass: 'invoice-number' },
-        { label: 'DATE:', value: formattedInvoiceDate, valueClass: 'invoice-date' },
-      ],
+      headerData: {
+        documentTitle: 'COMMERCIAL INVOICE',
+        paymentTerms: invoice.paymentTerms,
+        metadataRows: [
+          { label: 'INVOICE NO:', value: invoice.invoiceNumber, valueClass: 'invoice-number' },
+          { label: 'DATE:', value: formattedInvoiceDate, valueClass: 'invoice-date' },
+        ],
+      },
+      content: `
+        <div class="info-grid">
+          <div class="info-section">
+            ${renderSectionTitle('Exporter / Shipper')}
+            <div class="info-content">
+              <p><strong>${exporter.name || 'N/A'}</strong></p>
+              <p>${exporter.address || 'Address not provided'}</p>
+              ${exporter.iec ? `<p><strong>IEC:</strong> ${exporter.iec}</p>` : ''}
+              ${exporter.gstIN ? `<p><strong>GSTIN:</strong> ${exporter.gstIN}</p>` : ''}
+            </div>
+          </div>
+
+          <div class="info-section">
+            ${renderSectionTitle('Buyer / Importer')}
+            <div class="info-content">
+              <p><strong>${buyer.name || 'N/A'}</strong></p>
+              <p>${buyer.address || 'Address not provided'}</p>
+              ${buyer.country ? `<p><strong>Country:</strong> ${buyer.country}</p>` : ''}
+              ${buyer.buyerTaxId ? `<p><strong>Tax ID:</strong> ${buyer.buyerTaxId}</p>` : ''}
+              ${buyer.buyerVAT ? `<p><strong>VAT:</strong> ${buyer.buyerVAT}</p>` : ''}
+              ${buyer.buyerRegistrationNumber ? `<p><strong>Registration No:</strong> ${buyer.buyerRegistrationNumber}</p>` : ''}
+            </div>
+          </div>
+        </div>
+
+        <div class="shipment-details">
+          <div class="shipment-item">
+            <span class="shipment-item-label">Incoterm</span>
+            <span class="shipment-item-value">${incoterm || 'Not specified'}</span>
+          </div>
+          <div class="shipment-item">
+            <span class="shipment-item-label">Port of Loading</span>
+            <span class="shipment-item-value">${portOfLoading || 'Not specified'}</span>
+          </div>
+          <div class="shipment-item">
+            <span class="shipment-item-label">Port of Discharge</span>
+            <span class="shipment-item-value">${portOfDischarge || 'Not specified'}</span>
+          </div>
+          <div class="shipment-item">
+            <span class="shipment-item-label">Country of Origin</span>
+            <span class="shipment-item-value">${invoice.countryOfOrigin}</span>
+          </div>
+          <div class="shipment-item">
+            <span class="shipment-item-label">Mode of Transport</span>
+            <span class="shipment-item-value">${modeOfTransport || 'Not specified'}</span>
+          </div>
+        </div>
+
+        ${transportDetailsHTML}
+
+        <div class="items-section">
+          ${renderSectionTitle('Invoice Items')}
+          <table>
+            <thead>
+              <tr>
+                <th class="text-serial">Sr</th>
+                <th class="text-left">Description</th>
+                <th class="text-monospace">HS Code</th>
+                <th class="text-numeric">Qty</th>
+                <th class="text-unit">Unit</th>
+                <th class="text-numeric">Unit Price</th>
+                <th class="text-numeric">Amount</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${itemRows
+                .map(
+                  (item: any, idx: number) => `
+              <tr>
+                <td class="text-serial">${idx + 1}</td>
+                <td class="text-left">${item.description || 'Unspecified'}</td>
+                <td class="text-monospace">${item.hsCode || '—'}</td>
+                <td class="text-numeric">${item.quantity || 0}</td>
+                <td class="text-unit">${item.unit || 'PCS'}</td>
+                <td class="text-numeric">${currency} ${new Intl.NumberFormat('en-US', {
+                    minimumFractionDigits: 2,
+                    maximumFractionDigits: 2,
+                  }).format(item.unitPrice || 0)}</td>
+                <td class="text-numeric">${currency} ${new Intl.NumberFormat('en-US', {
+                    minimumFractionDigits: 2,
+                    maximumFractionDigits: 2,
+                  }).format(item.total)}</td>
+              </tr>
+              `
+                )
+                .join('')}
+            </tbody>
+          </table>
+        </div>
+      `,
+      summarySection: `
+        <div class="summary">
+          <div class="summary-box">
+            <div class="summary-row">
+              <span class="summary-label">Subtotal:</span>
+              <span class="summary-value">${currency} ${formattedSubtotal}</span>
+            </div>
+            ${freightCharges > 0 ? `
+            <div class="summary-row">
+              <span class="summary-label">Freight:</span>
+              <span class="summary-value">${currency} ${new Intl.NumberFormat('en-US', {
+                minimumFractionDigits: 2,
+                maximumFractionDigits: 2,
+              }).format(freightCharges)}</span>
+            </div>
+            ` : ''}
+            ${insuranceCharges > 0 ? `
+            <div class="summary-row">
+              <span class="summary-label">Insurance:</span>
+              <span class="summary-value">${currency} ${new Intl.NumberFormat('en-US', {
+                minimumFractionDigits: 2,
+                maximumFractionDigits: 2,
+              }).format(insuranceCharges)}</span>
+            </div>
+            ` : ''}
+            <div class="summary-row divider"></div>
+            <div class="summary-row total">
+              <span class="summary-label">Total Invoice Value:</span>
+              <span class="summary-value">${currency} ${formattedTotalValue}</span>
+            </div>
+            ${hasExchangeDisclosure ? `
+            <div class="exchange-disclosure">
+              <p class="exchange-disclosure-line">Exchange Rate: 1 ${currency} = ₹${formattedExchangeRate}</p>
+              <p class="exchange-disclosure-line">Reference Date: ${formattedExchangeRefDate}</p>
+            </div>
+            ` : ''}
+          </div>
+        </div>
+
+        <div class="compliance-footer">
+          ${exporter.iecNo ? `
+          <div class="compliance-footer-item">
+            <div class="compliance-footer-label">IEC</div>
+            <div class="compliance-footer-value">${exporter.iecNo}</div>
+          </div>
+          ` : ''}
+          ${exporter.adCode ? `
+          <div class="compliance-footer-item">
+            <div class="compliance-footer-label">AD Code</div>
+            <div class="compliance-footer-value">${exporter.adCode}</div>
+          </div>
+          ` : ''}
+          ${exporter.exchangeRateRef ? `
+          <div class="compliance-footer-item">
+            <div class="compliance-footer-label">Exchange Rate Ref</div>
+            <div class="compliance-footer-value">${exporter.exchangeRateRef}</div>
+          </div>
+          ` : ''}
+          ${exporter.realizedValue ? `
+          <div class="compliance-footer-item">
+            <div class="compliance-footer-label">Realized Value</div>
+            <div class="compliance-footer-value">${currency} ${new Intl.NumberFormat('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(exporter.realizedValue)}</div>
+          </div>
+          ` : ''}
+          <div class="compliance-footer-text">This document was prepared in accordance with applicable trade and tax regulations. The exporter certifies the accuracy of information provided and assumes responsibility for compliance with all relevant trade laws.</div>
+        </div>
+      `,
+      footerData: {
+        leadingText: 'System Generated',
+        documentId: auditMetadata.documentId,
+        hash: auditMetadata.hash,
+      },
     })}
-
-    <!-- Exporter and Buyer Info -->
-    <div class="info-grid">
-      <!-- Exporter -->
-      <div class="info-section">
-        ${renderSectionTitle('Exporter / Shipper')}
-        <div class="info-content">
-          <p><strong>${exporter.name || 'N/A'}</strong></p>
-          <p>${exporter.address || 'Address not provided'}</p>
-          ${exporter.iec ? `<p><strong>IEC:</strong> ${exporter.iec}</p>` : ''}
-          ${exporter.gstIN ? `<p><strong>GSTIN:</strong> ${exporter.gstIN}</p>` : ''}
-        </div>
-      </div>
-
-      <!-- Buyer -->
-      <div class="info-section">
-        ${renderSectionTitle('Buyer / Importer')}
-        <div class="info-content">
-          <p><strong>${buyer.name || 'N/A'}</strong></p>
-          <p>${buyer.address || 'Address not provided'}</p>
-          ${buyer.country ? `<p><strong>Country:</strong> ${buyer.country}</p>` : ''}
-          ${buyer.buyerTaxId ? `<p><strong>Tax ID:</strong> ${buyer.buyerTaxId}</p>` : ''}
-          ${buyer.buyerVAT ? `<p><strong>VAT:</strong> ${buyer.buyerVAT}</p>` : ''}
-          ${buyer.buyerRegistrationNumber ? `<p><strong>Registration No:</strong> ${buyer.buyerRegistrationNumber}</p>` : ''}
-        </div>
-      </div>
-    </div>
-
-    <!-- Shipment Details -->
-    <!-- FROZEN SHIPMENT & TRADE BLOCK -->
-    <div class="shipment-details">
-      <div class="shipment-item">
-        <span class="shipment-item-label">Incoterm</span>
-        <span class="shipment-item-value">${incoterm || 'Not specified'}</span>
-      </div>
-      <div class="shipment-item">
-        <span class="shipment-item-label">Port of Loading</span>
-        <span class="shipment-item-value">${portOfLoading || 'Not specified'}</span>
-      </div>
-      <div class="shipment-item">
-        <span class="shipment-item-label">Port of Discharge</span>
-        <span class="shipment-item-value">${portOfDischarge || 'Not specified'}</span>
-      </div>
-      <div class="shipment-item">
-        <span class="shipment-item-label">Country of Origin</span>
-        <span class="shipment-item-value">${invoice.countryOfOrigin}</span>
-      </div>
-      <div class="shipment-item">
-        <span class="shipment-item-label">Mode of Transport</span>
-        <span class="shipment-item-value">${modeOfTransport || 'Not specified'}</span>
-      </div>
-    </div>
-
-    ${transportDetailsHTML}
-
-    <!-- Items Table -->
-    <div class="items-section">
-      ${renderSectionTitle('Invoice Items')}
-      <!-- FROZEN ITEMS TABLE (INSTITUTIONAL) -->
-      <table>
-        <thead>
-          <tr>
-            <th class="text-serial">Sr</th>
-            <th class="text-left">Description</th>
-            <th class="text-monospace">HS Code</th>
-            <th class="text-numeric">Qty</th>
-            <th class="text-unit">Unit</th>
-            <th class="text-numeric">Unit Price</th>
-            <th class="text-numeric">Amount</th>
-          </tr>
-        </thead>
-        <tbody>
-          ${itemRows
-            .map(
-              (item: any, idx: number) => `
-          <tr>
-            <td class="text-serial">${idx + 1}</td>
-            <td class="text-left">${item.description || 'Unspecified'}</td>
-            <td class="text-monospace">${item.hsCode || '—'}</td>
-            <td class="text-numeric">${item.quantity || 0}</td>
-            <td class="text-unit">${item.unit || 'PCS'}</td>
-            <td class="text-numeric">${currency} ${new Intl.NumberFormat('en-US', {
-                minimumFractionDigits: 2,
-                maximumFractionDigits: 2,
-              }).format(item.unitPrice || 0)}</td>
-            <td class="text-numeric">${currency} ${new Intl.NumberFormat('en-US', {
-                minimumFractionDigits: 2,
-                maximumFractionDigits: 2,
-              }).format(item.total)}</td>
-          </tr>
-          `
-            )
-            .join('')}
-        </tbody>
-      </table>
-    </div>
-
-    <!-- Summary -->
-    <div class="summary">
-      <div class="summary-box">
-        <div class="summary-row">
-          <span class="summary-label">Subtotal:</span>
-          <span class="summary-value">${currency} ${formattedSubtotal}</span>
-        </div>
-        ${freightCharges > 0 ? `
-        <div class="summary-row">
-          <span class="summary-label">Freight:</span>
-          <span class="summary-value">${currency} ${new Intl.NumberFormat('en-US', {
-            minimumFractionDigits: 2,
-            maximumFractionDigits: 2,
-          }).format(freightCharges)}</span>
-        </div>
-        ` : ''}
-        ${insuranceCharges > 0 ? `
-        <div class="summary-row">
-          <span class="summary-label">Insurance:</span>
-          <span class="summary-value">${currency} ${new Intl.NumberFormat('en-US', {
-            minimumFractionDigits: 2,
-            maximumFractionDigits: 2,
-          }).format(insuranceCharges)}</span>
-        </div>
-        ` : ''}
-        <div class="summary-row divider"></div>
-        <div class="summary-row total">
-          <span class="summary-label">Total Invoice Value:</span>
-          <span class="summary-value">${currency} ${formattedTotalValue}</span>
-        </div>
-        ${hasExchangeDisclosure ? `
-        <div class="exchange-disclosure">
-          <p class="exchange-disclosure-line">Exchange Rate: 1 ${currency} = ₹${formattedExchangeRate}</p>
-          <p class="exchange-disclosure-line">Reference Date: ${formattedExchangeRefDate}</p>
-        </div>
-        ` : ''}
-      </div>
-    </div>
-
-    ${renderSignatureBlock(exporter)}
-
-    <!-- Compliance Footer (Small, Classic) -->
-    <div class="compliance-footer">
-      ${exporter.iecNo ? `
-      <div class="compliance-footer-item">
-        <div class="compliance-footer-label">IEC</div>
-        <div class="compliance-footer-value">${exporter.iecNo}</div>
-      </div>
-      ` : ''}
-      ${exporter.adCode ? `
-      <div class="compliance-footer-item">
-        <div class="compliance-footer-label">AD Code</div>
-        <div class="compliance-footer-value">${exporter.adCode}</div>
-      </div>
-      ` : ''}
-      ${exporter.exchangeRateRef ? `
-      <div class="compliance-footer-item">
-        <div class="compliance-footer-label">Exchange Rate Ref</div>
-        <div class="compliance-footer-value">${exporter.exchangeRateRef}</div>
-      </div>
-      ` : ''}
-      ${exporter.realizedValue ? `
-      <div class="compliance-footer-item">
-        <div class="compliance-footer-label">Realized Value</div>
-        <div class="compliance-footer-value">${currency} ${new Intl.NumberFormat('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(exporter.realizedValue)}</div>
-      </div>
-      ` : ''}
-      <div class="compliance-footer-text">This document was prepared in accordance with applicable trade and tax regulations. The exporter certifies the accuracy of information provided and assumes responsibility for compliance with all relevant trade laws.</div>
-    </div>
-
-    <!-- Footer Compliance Strip -->
-    <div class="footer">
-      <div class="footer-content">
-        <span class="footer-item">System Generated</span>
-        <span class="footer-separator">|</span>
-        <span class="footer-item">Document ID: ${auditMetadata.documentId}</span>
-        <span class="footer-separator">|</span>
-        <span class="footer-item footer-hash">Hash: ${auditMetadata.hash}</span>
-      </div>
-    </div>
   </div>
 </div>
 </body>

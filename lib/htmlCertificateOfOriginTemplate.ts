@@ -1,7 +1,6 @@
 import { getDocumentAuditMetadata } from "@/lib/auditMetadata"
-import { renderSignatureBlock, signatureBlockStyles } from "@/lib/renderSignatureBlock"
+import { signatureBlockStyles } from "@/lib/renderSignatureBlock"
 import {
-  renderHeaderBlock,
   renderSectionTitle,
   sharedFooterStyles,
   sharedHeaderStyles,
@@ -9,6 +8,7 @@ import {
   sharedSectionStyles,
   sharedTableStyles,
 } from "@/lib/renderDocumentLayout"
+import { documentSkeletonStyles, renderDocumentSkeleton } from "@/lib/renderDocumentSkeleton"
 
 export function generateCertificateOfOriginHTML(invoice: any, coo: any): string {
   const exporter = invoice?.exporter || {}
@@ -37,43 +37,11 @@ export function generateCertificateOfOriginHTML(invoice: any, coo: any): string 
   <title>Certificate of Origin</title>
   <style>
     ${sharedPageStyles}
-
-    @page {
-      size: A4;
-      margin: 20mm;
-    }
-
-    body {
-      font-family: Inter, system-ui, sans-serif;
-      font-size: 13px;
-      line-height: 1.6;
-      color: #374151;
-      margin: 0;
-    }
-
-    .container {
-      width: 100%;
-      max-width: 100%;
-      padding: 0;
-    }
-
-    .page-wrapper {
-      min-height: 257mm;
-      display: flex;
-      flex-direction: column;
-      justify-content: space-between;
-    }
-
-    .page-content {
-      display: flex;
-      flex-direction: column;
-      gap: 18px;
-    }
-
 ${sharedHeaderStyles}
 ${sharedSectionStyles}
 ${sharedTableStyles}
 ${signatureBlockStyles}
+${documentSkeletonStyles}
 ${sharedFooterStyles}
 
     .document-title {
@@ -139,66 +107,6 @@ ${sharedFooterStyles}
       break-inside: avoid;
     }
 
-    .signature-section {
-      margin-top: 18px;
-      display: flex;
-      flex-direction: column;
-      gap: 18px;
-      page-break-inside: avoid;
-    }
-
-    .signature-section > .signature-block {
-      margin-top: 0;
-      margin-bottom: 0;
-    }
-
-    .chamber-signature-block {
-      margin-top: 0;
-      margin-bottom: 0;
-      display: flex;
-      justify-content: flex-end;
-      page-break-inside: avoid;
-      break-inside: avoid;
-    }
-
-    .chamber-signature-container {
-      width: 280px;
-      text-align: right;
-    }
-
-    .chamber-signature-label {
-      font-size: 12px;
-      color: #000000;
-      font-weight: 500;
-      margin-bottom: 10px;
-      line-height: 1.4;
-    }
-
-    .chamber-signature-space {
-      height: 36px;
-    }
-
-    .chamber-signature-title {
-      font-size: 11px;
-      font-weight: 600;
-      color: #000000;
-      letter-spacing: 0.5px;
-      margin-bottom: 2px;
-      border-top: 1px solid #111827;
-      padding-top: 8px;
-      display: inline-block;
-      min-width: 190px;
-      text-transform: uppercase;
-    }
-
-    .chamber-signature-subtitle {
-      font-size: 10px;
-      font-weight: 600;
-      color: #6b7280;
-      letter-spacing: 0.5px;
-      text-transform: uppercase;
-    }
-
     .issuing-authority-card {
       margin-top: 8px;
       padding: 10px 12px;
@@ -208,139 +116,115 @@ ${sharedFooterStyles}
   </style>
 </head>
 <body>
-  <div class="page-wrapper">
-    <div class="page-content">
-      <div class="container">
-    ${renderHeaderBlock({
+  <div class="container">
+    ${renderDocumentSkeleton({
       exporter: layoutExporter,
-      documentTitle: "CERTIFICATE OF ORIGIN",
-      subtitle: "(Issued for Trade Certification Purpose)",
-      metadataRows: [
-        { label: "INVOICE REF:", value: invoice?.invoiceNumber || "N/A", valueClass: "invoice-number" },
-        { label: "DATE:", value: cooDate, valueClass: "invoice-date" },
-        { label: "COUNTRY OF ORIGIN:", value: originCountry, valueClass: "header-meta-value" },
-      ],
-    })}
-
-    <div class="info-grid">
-      <div class="info-section">
-        ${renderSectionTitle("Exporter / Shipper")}
-        <div class="info-content">
-          <p><strong>${layoutExporter?.name || "N/A"}</strong></p>
-          <p>${layoutExporter?.address || "Address not provided"}</p>
-          ${layoutExporter?.iec ? `<p><strong>IEC:</strong> ${layoutExporter.iec}</p>` : ""}
-        </div>
-      </div>
-
-      <div class="info-section">
-        ${renderSectionTitle("Consignee / Importer")}
-        <div class="info-content">
-          <p><strong>${buyer?.name || "N/A"}</strong></p>
-          <p>${buyer?.address || "Address not provided"}</p>
-          ${buyer?.country ? `<p><strong>Country:</strong> ${buyer.country}</p>` : ""}
-        </div>
-      </div>
-    </div>
-
-    ${renderSectionTitle("Goods Details")}
-
-    <table>
-      <thead>
-        <tr>
-          <th class="text-left">Description</th>
-          <th class="text-monospace">HS Code</th>
-          <th class="text-left">Country of Origin</th>
-        </tr>
-      </thead>
-      <tbody>
-        ${(invoice?.items || [])
-          .map(
-            (item: any) => `
-        <tr>
-          <td class="text-left">${item.description || "Unspecified"}</td>
-          <td class="text-monospace">${item.hsCode || "—"}</td>
-          <td class="text-left">${originCountry}</td>
-        </tr>`
-          )
-          .join("")}
-      </tbody>
-    </table>
-
-    ${renderSectionTitle("Certification")}
-    <div class="coo-certification-text">
-      We certify that the above-mentioned goods originate from the stated country of origin and are true to the best of our knowledge and records.
-    </div>
-
-    <div class="signature-section">
-      ${renderSignatureBlock(layoutExporter)}
-
-      ${coo?.chamberName ? `
-      <div class="chamber-signature-block">
-        <div class="chamber-signature-container">
-          <div class="chamber-signature-label">For ${coo.chamberName || "Issuing Authority"}</div>
-          <div class="chamber-signature-space"></div>
-          <div class="chamber-signature-title">Authorized Officer</div>
-          <div class="chamber-signature-subtitle">Issuing Authority</div>
-        </div>
-      </div>
-      ` : ""}
-
-      ${coo?.chamberName ? `
-      <div class="issuing-authority-section" style="display: flex; gap: 20px; margin-top: 0;">
-        <div style="flex: 1;">
-          <div class="issuing-authority-card">
-            <!-- Chamber Seal/Stamp Representation -->
-            <div style="text-align: center; margin-bottom: 8px;">
-              <div class="issuing-authority-seal">⊕</div>
+      headerData: {
+        documentTitle: "CERTIFICATE OF ORIGIN",
+        subtitle: "(Issued for Trade Certification Purpose)",
+        metadataRows: [
+          { label: "INVOICE REF:", value: invoice?.invoiceNumber || "N/A", valueClass: "invoice-number" },
+          { label: "DATE:", value: cooDate, valueClass: "invoice-date" },
+          { label: "COUNTRY OF ORIGIN:", value: originCountry, valueClass: "header-meta-value" },
+        ],
+      },
+      content: `
+        <div class="info-grid">
+          <div class="info-section">
+            ${renderSectionTitle("Exporter / Shipper")}
+            <div class="info-content">
+              <p><strong>${layoutExporter?.name || "N/A"}</strong></p>
+              <p>${layoutExporter?.address || "Address not provided"}</p>
+              ${layoutExporter?.iec ? `<p><strong>IEC:</strong> ${layoutExporter.iec}</p>` : ""}
             </div>
-            
-            <!-- Authority Details -->
-            <div class="authority-detail-row">
-              <div class="authority-label">CHAMBER OF COMMERCE</div>
-              <div class="authority-value">${coo.chamberName}</div>
-            </div>
-            
-            ${coo.registrationNumber ? `
-            <div class="authority-detail-row">
-              <div class="authority-label">REGISTRATION NUMBER</div>
-              <div class="authority-value">${coo.registrationNumber}</div>
-            </div>
-            ` : ""}
-            
-            <div class="authority-detail-row">
-              <div class="authority-label">PLACE</div>
-              <div class="authority-value">${exporter?.address?.split(",").pop()?.trim() || exporter?.country || "India"}</div>
-            </div>
-            
-            <div class="authority-detail-row">
-              <div class="authority-label">DATE</div>
-              <div class="authority-value">${coo.createdAt ? new Date(coo.createdAt).toLocaleDateString("en-IN", {
-                day: "2-digit",
-                month: "short",
-                year: "numeric"
-              }) : new Date().toLocaleDateString("en-IN", {
-                day: "2-digit",
-                month: "short",
-                year: "numeric"
-              })}</div>
+          </div>
+
+          <div class="info-section">
+            ${renderSectionTitle("Consignee / Importer")}
+            <div class="info-content">
+              <p><strong>${buyer?.name || "N/A"}</strong></p>
+              <p>${buyer?.address || "Address not provided"}</p>
+              ${buyer?.country ? `<p><strong>Country:</strong> ${buyer.country}</p>` : ""}
             </div>
           </div>
         </div>
-      </div>
-      ` : ""}
-    </div>
 
-    <div class="footer">
-      <div class="footer-content">
-        <span class="footer-item">System Generated</span>
-        <span class="footer-separator">|</span>
-        <span class="footer-item">Document ID: ${auditMetadata.documentId}</span>
-        <span class="footer-separator">|</span>
-        <span class="footer-item footer-hash">Hash: ${auditMetadata.hash}</span>
-      </div>
-    </div>
-      </div>
-    </div>
+        ${renderSectionTitle("Goods Details")}
+        <table>
+          <thead>
+            <tr>
+              <th class="text-left">Description</th>
+              <th class="text-monospace">HS Code</th>
+              <th class="text-left">Country of Origin</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${(invoice?.items || [])
+              .map(
+                (item: any) => `
+            <tr>
+              <td class="text-left">${item.description || "Unspecified"}</td>
+              <td class="text-monospace">${item.hsCode || "—"}</td>
+              <td class="text-left">${originCountry}</td>
+            </tr>`
+              )
+              .join("")}
+          </tbody>
+        </table>
+
+        ${renderSectionTitle("Certification")}
+        <div class="coo-certification-text">
+          We certify that the above-mentioned goods originate from the stated country of origin and are true to the best of our knowledge and records.
+        </div>
+
+        ${coo?.chamberName ? `
+        <div class="issuing-authority-section" style="display: flex; gap: 20px; margin-top: 12px;">
+          <div style="flex: 1;">
+            <div class="issuing-authority-card">
+              <div style="text-align: center; margin-bottom: 8px;">
+                <div class="issuing-authority-seal">⊕</div>
+              </div>
+
+              <div class="authority-detail-row">
+                <div class="authority-label">CHAMBER OF COMMERCE</div>
+                <div class="authority-value">${coo.chamberName}</div>
+              </div>
+
+              ${coo.registrationNumber ? `
+              <div class="authority-detail-row">
+                <div class="authority-label">REGISTRATION NUMBER</div>
+                <div class="authority-value">${coo.registrationNumber}</div>
+              </div>
+              ` : ""}
+
+              <div class="authority-detail-row">
+                <div class="authority-label">PLACE</div>
+                <div class="authority-value">${exporter?.address?.split(",").pop()?.trim() || exporter?.country || "India"}</div>
+              </div>
+
+              <div class="authority-detail-row">
+                <div class="authority-label">DATE</div>
+                <div class="authority-value">${coo.createdAt ? new Date(coo.createdAt).toLocaleDateString("en-IN", {
+                  day: "2-digit",
+                  month: "short",
+                  year: "numeric",
+                }) : new Date().toLocaleDateString("en-IN", {
+                  day: "2-digit",
+                  month: "short",
+                  year: "numeric",
+                })}</div>
+              </div>
+            </div>
+          </div>
+        </div>
+        ` : ""}
+      `,
+      footerData: {
+        leadingText: "System Generated",
+        documentId: auditMetadata.documentId,
+        hash: auditMetadata.hash,
+      },
+    })}
   </div>
 </body>
 </html>

@@ -11,9 +11,8 @@ export const sharedPageStyles = `
     }
 
     html, body {
-      width: 100%;
-      height: 100%;
-      overflow: auto;
+      width: 210mm;
+      min-height: 297mm;
     }
 
     body {
@@ -33,6 +32,14 @@ export const sharedPageStyles = `
       width: 100%;
       max-width: 100%;
       position: relative;
+    }
+
+    .signature-block,
+    .footer,
+    .summary,
+    .items-section {
+      page-break-inside: avoid;
+      break-inside: avoid;
     }
 `
 

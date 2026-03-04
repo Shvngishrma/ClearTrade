@@ -3,11 +3,13 @@ import {
   renderSectionTitle,
   sharedFooterStyles,
   sharedHeaderStyles,
+  sharedPageStyles,
   sharedSectionStyles,
   sharedSummaryStyles,
   sharedTableStyles,
 } from "@/lib/renderDocumentLayout"
-import { renderSignatureBlock } from "@/lib/renderSignatureBlock"
+import { signatureBlockStyles } from "@/lib/renderSignatureBlock"
+import { documentSkeletonStyles, renderDocumentSkeleton } from "@/lib/renderDocumentSkeleton"
 
 function formatDateTimeIST(date: Date): string {
   const formatted = new Intl.DateTimeFormat("en-GB", {
@@ -78,6 +80,10 @@ function matrixScoreValue(row: ComplianceReportData["engineResults"][number]) {
 
 export function generateComplianceReportHTML(data: ComplianceReportData): string {
   const verdict = getOverallVerdict(data.overallStatus)
+  const exporter = {
+    name: data.generatedBy || "Compliance Authority",
+    iec: data.technicalProof?.iecAdPortChain?.iec || "",
+  }
 
   return `
 <!DOCTYPE html>
@@ -87,6 +93,7 @@ export function generateComplianceReportHTML(data: ComplianceReportData): string
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Document Compliance Certificate</title>
   <style>
+    ${sharedPageStyles}
     * { box-sizing: border-box; margin: 0; padding: 0; }
     body {
       font-family: Inter, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
@@ -199,249 +206,259 @@ ${sharedHeaderStyles}
 ${sharedSectionStyles}
 ${sharedTableStyles}
 ${sharedSummaryStyles}
+${signatureBlockStyles}
+${documentSkeletonStyles}
 ${sharedFooterStyles}
   </style>
 </head>
 <body>
   <div class="certificate">
-    <div class="header">
-      <h1 class="document-title">DOCUMENT COMPLIANCE CERTIFICATE</h1>
-      <div class="meta-grid">
-        <div><strong>Certificate ID:</strong> ${data.certificateId}</div>
-        <div><strong>Invoice Ref:</strong> ${data.invoiceRef}</div>
-        <div><strong>Version:</strong> ${data.integritySeal.versionId}</div>
-        <div><strong>Generated:</strong> ${formatDateTimeIST(data.generatedOn)}</div>
-      </div>
-    </div>
+    ${renderDocumentSkeleton({
+      exporter,
+      headerData: {
+        documentTitle: "DOCUMENT COMPLIANCE CERTIFICATE",
+        subtitle: "(Automated Validation Certificate)",
+        metadataRows: [
+          { label: "CERTIFICATE ID:", value: data.certificateId, valueClass: "invoice-number" },
+          { label: "INVOICE REF:", value: data.invoiceRef, valueClass: "invoice-date" },
+          { label: "VERSION:", value: data.integritySeal.versionId, valueClass: "header-meta-value" },
+          { label: "GENERATED:", value: formatDateTimeIST(data.generatedOn), valueClass: "header-meta-value" },
+        ],
+      },
+      content: `
+        <div class="status-box">
+          <div class="status-heading">1. Overall Verdict</div>
+          <div class="verdict-wrap">
+            ${verdict.frame
+              ? `<div class="verdict-frame"><span class="verdict-label">${verdict.label}</span></div>`
+              : `<span class="verdict-label">${verdict.label}</span>`}
+          </div>
+        </div>
 
-    <div class="status-box">
-      <div class="status-heading">1. Overall Verdict</div>
-      <div class="verdict-wrap">
-        ${verdict.frame
-          ? `<div class="verdict-frame"><span class="verdict-label">${verdict.label}</span></div>`
-          : `<span class="verdict-label">${verdict.label}</span>`}
-      </div>
-    </div>
+        ${renderSectionTitle("2. Engine Score Matrix")}
+        <table class="table">
+          <thead>
+            <tr>
+              <th style="width: 36%">Engine</th>
+              <th style="width: 14%">Status</th>
+              <th style="width: 12%">Score</th>
+              <th>Remarks</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${data.engineResults
+              .map(
+                (row) => `
+              <tr>
+                <td><strong>${row.engine}</strong></td>
+                <td>${matrixStatusIcon(row.status)}</td>
+                <td>${matrixScoreValue(row)}</td>
+                <td>${row.notes}</td>
+              </tr>
+            `
+              )
+              .join("")}
+          </tbody>
+        </table>
 
-    ${renderSectionTitle("2. Engine Score Matrix")}
-    <table class="table">
-      <thead>
-        <tr>
-          <th style="width: 36%">Engine</th>
-          <th style="width: 14%">Status</th>
-          <th style="width: 12%">Score</th>
-          <th>Remarks</th>
-        </tr>
-      </thead>
-      <tbody>
-        ${data.engineResults
-          .map(
-            (row) => `
-          <tr>
-            <td><strong>${row.engine}</strong></td>
-            <td>${matrixStatusIcon(row.status)}</td>
-            <td>${matrixScoreValue(row)}</td>
-            <td>${row.notes}</td>
-          </tr>
-        `
-          )
-          .join("")}
-      </tbody>
-    </table>
+        ${renderSectionTitle("Compliance Controls")}
+        <table class="table">
+          <thead>
+            <tr>
+              <th style="width: 28%">Control</th>
+              <th style="width: 14%">Status</th>
+              <th>Evidence</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${data.sections
+              .map(
+                (section) => `
+              <tr>
+                <td><strong>${section.title}</strong></td>
+                <td>${sectionStatusPill(section.status)}</td>
+                <td>${section.details}</td>
+              </tr>
+            `
+              )
+              .join("")}
+          </tbody>
+        </table>
 
-    ${renderSectionTitle("Compliance Controls")}
-    <table class="table">
-      <thead>
-        <tr>
-          <th style="width: 28%">Control</th>
-          <th style="width: 14%">Status</th>
-          <th>Evidence</th>
-        </tr>
-      </thead>
-      <tbody>
-        ${data.sections
-          .map(
-            (section) => `
-          <tr>
-            <td><strong>${section.title}</strong></td>
-            <td>${sectionStatusPill(section.status)}</td>
-            <td>${section.details}</td>
-          </tr>
-        `
-          )
-          .join("")}
-      </tbody>
-    </table>
+        <div class="split">
+          <div class="box">
+            ${renderSectionTitle("Critical Blockers")}
+            ${
+              data.blockers.length === 0
+                ? `<div class="list-item">No critical blockers at report generation time.</div>`
+                : data.blockers
+                    .slice(0, 12)
+                    .map(
+                      (b) => `<div class="list-item">• [${b.engine}] ${b.code}: ${b.message}</div>`
+                    )
+                    .join("")
+            }
+          </div>
+          <div class="box">
+            ${renderSectionTitle("Warnings / Observations")}
+            ${
+              data.warnings.length === 0
+                ? `<div class="list-item">No warnings.</div>`
+                : data.warnings
+                    .slice(0, 12)
+                    .map((w) => `<div class="list-item">• [${w.engine}] ${w.code}: ${w.message}</div>`)
+                    .join("")
+            }
+          </div>
+        </div>
 
-    <div class="split">
-      <div class="box">
-        ${renderSectionTitle("Critical Blockers")}
-        ${
-          data.blockers.length === 0
-            ? `<div class="list-item">No critical blockers at report generation time.</div>`
-            : data.blockers
-                .slice(0, 12)
-                .map(
-                  (b) => `<div class="list-item">• [${b.engine}] ${b.code}: ${b.message}</div>`
-                )
-                .join("")
-        }
-      </div>
-      <div class="box">
-        ${renderSectionTitle("Warnings / Observations")}
-        ${
-          data.warnings.length === 0
-            ? `<div class="list-item">No warnings.</div>`
-            : data.warnings
-                .slice(0, 12)
-                .map((w) => `<div class="list-item">• [${w.engine}] ${w.code}: ${w.message}</div>`)
-                .join("")
-        }
-      </div>
-    </div>
+        ${data.advisories.length > 0 ? `
+        ${renderSectionTitle("3. Advisories")}
+        <div class="box" style="min-height: auto;">
+          ${data.advisories.map((advisory) => `<div class="list-item">• ${advisory}</div>`).join("")}
+        </div>
+        ` : ""}
 
-    ${data.advisories.length > 0 ? `
-    ${renderSectionTitle("3. Advisories")}
-    <div class="box" style="min-height: auto;">
-      ${data.advisories.map((advisory) => `<div class="list-item">• ${advisory}</div>`).join("")}
-    </div>
-    ` : ""}
+        ${data.riskFlags.length > 0 ? `
+        ${renderSectionTitle("Risk Flags")}
+        <table class="table">
+          <thead>
+            <tr>
+              <th style="width: 30%">Flag</th>
+              <th>Details</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${data.riskFlags
+              .map(
+                (flag) => `
+              <tr>
+                <td><strong>${flag.label}</strong></td>
+                <td>${flag.details}</td>
+              </tr>
+            `
+              )
+              .join("")}
+          </tbody>
+        </table>
+        ` : ""}
 
-    ${data.riskFlags.length > 0 ? `
-    ${renderSectionTitle("Risk Flags")}
-    <table class="table">
-      <thead>
-        <tr>
-          <th style="width: 30%">Flag</th>
-          <th>Details</th>
-        </tr>
-      </thead>
-      <tbody>
-        ${data.riskFlags
-          .map(
-            (flag) => `
-          <tr>
-            <td><strong>${flag.label}</strong></td>
-            <td>${flag.details}</td>
-          </tr>
-        `
-          )
-          .join("")}
-      </tbody>
-    </table>
-    ` : ""}
+        <div class="page-break"></div>
 
-    <div class="page-break"></div>
+        ${renderSectionTitle("4. Proof Layer")}
 
-    ${renderSectionTitle("4. Proof Layer")}
+        ${renderSectionTitle("Exchange Rate Proof")}
+        <table class="table">
+          <tbody>
+            <tr>
+              <th style="width: 32%">Rate</th>
+              <td>${data.technicalProof.exchangeRateProof.referenceRate} ${data.technicalProof.exchangeRateProof.referenceCurrency}</td>
+            </tr>
+            <tr>
+              <th>Reference Date</th>
+              <td>${data.technicalProof.exchangeRateProof.referenceDate}</td>
+            </tr>
+            <tr>
+              <th>RBI Ref</th>
+              <td>${data.technicalProof.exchangeRateProof.rbiReferenceId}</td>
+            </tr>
+            <tr>
+              <th>Proof Hash</th>
+              <td>${data.technicalProof.exchangeRateProof.proofHash}</td>
+            </tr>
+          </tbody>
+        </table>
 
-    ${renderSectionTitle("Exchange Rate Proof")}
-    <table class="table">
-      <tbody>
-        <tr>
-          <th style="width: 32%">Rate</th>
-          <td>${data.technicalProof.exchangeRateProof.referenceRate} ${data.technicalProof.exchangeRateProof.referenceCurrency}</td>
-        </tr>
-        <tr>
-          <th>Reference Date</th>
-          <td>${data.technicalProof.exchangeRateProof.referenceDate}</td>
-        </tr>
-        <tr>
-          <th>RBI Ref</th>
-          <td>${data.technicalProof.exchangeRateProof.rbiReferenceId}</td>
-        </tr>
-        <tr>
-          <th>Proof Hash</th>
-          <td>${data.technicalProof.exchangeRateProof.proofHash}</td>
-        </tr>
-      </tbody>
-    </table>
+        ${renderSectionTitle("LC Snapshot")}
+        <table class="table">
+          <tbody>
+            <tr>
+              <th style="width: 32%">LC No</th>
+              <td>${data.technicalProof.lcComplianceDetail.lcNumber}</td>
+            </tr>
+            <tr>
+              <th>Governed By</th>
+              <td>${data.technicalProof.lcComplianceDetail.governedBy}</td>
+            </tr>
+            <tr>
+              <th>Shipment Deadline</th>
+              <td>${data.technicalProof.lcComplianceDetail.shipmentDeadline}</td>
+            </tr>
+            <tr>
+              <th>Presentation Window</th>
+              <td>${data.technicalProof.lcComplianceDetail.presentationWindow}</td>
+            </tr>
+            <tr>
+              <th>Tolerance</th>
+              <td>${data.technicalProof.lcComplianceDetail.toleranceApplied}</td>
+            </tr>
+          </tbody>
+        </table>
 
-    ${renderSectionTitle("LC Snapshot")}
-    <table class="table">
-      <tbody>
-        <tr>
-          <th style="width: 32%">LC No</th>
-          <td>${data.technicalProof.lcComplianceDetail.lcNumber}</td>
-        </tr>
-        <tr>
-          <th>Governed By</th>
-          <td>${data.technicalProof.lcComplianceDetail.governedBy}</td>
-        </tr>
-        <tr>
-          <th>Shipment Deadline</th>
-          <td>${data.technicalProof.lcComplianceDetail.shipmentDeadline}</td>
-        </tr>
-        <tr>
-          <th>Presentation Window</th>
-          <td>${data.technicalProof.lcComplianceDetail.presentationWindow}</td>
-        </tr>
-        <tr>
-          <th>Tolerance</th>
-          <td>${data.technicalProof.lcComplianceDetail.toleranceApplied}</td>
-        </tr>
-      </tbody>
-    </table>
+        ${renderSectionTitle("IEC–AD–Port")}
+        <table class="table">
+          <tbody>
+            <tr>
+              <th style="width: 32%">IEC</th>
+              <td>${data.technicalProof.iecAdPortChain.iec}</td>
+            </tr>
+            <tr>
+              <th>AD</th>
+              <td>${data.technicalProof.iecAdPortChain.adCode}</td>
+            </tr>
+            <tr>
+              <th>Port</th>
+              <td>${data.technicalProof.iecAdPortChain.port}</td>
+            </tr>
+            <tr>
+              <th>EDPMS</th>
+              <td>${data.technicalProof.iecAdPortChain.edpmsFlag}</td>
+            </tr>
+          </tbody>
+        </table>
 
-    ${renderSectionTitle("IEC–AD–Port")}
-    <table class="table">
-      <tbody>
-        <tr>
-          <th style="width: 32%">IEC</th>
-          <td>${data.technicalProof.iecAdPortChain.iec}</td>
-        </tr>
-        <tr>
-          <th>AD</th>
-          <td>${data.technicalProof.iecAdPortChain.adCode}</td>
-        </tr>
-        <tr>
-          <th>Port</th>
-          <td>${data.technicalProof.iecAdPortChain.port}</td>
-        </tr>
-        <tr>
-          <th>EDPMS</th>
-          <td>${data.technicalProof.iecAdPortChain.edpmsFlag}</td>
-        </tr>
-      </tbody>
-    </table>
+        ${renderSectionTitle("🧾 Cross-Document Validation")}
+        <table class="table">
+          <tbody>
+            ${data.crossDocumentValidation
+              .map(
+                (row) => `
+            <tr>
+              <td>${row.label}</td>
+              <td style="width: 18%">${row.passed ? "✅" : "❌"}</td>
+            </tr>
+          `
+              )
+              .join("")}
+          </tbody>
+        </table>
 
-    ${renderSectionTitle("🧾 Cross-Document Validation")}
-    <table class="table">
-      <tbody>
-        ${data.crossDocumentValidation
-          .map(
-            (row) => `
-        <tr>
-          <td>${row.label}</td>
-          <td style="width: 18%">${row.passed ? "✅" : "❌"}</td>
-        </tr>
-      `
-          )
-          .join("")}
-      </tbody>
-    </table>
-
-    ${renderSectionTitle("5. Integrity Seal")}
-    <table class="table">
-      <tbody>
-        <tr>
-          <th style="width: 32%">Document Hash</th>
-          <td>${data.integritySeal.documentHashExpression}</td>
-        </tr>
-        <tr>
-          <th>System Validation Timestamp</th>
-          <td>${data.integritySeal.validationTimestamp}</td>
-        </tr>
-        <tr>
-          <th>Version</th>
-          <td>${data.integritySeal.versionId}</td>
-        </tr>
-      </tbody>
-    </table>
-
-    <div class="footer">
-      This certificate reflects automated validation against RBI Master Direction – Export of Goods & Services, DGFT Trade Classification norms, UCP 600 LC rules, and internal cross-document integrity controls.
-    </div>
+        ${renderSectionTitle("5. Integrity Seal")}
+        <table class="table">
+          <tbody>
+            <tr>
+              <th style="width: 32%">Document Hash</th>
+              <td>${data.integritySeal.documentHashExpression}</td>
+            </tr>
+            <tr>
+              <th>System Validation Timestamp</th>
+              <td>${data.integritySeal.validationTimestamp}</td>
+            </tr>
+            <tr>
+              <th>Version</th>
+              <td>${data.integritySeal.versionId}</td>
+            </tr>
+          </tbody>
+        </table>
+      `,
+      signatureOptions: {
+        labelOverride: "For Compliance Authority",
+      },
+      footerData: {
+        customContent:
+          "This certificate reflects automated validation against RBI Master Direction – Export of Goods & Services, DGFT Trade Classification norms, UCP 600 LC rules, and internal cross-document integrity controls.",
+      },
+    })}
   </div>
 </body>
 </html>

@@ -4,9 +4,8 @@
  */
 
 import { getDocumentAuditMetadata } from "@/lib/auditMetadata"
-import { renderSignatureBlock, signatureBlockStyles } from "@/lib/renderSignatureBlock"
+import { signatureBlockStyles } from "@/lib/renderSignatureBlock"
 import {
-  renderHeaderBlock,
   renderSectionTitle,
   sharedFooterStyles,
   sharedHeaderStyles,
@@ -15,6 +14,7 @@ import {
   sharedSummaryStyles,
   sharedTableStyles,
 } from "@/lib/renderDocumentLayout"
+import { documentSkeletonStyles, renderDocumentSkeleton } from "@/lib/renderDocumentSkeleton"
 
 export function generatePackingListHTML(invoice: any, packing: any, usage?: any): string {
   const exporter = invoice.exporter || {}
@@ -153,6 +153,7 @@ ${sharedSummaryStyles}
     }
 
 ${signatureBlockStyles}
+${documentSkeletonStyles}
 
     .compliance-footer {
       margin-top: 16px;
@@ -220,169 +221,166 @@ ${sharedFooterStyles}
     ${shouldShowWatermark ? `<div class="document-watermark">GENERATED VIA PLATFORM</div>` : ""}
     <div class="page-number">Page 1 of 1</div>
 
-    ${renderHeaderBlock({
-      exporter: layoutExporter,
-      documentTitle: "PACKING LIST",
-      paymentTerms: invoice.paymentTerms,
-      metadataRows: [
-        { label: "INVOICE NO:", value: invoice.invoiceNumber || "", valueClass: "invoice-number" },
-        { label: "DATE:", value: formattedInvoiceDate, valueClass: "invoice-date" },
-        ...(poRef ? [{ label: "PO REF:", value: poRef, valueClass: "invoice-date" }] : []),
-      ],
-    })}
+    ${renderDocumentSkeleton({
+      exporter,
+      headerData: {
+        documentTitle: "PACKING LIST",
+        paymentTerms: invoice.paymentTerms,
+        metadataRows: [
+          { label: "INVOICE NO:", value: invoice.invoiceNumber || "", valueClass: "invoice-number" },
+          { label: "DATE:", value: formattedInvoiceDate, valueClass: "invoice-date" },
+          ...(poRef ? [{ label: "PO REF:", value: poRef, valueClass: "invoice-date" }] : []),
+        ],
+      },
+      content: `
+        <div class="info-grid">
+          <div class="info-section">
+            ${renderSectionTitle("Exporter / Shipper")}
+            <div class="info-content">
+              <p><strong>${exporter.name || "N/A"}</strong></p>
+              <p>${exporter.address || "Address not provided"}</p>
+              ${exporter.iec ? `<p><strong>IEC:</strong> ${exporter.iec}</p>` : ""}
+              ${exporter.gstin ? `<p><strong>GSTIN:</strong> ${exporter.gstin}</p>` : ""}
+            </div>
+          </div>
 
-    <div class="info-grid">
-      <div class="info-section">
-        ${renderSectionTitle("Exporter / Shipper")}
-        <div class="info-content">
-          <p><strong>${exporter.name || "N/A"}</strong></p>
-          <p>${exporter.address || "Address not provided"}</p>
-          ${exporter.iec ? `<p><strong>IEC:</strong> ${exporter.iec}</p>` : ""}
-          ${exporter.gstin ? `<p><strong>GSTIN:</strong> ${exporter.gstin}</p>` : ""}
+          <div class="info-section">
+            ${renderSectionTitle("Buyer / Importer")}
+            <div class="info-content">
+              <p><strong>${buyer.name || "N/A"}</strong></p>
+              <p>${buyer.address || "Address not provided"}</p>
+              ${buyer.country ? `<p><strong>Country:</strong> ${buyer.country}</p>` : ""}
+            </div>
+          </div>
         </div>
-      </div>
 
-      <div class="info-section">
-        ${renderSectionTitle("Buyer / Importer")}
-        <div class="info-content">
-          <p><strong>${buyer.name || "N/A"}</strong></p>
-          <p>${buyer.address || "Address not provided"}</p>
-          ${buyer.country ? `<p><strong>Country:</strong> ${buyer.country}</p>` : ""}
+        <div class="shipment-details">
+          <div class="shipment-item">
+            <span class="shipment-item-label">Incoterm</span>
+            <span class="shipment-item-value">${invoice.incoterm || ""}</span>
+          </div>
+          <div class="shipment-item">
+            <span class="shipment-item-label">Port of Loading</span>
+            <span class="shipment-item-value">${invoice.portOfLoading || ""}</span>
+          </div>
+          <div class="shipment-item">
+            <span class="shipment-item-label">Port of Discharge</span>
+            <span class="shipment-item-value">${invoice.portOfDischarge || ""}</span>
+          </div>
+          <div class="shipment-item">
+            <span class="shipment-item-label">Country of Origin</span>
+            <span class="shipment-item-value">${invoice.countryOfOrigin || ""}</span>
+          </div>
+          <div class="shipment-item">
+            <span class="shipment-item-label">Mode of Transport</span>
+            <span class="shipment-item-value">${invoice.modeOfTransport || ""}</span>
+          </div>
         </div>
-      </div>
-    </div>
 
-    <div class="shipment-details">
-      <div class="shipment-item">
-        <span class="shipment-item-label">Incoterm</span>
-        <span class="shipment-item-value">${invoice.incoterm || ""}</span>
-      </div>
-      <div class="shipment-item">
-        <span class="shipment-item-label">Port of Loading</span>
-        <span class="shipment-item-value">${invoice.portOfLoading || ""}</span>
-      </div>
-      <div class="shipment-item">
-        <span class="shipment-item-label">Port of Discharge</span>
-        <span class="shipment-item-value">${invoice.portOfDischarge || ""}</span>
-      </div>
-      <div class="shipment-item">
-        <span class="shipment-item-label">Country of Origin</span>
-        <span class="shipment-item-value">${invoice.countryOfOrigin || ""}</span>
-      </div>
-      <div class="shipment-item">
-        <span class="shipment-item-label">Mode of Transport</span>
-        <span class="shipment-item-value">${invoice.modeOfTransport || ""}</span>
-      </div>
-    </div>
-
-    <div class="items-section">
-      ${renderSectionTitle("Carton Details")}
-      <table>
-        <thead>
-          <tr>
-            <th>Carton No</th>
-            <th>Marks</th>
-            <th class="text-right">Dimensions (cm)</th>
-            <th class="text-right">Net Wt</th>
-            <th class="text-right">Gross Wt</th>
-            <th class="text-right">CBM</th>
-          </tr>
-        </thead>
-        <tbody>
-          ${normalizedCartons
-            .map((carton: any) => {
-              const dimensions =
-                carton.lengthCm && carton.widthCm && carton.heightCm
-                  ? `${Number(carton.lengthCm).toFixed(2)} × ${Number(carton.widthCm).toFixed(2)} × ${Number(carton.heightCm).toFixed(2)}`
-                  : ""
-
-              return `
+        <div class="items-section">
+          ${renderSectionTitle("Carton Details")}
+          <table>
+            <thead>
               <tr>
-                <td>${carton.cartonNumber ?? ""}</td>
-                <td>${carton.marks || ""}</td>
-                <td class="text-right">${dimensions}</td>
-                <td class="text-right">${Number(carton.netWeightKg || 0).toFixed(3)}</td>
-                <td class="text-right">${Number(carton.grossWeightKg || 0).toFixed(3)}</td>
-                <td class="text-right">${Number(carton.cbm || 0).toFixed(6)}</td>
+                <th>Carton No</th>
+                <th>Marks</th>
+                <th class="text-right">Dimensions (cm)</th>
+                <th class="text-right">Net Wt</th>
+                <th class="text-right">Gross Wt</th>
+                <th class="text-right">CBM</th>
               </tr>
-            `
-            })
-            .join("")}
-        </tbody>
-      </table>
-    </div>
+            </thead>
+            <tbody>
+              ${normalizedCartons
+                .map((carton: any) => {
+                  const dimensions =
+                    carton.lengthCm && carton.widthCm && carton.heightCm
+                      ? `${Number(carton.lengthCm).toFixed(2)} × ${Number(carton.widthCm).toFixed(2)} × ${Number(carton.heightCm).toFixed(2)}`
+                      : ""
 
-    <div class="summary">
-      <div class="summary-box">
-        <div class="summary-row">
-          <span class="summary-label">Total Cartons</span>
-          <span class="summary-value">${totalBoxes}</span>
+                  return `
+                  <tr>
+                    <td>${carton.cartonNumber ?? ""}</td>
+                    <td>${carton.marks || ""}</td>
+                    <td class="text-right">${dimensions}</td>
+                    <td class="text-right">${Number(carton.netWeightKg || 0).toFixed(3)}</td>
+                    <td class="text-right">${Number(carton.grossWeightKg || 0).toFixed(3)}</td>
+                    <td class="text-right">${Number(carton.cbm || 0).toFixed(6)}</td>
+                  </tr>
+                `
+                })
+                .join("")}
+            </tbody>
+          </table>
         </div>
-        <div class="summary-row">
-          <span class="summary-label">Total Net Weight (kg)</span>
-          <span class="summary-value">${totalNetWeight.toFixed(3)}</span>
+      `,
+      summarySection: `
+        <div class="summary">
+          <div class="summary-box">
+            <div class="summary-row">
+              <span class="summary-label">Total Cartons</span>
+              <span class="summary-value">${totalBoxes}</span>
+            </div>
+            <div class="summary-row">
+              <span class="summary-label">Total Net Weight (kg)</span>
+              <span class="summary-value">${totalNetWeight.toFixed(3)}</span>
+            </div>
+            <div class="summary-row">
+              <span class="summary-label">Total Gross Weight (kg)</span>
+              <span class="summary-value">${totalGrossWeight.toFixed(3)}</span>
+            </div>
+            <div class="summary-row divider"></div>
+            <div class="summary-row total">
+              <span class="summary-label">Total CBM</span>
+              <span class="summary-value">${totalCBM.toFixed(6)}</span>
+            </div>
+          </div>
         </div>
-        <div class="summary-row">
-          <span class="summary-label">Total Gross Weight (kg)</span>
-          <span class="summary-value">${totalGrossWeight.toFixed(3)}</span>
+
+        <div class="declaration-block">
+          We hereby certify that the above packing details are true and correct and correspond to the related commercial invoice.
         </div>
-        <div class="summary-row divider"></div>
-        <div class="summary-row total">
-          <span class="summary-label">Total CBM</span>
-          <span class="summary-value">${totalCBM.toFixed(6)}</span>
+
+        <div class="compliance-footer">
+          ${(exporter.iec || exporter.iecNo) ? `
+          <div class="compliance-footer-item">
+            <div class="compliance-footer-label">IEC</div>
+            <div class="compliance-footer-value">${exporter.iec || exporter.iecNo}</div>
+          </div>
+          ` : ""}
+          ${exporter.adCode ? `
+          <div class="compliance-footer-item">
+            <div class="compliance-footer-label">AD Code</div>
+            <div class="compliance-footer-value">${exporter.adCode}</div>
+          </div>
+          ` : ""}
+          ${exporter.exchangeRateRef ? `
+          <div class="compliance-footer-item">
+            <div class="compliance-footer-label">Exchange Rate Ref</div>
+            <div class="compliance-footer-value">${exporter.exchangeRateRef}</div>
+          </div>
+          ` : ""}
+          ${exporter.realizedValue ? `
+          <div class="compliance-footer-item">
+            <div class="compliance-footer-label">Realized Value</div>
+            <div class="compliance-footer-value">${invoice.currency || ""} ${new Intl.NumberFormat("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(exporter.realizedValue)}</div>
+          </div>
+          ` : ""}
+          ${invoice.invoiceNumber ? `
+          <div class="compliance-footer-item">
+            <div class="compliance-footer-label">Invoice Ref</div>
+            <div class="compliance-footer-value">${invoice.invoiceNumber}</div>
+          </div>
+          ` : ""}
+          <div class="compliance-footer-text">This document was prepared in accordance with applicable trade and tax regulations. The exporter certifies the accuracy of information provided and assumes responsibility for compliance with all relevant trade laws.</div>
         </div>
-      </div>
-    </div>
-
-    <div class="declaration-block">
-      We hereby certify that the above packing details are true and correct and correspond to the related commercial invoice.
-    </div>
-
-    ${renderSignatureBlock(exporter)}
-
-    <div class="compliance-footer">
-      ${(exporter.iec || exporter.iecNo) ? `
-      <div class="compliance-footer-item">
-        <div class="compliance-footer-label">IEC</div>
-        <div class="compliance-footer-value">${exporter.iec || exporter.iecNo}</div>
-      </div>
-      ` : ""}
-      ${exporter.adCode ? `
-      <div class="compliance-footer-item">
-        <div class="compliance-footer-label">AD Code</div>
-        <div class="compliance-footer-value">${exporter.adCode}</div>
-      </div>
-      ` : ""}
-      ${exporter.exchangeRateRef ? `
-      <div class="compliance-footer-item">
-        <div class="compliance-footer-label">Exchange Rate Ref</div>
-        <div class="compliance-footer-value">${exporter.exchangeRateRef}</div>
-      </div>
-      ` : ""}
-      ${exporter.realizedValue ? `
-      <div class="compliance-footer-item">
-        <div class="compliance-footer-label">Realized Value</div>
-        <div class="compliance-footer-value">${invoice.currency || ""} ${new Intl.NumberFormat("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(exporter.realizedValue)}</div>
-      </div>
-      ` : ""}
-      ${invoice.invoiceNumber ? `
-      <div class="compliance-footer-item">
-        <div class="compliance-footer-label">Invoice Ref</div>
-        <div class="compliance-footer-value">${invoice.invoiceNumber}</div>
-      </div>
-      ` : ""}
-      <div class="compliance-footer-text">This document was prepared in accordance with applicable trade and tax regulations. The exporter certifies the accuracy of information provided and assumes responsibility for compliance with all relevant trade laws.</div>
-    </div>
-
-    <div class="footer">
-      <div class="footer-content">
-        <span class="footer-item">System Generated</span>
-        <span class="footer-separator">|</span>
-        <span class="footer-item">Document ID: ${auditMetadata.documentId}</span>
-        <span class="footer-separator">|</span>
-        <span class="footer-item footer-hash">Hash: ${auditMetadata.hash}</span>
-      </div>
-    </div>
+      `,
+      footerData: {
+        leadingText: "System Generated",
+        documentId: auditMetadata.documentId,
+        hash: auditMetadata.hash,
+      },
+    })}
   </div>
 </body>
 </html>

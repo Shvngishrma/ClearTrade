@@ -1,6 +1,5 @@
 import { getDocumentAuditMetadata } from "@/lib/auditMetadata"
 import {
-  renderHeaderBlock,
   renderSectionTitle,
   sharedFooterStyles,
   sharedHeaderStyles,
@@ -9,7 +8,8 @@ import {
   sharedSummaryStyles,
   sharedTableStyles,
 } from "@/lib/renderDocumentLayout"
-import { renderSignatureBlock, signatureBlockStyles } from "@/lib/renderSignatureBlock"
+import { signatureBlockStyles } from "@/lib/renderSignatureBlock"
+import { documentSkeletonStyles, renderDocumentSkeleton } from "@/lib/renderDocumentSkeleton"
 import { normalizeShippingBillCargoType } from "@/lib/shippingBillCargoType"
 
 export function generateShippingBillHTML(invoice: any, sb: any, usage?: any): string {
@@ -146,6 +146,7 @@ ${sharedSectionStyles}
 ${sharedTableStyles}
 ${sharedSummaryStyles}
 ${signatureBlockStyles}
+${documentSkeletonStyles}
 ${sharedFooterStyles}
 
     @page {
@@ -253,124 +254,120 @@ ${sharedFooterStyles}
   <div class="document-wrapper">
     <div class="container">
       ${shouldShowWatermark ? `<div class="document-watermark">GENERATED VIA PLATFORM</div>` : ""}
-      ${renderHeaderBlock({
+      ${renderDocumentSkeleton({
         exporter,
-        documentTitle: "SHIPPING BILL (DRAFT)",
-        subtitle: "(For ICEGATE Filing Reference Only)",
-        metadataRows: [
-          { label: "SHIPPING BILL NO:", value: shippingBillNo, valueClass: "invoice-number" },
-          { label: "INVOICE REF:", value: invoice.invoiceNumber || "N/A", valueClass: "invoice-date" },
-          { label: "AD CODE:", value: adCode, valueClass: "header-meta-value" },
-          { label: "PORT OF LOADING:", value: sb?.portOfLoading || invoice.portOfLoading || "N/A", valueClass: "header-meta-value" },
-          { label: "DESTINATION COUNTRY:", value: buyer?.country || "N/A", valueClass: "header-meta-value" },
-          { label: "SCHEME:", value: schemeCode, valueClass: "header-meta-value" },
-          { label: "DATE:", value: formattedExportDate, valueClass: "invoice-date" },
-        ],
+        headerData: {
+          documentTitle: "SHIPPING BILL (DRAFT)",
+          subtitle: "(For ICEGATE Filing Reference Only)",
+          metadataRows: [
+            { label: "SHIPPING BILL NO:", value: shippingBillNo, valueClass: "invoice-number" },
+            { label: "INVOICE REF:", value: invoice.invoiceNumber || "N/A", valueClass: "invoice-date" },
+            { label: "AD CODE:", value: adCode, valueClass: "header-meta-value" },
+            { label: "PORT OF LOADING:", value: sb?.portOfLoading || invoice.portOfLoading || "N/A", valueClass: "header-meta-value" },
+            { label: "DESTINATION COUNTRY:", value: buyer?.country || "N/A", valueClass: "header-meta-value" },
+            { label: "SCHEME:", value: schemeCode, valueClass: "header-meta-value" },
+            { label: "DATE:", value: formattedExportDate, valueClass: "invoice-date" },
+          ],
+        },
+        content: `
+          <div class="info-grid">
+            <div class="info-section">
+              ${renderSectionTitle("Exporter / Shipper")}
+              <div class="info-content">
+                <p><strong>${exporter?.name || "N/A"}</strong></p>
+                <p>${exporter?.address || "Address not provided"}</p>
+                ${exporter?.iec ? `<p><strong>IEC:</strong> ${exporter.iec}</p>` : ""}
+              </div>
+            </div>
+
+            <div class="info-section">
+              ${renderSectionTitle("Buyer / Importer")}
+              <div class="info-content">
+                <p><strong>${buyer?.name || "N/A"}</strong></p>
+                <p>${buyer?.address || "Address not provided"}</p>
+                ${buyer?.country ? `<p><strong>Country:</strong> ${buyer.country}</p>` : ""}
+              </div>
+            </div>
+          </div>
+
+          <div class="shipment-details">
+            <div class="shipment-item">
+              <span class="shipment-item-label">Port of Discharge</span>
+              <span class="shipment-item-value">${sb?.portOfDischarge || invoice.portOfDischarge || "Not specified"}</span>
+            </div>
+            <div class="shipment-item">
+              <span class="shipment-item-label">Cargo Type</span>
+              <span class="shipment-item-value">${cargoType}</span>
+            </div>
+          </div>
+
+          <div class="items-section">
+            ${renderSectionTitle("Goods Details")}
+            <table>
+              <thead>
+                <tr>
+                  <th class="text-serial">Sr</th>
+                  <th class="text-left">Description</th>
+                  <th class="text-monospace">HS Code</th>
+                  <th class="text-numeric">Qty</th>
+                  <th class="text-unit">Unit</th>
+                  <th class="text-numeric">FOB Value</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${(items || [])
+                  .map(
+                    (item: any, idx: number) => `
+                <tr>
+                  <td class="text-serial">${idx + 1}</td>
+                  <td class="text-left">${item.description || "Unspecified"}</td>
+                  <td class="text-monospace">${item.hsCode || "—"}</td>
+                  <td class="text-numeric">${item.quantity || 0}</td>
+                  <td class="text-unit">${item.unit || "PCS"}</td>
+                  <td class="text-numeric">${currency} ${formatMoney(lineValueByItem[idx] || 0)}</td>
+                </tr>`
+                  )
+                  .join("")}
+              </tbody>
+            </table>
+          </div>
+        `,
+        summarySection: `
+          ${renderSectionTitle("Valuation")}
+          <div class="summary">
+            <div class="summary-box">
+              <div class="summary-row">
+                <span class="summary-label">FOB Value:</span>
+                <span class="summary-value">${currency} ${formatMoney(computedFOB)}</span>
+              </div>
+              <div class="summary-row">
+                <span class="summary-label">Freight:</span>
+                <span class="summary-value">${currency} ${formatMoney(freight)}</span>
+              </div>
+              <div class="summary-row">
+                <span class="summary-label">Insurance:</span>
+                <span class="summary-value">${currency} ${formatMoney(insurance)}</span>
+              </div>
+              <div class="summary-row divider"></div>
+              <div class="summary-row total">
+                <span class="summary-label">Total Invoice Value:</span>
+                <span class="summary-value">${currency} ${formatMoney(totalInvoiceValue)}</span>
+              </div>
+            </div>
+          </div>
+
+          ${renderSectionTitle("Declaration")}
+          <p class="declaration">
+            We hereby declare that the particulars given above are true and correct, and the goods are intended for export as per applicable customs and FEMA regulations.
+          </p>
+        `,
+        footerData: {
+          brandName,
+          timestamp: formattedTimestamp,
+          documentId: auditMetadata.documentId,
+          hash: auditMetadata.hash,
+        },
       })}
-
-      <div class="info-grid">
-        <div class="info-section">
-          ${renderSectionTitle("Exporter / Shipper")}
-          <div class="info-content">
-            <p><strong>${exporter?.name || "N/A"}</strong></p>
-            <p>${exporter?.address || "Address not provided"}</p>
-            ${exporter?.iec ? `<p><strong>IEC:</strong> ${exporter.iec}</p>` : ""}
-          </div>
-        </div>
-
-        <div class="info-section">
-          ${renderSectionTitle("Buyer / Importer")}
-          <div class="info-content">
-            <p><strong>${buyer?.name || "N/A"}</strong></p>
-            <p>${buyer?.address || "Address not provided"}</p>
-            ${buyer?.country ? `<p><strong>Country:</strong> ${buyer.country}</p>` : ""}
-          </div>
-        </div>
-      </div>
-
-      <div class="shipment-details">
-        <div class="shipment-item">
-          <span class="shipment-item-label">Port of Discharge</span>
-          <span class="shipment-item-value">${sb?.portOfDischarge || invoice.portOfDischarge || "Not specified"}</span>
-        </div>
-        <div class="shipment-item">
-          <span class="shipment-item-label">Cargo Type</span>
-          <span class="shipment-item-value">${cargoType}</span>
-        </div>
-      </div>
-
-      <div class="items-section">
-        ${renderSectionTitle("Goods Details")}
-        <table>
-          <thead>
-            <tr>
-              <th class="text-serial">Sr</th>
-              <th class="text-left">Description</th>
-              <th class="text-monospace">HS Code</th>
-              <th class="text-numeric">Qty</th>
-              <th class="text-unit">Unit</th>
-              <th class="text-numeric">FOB Value</th>
-            </tr>
-          </thead>
-          <tbody>
-            ${(items || [])
-              .map(
-                (item: any, idx: number) => `
-            <tr>
-              <td class="text-serial">${idx + 1}</td>
-              <td class="text-left">${item.description || "Unspecified"}</td>
-              <td class="text-monospace">${item.hsCode || "—"}</td>
-              <td class="text-numeric">${item.quantity || 0}</td>
-              <td class="text-unit">${item.unit || "PCS"}</td>
-              <td class="text-numeric">${currency} ${formatMoney(lineValueByItem[idx] || 0)}</td>
-            </tr>`
-              )
-              .join("")}
-          </tbody>
-        </table>
-      </div>
-
-      ${renderSectionTitle("Valuation")}
-      <div class="summary">
-        <div class="summary-box">
-          <div class="summary-row">
-            <span class="summary-label">FOB Value:</span>
-            <span class="summary-value">${currency} ${formatMoney(computedFOB)}</span>
-          </div>
-          <div class="summary-row">
-            <span class="summary-label">Freight:</span>
-            <span class="summary-value">${currency} ${formatMoney(freight)}</span>
-          </div>
-          <div class="summary-row">
-            <span class="summary-label">Insurance:</span>
-            <span class="summary-value">${currency} ${formatMoney(insurance)}</span>
-          </div>
-          <div class="summary-row divider"></div>
-          <div class="summary-row total">
-            <span class="summary-label">Total Invoice Value:</span>
-            <span class="summary-value">${currency} ${formatMoney(totalInvoiceValue)}</span>
-          </div>
-        </div>
-      </div>
-
-      ${renderSignatureBlock(exporter)}
-
-      ${renderSectionTitle("Declaration")}
-      <p class="declaration">
-        We hereby declare that the particulars given above are true and correct, and the goods are intended for export as per applicable customs and FEMA regulations.
-      </p>
-
-      <div class="footer">
-        <div class="footer-content">
-          <span class="footer-item footer-brand">Generated by ${brandName}</span>
-          <span class="footer-separator">|</span>
-          <span class="footer-item">Timestamp: ${formattedTimestamp}</span>
-          <span class="footer-separator">|</span>
-          <span class="footer-item">Document ID: ${auditMetadata.documentId}</span>
-          <span class="footer-separator">|</span>
-          <span class="footer-item footer-hash">Hash: ${auditMetadata.hash}</span>
-        </div>
-      </div>
     </div>
   </div>
 </body>

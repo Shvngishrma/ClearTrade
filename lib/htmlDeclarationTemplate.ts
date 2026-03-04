@@ -1,13 +1,13 @@
 import { getDocumentAuditMetadata } from "@/lib/auditMetadata"
-import { renderSignatureBlock, signatureBlockStyles } from "@/lib/renderSignatureBlock"
+import { signatureBlockStyles } from "@/lib/renderSignatureBlock"
 import {
-  renderHeaderBlock,
   renderSectionTitle,
   sharedFooterStyles,
   sharedHeaderStyles,
   sharedPageStyles,
   sharedSectionStyles,
 } from "@/lib/renderDocumentLayout"
+import { documentSkeletonStyles, renderDocumentSkeleton } from "@/lib/renderDocumentSkeleton"
 
 const declarationClauses = [
   "Goods exported are as per invoice and accompanying export documents.",
@@ -46,57 +46,54 @@ export function generateDeclarationHTML(invoice: any): string {
 ${sharedHeaderStyles}
 ${sharedSectionStyles}
 ${signatureBlockStyles}
+${documentSkeletonStyles}
 ${sharedFooterStyles}
   </style>
 </head>
 <body>
   <div class="container">
-    ${renderHeaderBlock({
+    ${renderDocumentSkeleton({
       exporter: layoutExporter,
-      documentTitle: "EXPORT DECLARATION",
-      subtitle: "(Under FEMA Regulations)",
-      metadataRows: [
-        { label: "INVOICE REF:", value: invoice?.invoiceNumber || "N/A", valueClass: "invoice-number" },
-        { label: "DATE:", value: declarationDate, valueClass: "invoice-date" },
-      ],
+      headerData: {
+        documentTitle: "EXPORT DECLARATION",
+        subtitle: "(Under FEMA Regulations)",
+        metadataRows: [
+          { label: "INVOICE REF:", value: invoice?.invoiceNumber || "N/A", valueClass: "invoice-number" },
+          { label: "DATE:", value: declarationDate, valueClass: "invoice-date" },
+        ],
+      },
+      content: `
+        <div class="info-grid">
+          <div class="info-section">
+            ${renderSectionTitle("Exporter / Shipper")}
+            <div class="info-content">
+              <p><strong>${layoutExporter?.name || "N/A"}</strong></p>
+              <p>${layoutExporter?.address || "Address not provided"}</p>
+              ${layoutExporter?.iec ? `<p><strong>IEC:</strong> ${layoutExporter.iec}</p>` : ""}
+            </div>
+          </div>
+
+          <div class="info-section">
+            ${renderSectionTitle("Buyer / Importer")}
+            <div class="info-content">
+              <p><strong>${buyer?.name || "N/A"}</strong></p>
+              <p>${buyer?.address || "Address not provided"}</p>
+              ${buyer?.country ? `<p><strong>Country:</strong> ${buyer.country}</p>` : ""}
+            </div>
+          </div>
+        </div>
+
+        ${renderSectionTitle("Declaration")}
+        <div class="info-content">
+          ${declarationClauses.map((clause) => `<p>• ${clause}</p>`).join("")}
+        </div>
+      `,
+      footerData: {
+        leadingText: "System Generated",
+        documentId: auditMetadata.documentId,
+        hash: auditMetadata.hash,
+      },
     })}
-
-    <div class="info-grid">
-      <div class="info-section">
-        ${renderSectionTitle("Exporter / Shipper")}
-        <div class="info-content">
-          <p><strong>${layoutExporter?.name || "N/A"}</strong></p>
-          <p>${layoutExporter?.address || "Address not provided"}</p>
-          ${layoutExporter?.iec ? `<p><strong>IEC:</strong> ${layoutExporter.iec}</p>` : ""}
-        </div>
-      </div>
-
-      <div class="info-section">
-        ${renderSectionTitle("Buyer / Importer")}
-        <div class="info-content">
-          <p><strong>${buyer?.name || "N/A"}</strong></p>
-          <p>${buyer?.address || "Address not provided"}</p>
-          ${buyer?.country ? `<p><strong>Country:</strong> ${buyer.country}</p>` : ""}
-        </div>
-      </div>
-    </div>
-
-    ${renderSectionTitle("Declaration")}
-    <div class="info-content">
-      ${declarationClauses.map((clause) => `<p>• ${clause}</p>`).join("")}
-    </div>
-
-    ${renderSignatureBlock(layoutExporter)}
-
-    <div class="footer">
-      <div class="footer-content">
-        <span class="footer-item">System Generated</span>
-        <span class="footer-separator">|</span>
-        <span class="footer-item">Document ID: ${auditMetadata.documentId}</span>
-        <span class="footer-separator">|</span>
-        <span class="footer-item footer-hash">Hash: ${auditMetadata.hash}</span>
-      </div>
-    </div>
   </div>
 </body>
 </html>

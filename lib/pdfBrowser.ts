@@ -61,9 +61,23 @@ export async function launchBrowser() {
 
 export async function renderHtmlToPdfA4AutoScale(htmlContent: string): Promise<Uint8Array> {
   const browser: any = await launchBrowser()
+  const A4_HEIGHT_PX = 1122
   const a4PageCss = `
-    @page { size: A4; margin: 20mm; }
-    html, body { width: 100%; }
+    @page { size: A4; margin: 0; }
+    html, body {
+      width: 210mm;
+      min-height: 297mm;
+      margin: 0;
+      padding: 0;
+    }
+
+    .signature-block,
+    .footer,
+    .summary,
+    .items-section {
+      page-break-inside: avoid;
+      break-inside: avoid;
+    }
   `
 
   try {
@@ -76,17 +90,25 @@ export async function renderHtmlToPdfA4AutoScale(htmlContent: string): Promise<U
 
       await page.addStyleTag({ content: a4PageCss })
 
+      const contentHeightPx = await page.evaluate(() => {
+        const bodyHeight = document.body.scrollHeight
+        const htmlHeight = document.documentElement.scrollHeight
+        return Math.max(bodyHeight, htmlHeight)
+      })
+
+      const fitScale = Math.max(0.72, Math.min(1, A4_HEIGHT_PX / contentHeightPx))
+
       const pdfData = (await page.pdf({
         format: "A4",
         preferCSSPageSize: false,
         margin: {
-          top: "20mm",
-          right: "20mm",
-          bottom: "20mm",
-          left: "20mm",
+          top: "0mm",
+          right: "0mm",
+          bottom: "0mm",
+          left: "0mm",
         },
         printBackground: true,
-        scale: 0.94,
+        scale: fitScale,
       })) as Uint8Array
 
       return new Uint8Array(pdfData)
