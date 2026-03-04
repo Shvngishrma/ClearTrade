@@ -4,16 +4,31 @@ import { useEffect, useState } from "react"
 import { useSession } from "next-auth/react"
 import Link from "next/link"
 import PrimaryButton from "../../components/PrimaryButton"
+import { useRouter } from "next/navigation"
+import RazorpayCheckout from "../../components/RazorpayCheckout"
 
 export default function PricingPage() {
   const { data: session, status } = useSession()
   const [loading, setLoading] = useState(true)
+  const router = useRouter()
+  const [paymentError, setPaymentError] = useState<string | null>(null)
 
   useEffect(() => {
     if (status !== "loading") {
       setLoading(false)
     }
   }, [status])
+
+  const handlePaymentSuccess = () => {
+    setPaymentError(null)
+    setTimeout(() => {
+      router.push("/dashboard")
+    }, 1500)
+  }
+
+  const handlePaymentError = (message: string) => {
+    setPaymentError(message)
+  }
 
   function renderCTA() {
     if (loading) {
@@ -25,7 +40,17 @@ export default function PricingPage() {
     }
 
     if (session?.user && !(session.user as any).isPro) {
-      return <PrimaryButton href="/pricing">Upgrade to Pro</PrimaryButton>
+        return (
+          <RazorpayCheckout
+            amount={999}
+            customerName={(session.user as any).name || ""}
+            customerEmail={(session.user as any).email || ""}
+            buttonLabel="Upgrade to Pro (₹999/month)"
+            onPaymentSuccess={handlePaymentSuccess}
+            onPaymentError={handlePaymentError}
+            className="w-full px-6 py-3 rounded-lg bg-gray-900 text-white hover:bg-gray-800 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-zinc-200 disabled:opacity-60 disabled:cursor-not-allowed inline-block text-center font-medium transition-colors"
+          />
+        )
     }
 
     return (
@@ -51,6 +76,12 @@ export default function PricingPage() {
           <p className="text-center text-gray-500 dark:text-zinc-400 mb-10 max-w-2xl mx-auto">
             Start free. Upgrade for unlimited generation and professional document workflows.
           </p>
+
+          {paymentError && (
+            <div className="mb-6 max-w-2xl mx-auto bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-xl p-4">
+              <p className="text-red-800 dark:text-red-200 text-sm font-medium">{paymentError}</p>
+            </div>
+          )}
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
             {/* Free */}
