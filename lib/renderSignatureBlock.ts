@@ -6,8 +6,6 @@ export const signatureBlockStyles = `
       justify-content: flex-end;
       page-break-inside: avoid;
       break-inside: avoid;
-      page-break-before: avoid;
-      break-before: avoid;
     }
 
     .signature-container {
