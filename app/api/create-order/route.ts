@@ -37,10 +37,12 @@ export async function POST(req: Request) {
       )
     }
 
+    const receipt = `ct_${String(user.id).slice(0, 8)}_${Date.now().toString().slice(-10)}`
+
     const order = await razorpay.orders.create({
       amount: Math.round(amount * 100),
       currency: "INR",
-      receipt: `cleartrade_${user.id}_${Date.now()}`,
+      receipt,
       notes: {
         userId: user.id,
         product: "Cleartrade Pro",
