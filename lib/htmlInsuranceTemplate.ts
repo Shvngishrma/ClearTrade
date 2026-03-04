@@ -134,7 +134,7 @@ ${sharedFooterStyles}
         </div>
       </div>
 
-      <div class="info-grid" style="margin-bottom: 18px;">
+      <div class="info-grid" style="margin-bottom: 12px;">
         <div class="info-section">
           ${renderSectionTitle("Goods Insured")}
           <div class="info-content">
@@ -153,7 +153,7 @@ ${sharedFooterStyles}
         </div>
       </div>
 
-      <table style="margin-top: 18px;">
+      <table style="margin-top: 12px;">
         <thead>
           <tr>
             <th class="text-serial">Sr</th>
@@ -177,7 +177,7 @@ ${sharedFooterStyles}
         </tbody>
       </table>
 
-      <div class="summary">
+      <div class="summary" style="margin-top: 20px; margin-bottom: 16px;">
         <div class="summary-box">
           <div class="summary-row divider"></div>
           <div class="summary-row total">
