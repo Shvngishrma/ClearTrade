@@ -13,6 +13,7 @@ import { generateShippingBillHTML } from "@/lib/htmlShippingBillTemplate"
 import { generateDeclarationHTML } from "@/lib/htmlDeclarationTemplate"
 import { generateCertificateOfOriginHTML } from "@/lib/htmlCertificateOfOriginTemplate"
 import { generateInsuranceHTML } from "@/lib/htmlInsuranceTemplate"
+import { generateLetterOfCreditHTML } from "@/lib/htmlLCTemplate"
 import { validateBeforeRelease } from "@/lib/preSubmissionValidationGate"
 import { nonRestrictedTemplate } from "@/lib/templates/nonRestricted"
 import { femaAdvanceTemplate } from "@/lib/templates/femaAdvance"
@@ -353,6 +354,18 @@ export async function generateLetterOfCreditPdfBuffer(
     })
   }
 
-  const pdf = await generateLetterOfCreditPDF(invoice, invoice.lettersOfCredit[0], options.usage)
-  return toPdfBuffer(pdf)
+  try {
+    const htmlContent = generateLetterOfCreditHTML(invoice, invoice.lettersOfCredit[0])
+    return await renderHtmlToPdfA4AutoScale(htmlContent)
+  } catch (puppeteerError) {
+    console.error("[documentPdfService] Letter of Credit Puppeteer error, falling back to pdf-lib", {
+      message: puppeteerError instanceof Error ? puppeteerError.message : String(puppeteerError),
+      stack: puppeteerError instanceof Error ? puppeteerError.stack : undefined,
+      name: (puppeteerError as any)?.name,
+      invoiceId,
+    })
+
+    const pdf = await generateLetterOfCreditPDF(invoice, invoice.lettersOfCredit[0], options.usage)
+    return toPdfBuffer(pdf)
+  }
 }

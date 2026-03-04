@@ -367,9 +367,14 @@ export async function generateDeclarationDOCX(invoice: any) {
 }
 
 export async function generateLetterOfCreditSummaryDOCX(invoice: any, lc: any) {
-  const shipmentDeadline = lc?.latestShipmentDate
-    ? new Date(lc.latestShipmentDate).toLocaleDateString("en-GB")
+  const shipmentDeadlineValue = lc?.shipmentDeadline || lc?.latestShipmentDate
+  const shipmentDeadline = shipmentDeadlineValue
+    ? new Date(shipmentDeadlineValue).toLocaleDateString("en-GB")
     : "N/A"
+
+  const lcCurrency = lc?.lcCurrency || invoice.currency || "N/A"
+  const lcAmount = Number(lc?.lcAmount || invoice.totalValue || 0)
+
   const tolerance =
     lc?.tolerancePercent === null || lc?.tolerancePercent === undefined
       ? "N/A"
@@ -380,10 +385,10 @@ export async function generateLetterOfCreditSummaryDOCX(invoice: any, lc: any) {
     kv("LC No", lc?.lcNumber || "N/A"),
     kv("Issuing Bank", lc?.issuingBank || "N/A"),
     kv("Advising Bank", lc?.advisingBank || "N/A"),
-    kv("Currency", invoice.currency || "N/A"),
-    kv("Amount", `${invoice.currency || "USD"} ${Number(lc?.lcAmount || invoice.totalValue || 0).toFixed(2)}`),
+    kv("Currency", lcCurrency),
+    kv("Amount", `${lcCurrency} ${lcAmount.toFixed(2)}`),
     kv("Shipment Deadline", shipmentDeadline),
-    kv("Presentation Period", `${Number(lc?.presentationDays || 45)} days`),
+    kv("Presentation Period", `${Number(lc?.presentationPeriodDays || lc?.presentationDays || 45)} days`),
     kv("Partial Shipment Allowed", lc?.partialShipmentAllowed ? "Yes" : "No"),
     kv("Tolerance", tolerance),
     new Paragraph("This document summarizes LC terms for internal validation reference."),

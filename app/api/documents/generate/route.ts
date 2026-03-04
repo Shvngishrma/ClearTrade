@@ -53,6 +53,46 @@ export async function POST(req: Request) {
     const normalizedBlOrAwbNumber = (sharedDetails?.blOrAwbNumber || "").trim()
     const normalizedContainerNumber = (sharedDetails?.containerNumber || "").trim()
     const normalizedMarksAndNumbers = (sharedDetails?.marksAndNumbers || "").trim()
+    const lcDetails = docDetails?.lc || {}
+
+    const normalizedLcNumber = String(lcDetails?.lcNumber || "").trim()
+    const normalizedIssuingBank = String(lcDetails?.issuingBank || "").trim()
+    const normalizedAdvisingBank = String(lcDetails?.advisingBank || "").trim()
+    const normalizedLcCurrency = String(lcDetails?.lcCurrency || sharedDetails?.currency || "").trim().toUpperCase()
+
+    const parsedLcAmount = lcDetails?.lcAmount !== undefined && lcDetails?.lcAmount !== ""
+      ? Number(lcDetails.lcAmount)
+      : undefined
+
+    const parsedShipmentDeadline = lcDetails?.shipmentDeadline
+      ? new Date(lcDetails.shipmentDeadline)
+      : undefined
+
+    const parsedPresentationPeriodDaysRaw =
+      lcDetails?.presentationPeriodDays !== undefined && lcDetails?.presentationPeriodDays !== ""
+        ? Number(lcDetails.presentationPeriodDays)
+        : lcDetails?.presentationDays !== undefined && lcDetails?.presentationDays !== ""
+          ? Number(lcDetails.presentationDays)
+          : 21
+
+    const parsedPresentationPeriodDays = Number.isFinite(parsedPresentationPeriodDaysRaw)
+      ? Math.trunc(parsedPresentationPeriodDaysRaw)
+      : 21
+
+    const parsedPartialShipmentAllowed =
+      typeof lcDetails?.partialShipmentAllowed === "string"
+        ? lcDetails.partialShipmentAllowed.toLowerCase() === "yes" || lcDetails.partialShipmentAllowed === "true"
+        : Boolean(lcDetails?.partialShipmentAllowed)
+
+    const parsedTolerancePercentRaw =
+      lcDetails?.tolerancePercent !== undefined && lcDetails?.tolerancePercent !== ""
+        ? Number(lcDetails.tolerancePercent)
+        : 0
+    const parsedTolerancePercent = Number.isFinite(parsedTolerancePercentRaw) ? parsedTolerancePercentRaw : 0
+
+    const parsedLcExpiryDate = lcDetails?.lcExpiryDate
+      ? new Date(lcDetails.lcExpiryDate)
+      : undefined
 
     const requiresPackingList = Array.isArray(selectedDocs) && selectedDocs.includes("packingList")
     const rawCartons = Array.isArray(docDetails?.packingList?.cartons)
@@ -243,7 +283,7 @@ export async function POST(req: Request) {
       paymentTerms: sharedDetails.paymentTerms,
       currency: sharedDetails.currency,
       incoterm: sharedDetails.incoterm,
-      lcNumber: docDetails.lc?.lcNumber,
+      lcNumber: normalizedLcNumber,
       portOfLoading: sharedDetails.portOfLoading,
       portOfDischarge: sharedDetails.portOfDischarge,
       countryOfOrigin: normalizedCountryOfOrigin,
@@ -293,12 +333,12 @@ export async function POST(req: Request) {
     userId: user.id,
     
     // LC data
-    lcNumber: docDetails.lc?.lcNumber,
-    lcAmount: docDetails.lc?.lcAmount,
-    lcCurrency: docDetails.lc?.lcCurrency || sharedDetails.currency,
-    lcIssueDate: docDetails.lc?.lcIssueDate ? new Date(docDetails.lc.lcIssueDate) : undefined,
-    lcExpiryDate: docDetails.lc?.lcExpiryDate ? new Date(docDetails.lc.lcExpiryDate) : undefined,
-    lcPresentationDays: docDetails.lc?.presentationDays || 45,
+    lcNumber: normalizedLcNumber,
+    lcAmount: parsedLcAmount,
+    lcCurrency: normalizedLcCurrency || sharedDetails.currency,
+    lcIssueDate: lcDetails?.lcIssueDate ? new Date(lcDetails.lcIssueDate) : undefined,
+    lcExpiryDate: parsedLcExpiryDate,
+    lcPresentationDays: parsedPresentationPeriodDays,
     
     // Invoice data
     buyerName: sharedDetails.buyerName,
@@ -532,7 +572,7 @@ export async function POST(req: Request) {
             totalValueINR: calculations.totalValueINR,
             exchangeRateDate: sharedDetails.exchangeRateDate ? new Date(sharedDetails.exchangeRateDate) : new Date(),
             isLC: selectedDocs.includes("lc"),
-            lcNumber: docDetails.lc?.lcNumber || null,
+            lcNumber: normalizedLcNumber || null,
             exporterId: exporter.id,
             buyerId: buyer.id,
             items: {
@@ -655,10 +695,89 @@ export async function POST(req: Request) {
   }
 
   if (selectedDocs.includes("lc")) {
+    const lcValidationErrors: string[] = []
+
+    if (!normalizedLcNumber) {
+      lcValidationErrors.push("LC number is required.")
+    }
+    if (!normalizedIssuingBank) {
+      lcValidationErrors.push("Issuing bank is required.")
+    }
+    if (!normalizedAdvisingBank) {
+      lcValidationErrors.push("Advising bank is required.")
+    }
+    if (!normalizedLcCurrency) {
+      lcValidationErrors.push("LC currency is required.")
+    }
+    if (!Number.isFinite(parsedLcAmount) || (parsedLcAmount as number) <= 0) {
+      lcValidationErrors.push("LC amount must be a positive number.")
+    }
+    if (!parsedShipmentDeadline || Number.isNaN(parsedShipmentDeadline.getTime())) {
+      lcValidationErrors.push("Shipment deadline is required.")
+    }
+    if (!parsedLcExpiryDate || Number.isNaN(parsedLcExpiryDate.getTime())) {
+      lcValidationErrors.push("LC expiry date is required.")
+    }
+    if (!Number.isFinite(parsedPresentationPeriodDays) || parsedPresentationPeriodDays <= 0) {
+      lcValidationErrors.push("Presentation period must be a positive number of days.")
+    }
+    if (!Number.isFinite(parsedTolerancePercent) || parsedTolerancePercent < 0 || parsedTolerancePercent > 10) {
+      lcValidationErrors.push("Tolerance percent must be between 0 and 10.")
+    }
+
+    const invoiceBaseValue = Number(calculations.totalValue || 0)
+    if (
+      Number.isFinite(parsedLcAmount) &&
+      (parsedLcAmount as number) > 0 &&
+      Number.isFinite(parsedTolerancePercent) &&
+      parsedTolerancePercent >= 0 &&
+      invoiceBaseValue > 0
+    ) {
+      const minimumAllowed = invoiceBaseValue * (1 - parsedTolerancePercent / 100)
+      const maximumAllowed = invoiceBaseValue * (1 + parsedTolerancePercent / 100)
+      if ((parsedLcAmount as number) < minimumAllowed || (parsedLcAmount as number) > maximumAllowed) {
+        lcValidationErrors.push(
+          `LC amount must be within ±${parsedTolerancePercent.toFixed(2)}% of invoice base value (${minimumAllowed.toFixed(2)} - ${maximumAllowed.toFixed(2)}).`
+        )
+      }
+    }
+
+    if (
+      parsedShipmentDeadline &&
+      parsedLcExpiryDate &&
+      !Number.isNaN(parsedShipmentDeadline.getTime()) &&
+      !Number.isNaN(parsedLcExpiryDate.getTime()) &&
+      parsedLcExpiryDate.getTime() < parsedShipmentDeadline.getTime()
+    ) {
+      lcValidationErrors.push("LC expiry date cannot be earlier than shipment deadline.")
+    }
+
+    if (lcValidationErrors.length > 0) {
+      return new NextResponse(
+        JSON.stringify({
+          error: "VALIDATION_ERROR",
+          message: lcValidationErrors[0],
+          errors: lcValidationErrors.map((message) => ({ field: "docDetails.lc", message })),
+        }),
+        { status: 400, headers: { "Content-Type": "application/json" } }
+      )
+    }
+
     await prisma.letterOfCredit.create({
       data: {
         invoiceId: invoice.id,
-        lcNumber: docDetails.lc.lcNumber,
+        lcNumber: normalizedLcNumber,
+        issuingBank: normalizedIssuingBank,
+        advisingBank: normalizedAdvisingBank,
+        lcCurrency: normalizedLcCurrency,
+        lcAmount: parsedLcAmount,
+        shipmentDeadline: parsedShipmentDeadline,
+        presentationPeriodDays: parsedPresentationPeriodDays,
+        partialShipmentAllowed: parsedPartialShipmentAllowed,
+        tolerancePercent: parsedTolerancePercent,
+        lcExpiryDate: parsedLcExpiryDate,
+        latestShipmentDate: parsedShipmentDeadline || new Date(),
+        presentationDays: parsedPresentationPeriodDays,
       },
     })
   }

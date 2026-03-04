@@ -95,6 +95,15 @@ function DocumentsPage() {
     },
     lc: {
       lcNumber: "",
+      issuingBank: "",
+      advisingBank: "",
+      lcCurrency: "USD",
+      lcAmount: "",
+      shipmentDeadline: "",
+      presentationPeriodDays: 21,
+      partialShipmentAllowed: false,
+      tolerancePercent: 0,
+      lcExpiryDate: "",
     },
   })
 
@@ -129,6 +138,14 @@ function DocumentsPage() {
     portOfLoading?: string
     portOfDischarge?: string
     lcNumber?: string
+    issuingBank?: string
+    advisingBank?: string
+    lcCurrency?: string
+    lcAmount?: string
+    shipmentDeadline?: string
+    presentationPeriodDays?: string
+    tolerancePercent?: string
+    lcExpiryDate?: string
     chamberName?: string
     registrationNumber?: string
     policyNumber?: string
@@ -477,8 +494,66 @@ function DocumentsPage() {
       errors.paymentTerms = "Payment term must be Advance, LC, DA, DP, COD, or Credit."
     }
 
-    if (sharedDetails.paymentTerms === "LC" && !docDetails.lc?.lcNumber?.trim()) {
+    const lcRequired = sharedDetails.paymentTerms === "LC" || selectedDocs.includes("lc")
+    if (lcRequired && !docDetails.lc?.lcNumber?.trim()) {
       errors.lcNumber = "LC number is required when payment term is LC."
+    }
+
+    if (lcRequired && !docDetails.lc?.issuingBank?.trim()) {
+      errors.issuingBank = "Issuing bank is required."
+    }
+
+    if (lcRequired && !docDetails.lc?.advisingBank?.trim()) {
+      errors.advisingBank = "Advising bank is required."
+    }
+
+    if (lcRequired && !docDetails.lc?.lcCurrency?.trim()) {
+      errors.lcCurrency = "LC currency is required."
+    }
+
+    if (lcRequired) {
+      const lcAmount = Number(docDetails.lc?.lcAmount)
+      if (!Number.isFinite(lcAmount) || lcAmount <= 0) {
+        errors.lcAmount = "LC amount must be a positive number."
+      }
+
+      if (!docDetails.lc?.shipmentDeadline) {
+        errors.shipmentDeadline = "Shipment deadline is required."
+      }
+
+      const presentationPeriodDays = Number(docDetails.lc?.presentationPeriodDays)
+      if (!Number.isFinite(presentationPeriodDays) || presentationPeriodDays <= 0) {
+        errors.presentationPeriodDays = "Presentation period must be a positive number of days."
+      }
+
+      const tolerancePercent = Number(docDetails.lc?.tolerancePercent)
+      if (!Number.isFinite(tolerancePercent) || tolerancePercent < 0 || tolerancePercent > 10) {
+        errors.tolerancePercent = "Tolerance percent must be between 0 and 10."
+      }
+
+      if (Number.isFinite(lcAmount) && lcAmount > 0 && totalValue > 0) {
+        const normalizedTolerance = Number.isFinite(tolerancePercent) && tolerancePercent >= 0
+          ? tolerancePercent
+          : 0
+        const minimumAllowed = totalValue * (1 - normalizedTolerance / 100)
+        const maximumAllowed = totalValue * (1 + normalizedTolerance / 100)
+
+        if (lcAmount < minimumAllowed || lcAmount > maximumAllowed) {
+          errors.lcAmount = `LC amount must be within ±${normalizedTolerance.toFixed(2)}% of invoice base value (${minimumAllowed.toFixed(2)} - ${maximumAllowed.toFixed(2)}).`
+        }
+      }
+
+      if (!docDetails.lc?.lcExpiryDate) {
+        errors.lcExpiryDate = "LC expiry date is required."
+      }
+
+      if (docDetails.lc?.shipmentDeadline && docDetails.lc?.lcExpiryDate) {
+        const shipmentDeadline = new Date(docDetails.lc.shipmentDeadline)
+        const lcExpiryDate = new Date(docDetails.lc.lcExpiryDate)
+        if (lcExpiryDate.getTime() < shipmentDeadline.getTime()) {
+          errors.lcExpiryDate = "LC expiry date cannot be earlier than shipment deadline."
+        }
+      }
     }
 
     if (selectedDocs.includes("coo")) {
@@ -600,6 +675,14 @@ function DocumentsPage() {
       errors.portOfLoading ||
       errors.portOfDischarge ||
       errors.lcNumber ||
+      errors.issuingBank ||
+      errors.advisingBank ||
+      errors.lcCurrency ||
+      errors.lcAmount ||
+      errors.shipmentDeadline ||
+      errors.presentationPeriodDays ||
+      errors.tolerancePercent ||
+      errors.lcExpiryDate ||
       errors.chamberName ||
       errors.registrationNumber ||
       errors.exporterGSTIN ||
@@ -633,6 +716,15 @@ function DocumentsPage() {
     docDetails.coo?.chamberName,
     docDetails.insurance?.insuredValue,
     docDetails.lc?.lcNumber,
+    docDetails.lc?.issuingBank,
+    docDetails.lc?.advisingBank,
+    docDetails.lc?.lcCurrency,
+    docDetails.lc?.lcAmount,
+    docDetails.lc?.shipmentDeadline,
+    docDetails.lc?.presentationPeriodDays,
+    docDetails.lc?.partialShipmentAllowed,
+    docDetails.lc?.tolerancePercent,
+    docDetails.lc?.lcExpiryDate,
     loadingPortOptions,
     dischargePortOptions,
   ])
@@ -1569,20 +1661,207 @@ function DocumentsPage() {
               {selectedDocs.includes("lc") && (
                 <div>
                   <h3 className="font-medium mb-4">Letter of Credit</h3>
-                  <input
-                    placeholder="LC number"
-                    className={`border rounded-md px-3 py-2 w-full ${fieldErrors.lcNumber ? "border-red-500" : ""}`}
-                    value={docDetails.lc.lcNumber}
-                    onChange={e =>
-                      setDocDetails({
-                        ...docDetails,
-                        lc: { lcNumber: e.target.value },
-                      })
-                    }
-                  />
-                  {fieldErrors.lcNumber && (
-                    <p className="text-xs text-red-500 mt-1">{fieldErrors.lcNumber}</p>
-                  )}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                      <input
+                        placeholder="LC number"
+                        className={`border rounded-md px-3 py-2 w-full ${fieldErrors.lcNumber ? "border-red-500" : ""}`}
+                        value={docDetails.lc.lcNumber}
+                        onChange={e =>
+                          setDocDetails({
+                            ...docDetails,
+                            lc: { ...docDetails.lc, lcNumber: e.target.value },
+                          })
+                        }
+                      />
+                      {fieldErrors.lcNumber && (
+                        <p className="text-xs text-red-500 mt-1">{fieldErrors.lcNumber}</p>
+                      )}
+                    </div>
+
+                    <div>
+                      <input
+                        placeholder="Issuing bank"
+                        className={`border rounded-md px-3 py-2 w-full ${fieldErrors.issuingBank ? "border-red-500" : ""}`}
+                        value={docDetails.lc.issuingBank}
+                        onChange={e =>
+                          setDocDetails({
+                            ...docDetails,
+                            lc: { ...docDetails.lc, issuingBank: e.target.value },
+                          })
+                        }
+                      />
+                      {fieldErrors.issuingBank && (
+                        <p className="text-xs text-red-500 mt-1">{fieldErrors.issuingBank}</p>
+                      )}
+                    </div>
+
+                    <div>
+                      <input
+                        placeholder="Advising bank"
+                        className={`border rounded-md px-3 py-2 w-full ${fieldErrors.advisingBank ? "border-red-500" : ""}`}
+                        value={docDetails.lc.advisingBank}
+                        onChange={e =>
+                          setDocDetails({
+                            ...docDetails,
+                            lc: { ...docDetails.lc, advisingBank: e.target.value },
+                          })
+                        }
+                      />
+                      {fieldErrors.advisingBank && (
+                        <p className="text-xs text-red-500 mt-1">{fieldErrors.advisingBank}</p>
+                      )}
+                    </div>
+
+                    <div>
+                      <select
+                        className={`border rounded-md px-3 py-2 w-full ${fieldErrors.lcCurrency ? "border-red-500" : ""}`}
+                        value={docDetails.lc.lcCurrency}
+                        onChange={e =>
+                          setDocDetails({
+                            ...docDetails,
+                            lc: { ...docDetails.lc, lcCurrency: e.target.value },
+                          })
+                        }
+                      >
+                        <option value="USD">USD ($)</option>
+                        <option value="EUR">EUR (€)</option>
+                        <option value="GBP">GBP (£)</option>
+                        <option value="INR">INR (₹)</option>
+                        <option value="AED">AED</option>
+                        <option value="JPY">JPY (¥)</option>
+                        <option value="CNY">CNY (¥)</option>
+                        <option value="CHF">CHF</option>
+                        <option value="CAD">CAD ($)</option>
+                        <option value="AUD">AUD ($)</option>
+                      </select>
+                      {fieldErrors.lcCurrency && (
+                        <p className="text-xs text-red-500 mt-1">{fieldErrors.lcCurrency}</p>
+                      )}
+                    </div>
+
+                    <div>
+                      <input
+                        type="number"
+                        min="0"
+                        step="0.01"
+                        placeholder="LC amount"
+                        className={`border rounded-md px-3 py-2 w-full ${fieldErrors.lcAmount ? "border-red-500" : ""}`}
+                        value={docDetails.lc.lcAmount}
+                        onChange={e =>
+                          setDocDetails({
+                            ...docDetails,
+                            lc: { ...docDetails.lc, lcAmount: e.target.value },
+                          })
+                        }
+                      />
+                      {fieldErrors.lcAmount && (
+                        <p className="text-xs text-red-500 mt-1">{fieldErrors.lcAmount}</p>
+                      )}
+                    </div>
+
+                    <div>
+                      <input
+                        type="date"
+                        className={`border rounded-md px-3 py-2 w-full ${fieldErrors.shipmentDeadline ? "border-red-500" : ""}`}
+                        value={docDetails.lc.shipmentDeadline}
+                        onChange={e =>
+                          setDocDetails({
+                            ...docDetails,
+                            lc: { ...docDetails.lc, shipmentDeadline: e.target.value },
+                          })
+                        }
+                      />
+                      {fieldErrors.shipmentDeadline && (
+                        <p className="text-xs text-red-500 mt-1">{fieldErrors.shipmentDeadline}</p>
+                      )}
+                    </div>
+
+                    <div>
+                      <label className="block text-xs text-gray-500 mb-1">Presentation period (days)</label>
+                      <input
+                        type="number"
+                        min="1"
+                        step="1"
+                        placeholder="Presentation period (days)"
+                        className={`border rounded-md px-3 py-2 w-full ${fieldErrors.presentationPeriodDays ? "border-red-500" : ""}`}
+                        value={docDetails.lc.presentationPeriodDays}
+                        onChange={e =>
+                          setDocDetails({
+                            ...docDetails,
+                            lc: {
+                              ...docDetails.lc,
+                              presentationPeriodDays: Number(e.target.value || 21),
+                            },
+                          })
+                        }
+                      />
+                      {fieldErrors.presentationPeriodDays && (
+                        <p className="text-xs text-red-500 mt-1">{fieldErrors.presentationPeriodDays}</p>
+                      )}
+                    </div>
+
+                    <div>
+                      <select
+                        className="border rounded-md px-3 py-2 w-full"
+                        value={docDetails.lc.partialShipmentAllowed ? "yes" : "no"}
+                        onChange={e =>
+                          setDocDetails({
+                            ...docDetails,
+                            lc: {
+                              ...docDetails.lc,
+                              partialShipmentAllowed: e.target.value === "yes",
+                            },
+                          })
+                        }
+                      >
+                        <option value="yes">Partial Shipment Allowed: Yes</option>
+                        <option value="no">Partial Shipment Allowed: No</option>
+                      </select>
+                    </div>
+
+                    <div>
+                      <label className="block text-xs text-gray-500 mb-1">Tolerance (%)</label>
+                      <input
+                        type="number"
+                        min="0"
+                        max="10"
+                        step="0.01"
+                        placeholder="Tolerance %"
+                        className={`border rounded-md px-3 py-2 w-full ${fieldErrors.tolerancePercent ? "border-red-500" : ""}`}
+                        value={docDetails.lc.tolerancePercent}
+                        onChange={e =>
+                          setDocDetails({
+                            ...docDetails,
+                            lc: {
+                              ...docDetails.lc,
+                              tolerancePercent: Number(e.target.value || 0),
+                            },
+                          })
+                        }
+                      />
+                      {fieldErrors.tolerancePercent && (
+                        <p className="text-xs text-red-500 mt-1">{fieldErrors.tolerancePercent}</p>
+                      )}
+                    </div>
+
+                    <div>
+                      <input
+                        type="date"
+                        className={`border rounded-md px-3 py-2 w-full ${fieldErrors.lcExpiryDate ? "border-red-500" : ""}`}
+                        value={docDetails.lc.lcExpiryDate}
+                        onChange={e =>
+                          setDocDetails({
+                            ...docDetails,
+                            lc: { ...docDetails.lc, lcExpiryDate: e.target.value },
+                          })
+                        }
+                      />
+                      {fieldErrors.lcExpiryDate && (
+                        <p className="text-xs text-red-500 mt-1">{fieldErrors.lcExpiryDate}</p>
+                      )}
+                    </div>
+                  </div>
                 </div>
               )}
 

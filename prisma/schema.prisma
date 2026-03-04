@@ -262,6 +262,13 @@ model LetterOfCredit {
   id                     String   @id @default(uuid())
   invoiceId              String
   lcNumber               String
+  issuingBank            String?
+  advisingBank           String?
+  lcCurrency             String?
+  lcAmount               Float?
+  shipmentDeadline       DateTime?
+  presentationPeriodDays Int      @default(21)
+  lcExpiryDate           DateTime?
   lcDescriptionText      String   @default("") @db.Text // Empty default for backward compat
   latestShipmentDate     DateTime @default(now()) // Current date as default
   presentationDays       Int      @default(45) // UCP 600: typically 45 days for presentation

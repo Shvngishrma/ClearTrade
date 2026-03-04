@@ -861,15 +861,17 @@ export async function generateLetterOfCreditPDF(invoice: any, lc: any, usage?: a
       maximumFractionDigits: 2,
     }).format(Number.isFinite(value) ? value : 0)
 
-  const shipmentDeadline = lc.latestShipmentDate
+  const shipmentDeadlineValue = lc.shipmentDeadline || lc.latestShipmentDate
+  const shipmentDeadline = shipmentDeadlineValue
     ? new Intl.DateTimeFormat("en-GB", {
         day: "2-digit",
         month: "short",
         year: "numeric",
-      }).format(new Date(lc.latestShipmentDate))
+      }).format(new Date(shipmentDeadlineValue))
     : "N/A"
 
   const lcAmount = Number(lc.lcAmount || invoice.totalValue || 0)
+  const lcCurrency = lc.lcCurrency || invoice.currency || "N/A"
   const issuingBank = lc.issuingBank || "N/A"
   const advisingBank = lc.advisingBank || "N/A"
   const tolerance =
@@ -893,10 +895,10 @@ export async function generateLetterOfCreditPDF(invoice: any, lc: any, usage?: a
     ["LC No", lc.lcNumber || "N/A"],
     ["Issuing Bank", issuingBank],
     ["Advising Bank", advisingBank],
-    ["Currency", invoice.currency || "N/A"],
-    ["Amount", `${invoice.currency || "USD"} ${formatMoney(lcAmount)}`],
+    ["Currency", lcCurrency],
+    ["Amount", `${lcCurrency} ${formatMoney(lcAmount)}`],
     ["Shipment Deadline", shipmentDeadline],
-    ["Presentation Period", `${Number(lc.presentationDays || 45)} days`],
+    ["Presentation Period", `${Number(lc.presentationPeriodDays || lc.presentationDays || 45)} days`],
     ["Partial Shipment Allowed", lc.partialShipmentAllowed ? "Yes" : "No"],
     ["Tolerance", tolerance],
   ]
