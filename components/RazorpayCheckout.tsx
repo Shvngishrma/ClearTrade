@@ -59,10 +59,6 @@ export default function RazorpayCheckout({
         throw new Error("Razorpay SDK failed to load")
       }
 
-      if (!process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID) {
-        throw new Error("Razorpay public key is missing")
-      }
-
       const createOrderRes = await fetch("/api/create-order", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -76,8 +72,12 @@ export default function RazorpayCheckout({
 
       const orderData = (await createOrderRes.json()) as CreateOrderResponse
 
+      if (!orderData?.keyId) {
+        throw new Error("Razorpay key is missing from server response")
+      }
+
       const options = {
-        key: process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID,
+        key: orderData.keyId,
         amount: orderData.amount * 100,
         currency: orderData.currency,
         name: "Cleartrade",

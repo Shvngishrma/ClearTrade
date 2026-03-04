@@ -14,11 +14,7 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "UNAUTHORIZED" }, { status: 401 })
     }
 
-    if (
-      !process.env.RAZORPAY_KEY_ID ||
-      !process.env.RAZORPAY_KEY_SECRET ||
-      !process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID
-    ) {
+    if (!process.env.RAZORPAY_KEY_ID || !process.env.RAZORPAY_KEY_SECRET) {
       return NextResponse.json(
         { error: "RAZORPAY_CONFIG_MISSING", message: "Razorpay is not configured" },
         { status: 500 }
@@ -63,13 +59,23 @@ export async function POST(req: Request) {
     return NextResponse.json({
       orderId: order.id,
       amount,
-      keyId: process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID,
+      keyId: process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID || process.env.RAZORPAY_KEY_ID,
       currency: "INR",
     })
   } catch (error) {
     console.error("[create-order] Error:", error)
+
+    const razorpayMessage =
+      typeof error === "object" && error !== null
+        ? ((error as { error?: { description?: string } }).error?.description ??
+          (error as { message?: string }).message)
+        : undefined
+
     return NextResponse.json(
-      { error: "CREATE_ORDER_FAILED", message: "Unable to create Razorpay order" },
+      {
+        error: "CREATE_ORDER_FAILED",
+        message: razorpayMessage || "Unable to create Razorpay order",
+      },
       { status: 500 }
     )
   }
