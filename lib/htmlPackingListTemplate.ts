@@ -301,7 +301,7 @@ ${sharedFooterStyles}
                   return `
                   <tr>
                     <td>${carton.cartonNumber ?? ""}</td>
-                    <td>${carton.marks || ""}</td>
+                    <td>${String(carton.marks || "").trim() || "N/M"}</td>
                     <td class="text-right">${dimensions}</td>
                     <td class="text-right">${Number(carton.netWeightKg || 0).toFixed(3)}</td>
                     <td class="text-right">${Number(carton.grossWeightKg || 0).toFixed(3)}</td>

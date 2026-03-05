@@ -200,7 +200,7 @@ export async function generatePackingListDOCX(invoice: any, packing: any) {
   const cartons = Array.isArray(packing?.cartons) ? packing.cartons : []
   const cartonRows = cartons.map((carton: any) => [
     String(carton.cartonNumber ?? ""),
-    carton.marks || "",
+    String(carton.marks || "").trim() || "N/M",
     carton.lengthCm && carton.widthCm && carton.heightCm
       ? `${Number(carton.lengthCm).toFixed(2)} × ${Number(carton.widthCm).toFixed(2)} × ${Number(carton.heightCm).toFixed(2)}`
       : "",

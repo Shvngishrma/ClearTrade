@@ -186,9 +186,11 @@ export async function POST(req: Request) {
               ? Number(((lengthCm * widthCm * heightCm) / 1_000_000).toFixed(6))
               : null
 
+          const normalizedMarks = String(carton?.marks || "").trim()
+
           return {
             cartonNumber,
-            marks: carton?.marks ? String(carton.marks).trim() || null : null,
+            marks: normalizedMarks || "N/M",
             lengthCm,
             widthCm,
             heightCm,
