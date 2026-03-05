@@ -1,9 +1,10 @@
 "use client"
 
-import { useEffect, useRef, useState } from "react"
+import { useEffect, useMemo, useRef, useState } from "react"
 import { useRouter } from "next/navigation"
 import PrimaryButton from "../../../components/PrimaryButton"
 import { SHIPPING_BILL_CARGO_TYPES } from "@/lib/shippingBillCargoType"
+import { validateCrossDocumentInputs } from "@/lib/validation/sharedValidationEngine"
 
 const DOCUMENTS = [
   { key: "invoice", label: "Commercial Invoice" },
@@ -656,6 +657,55 @@ function DocumentsPage() {
       }
     })
 
+    const sharedValidation = validateCrossDocumentInputs({
+      incoterm: sharedDetails.incoterm,
+      portOfLoading: sharedDetails.portOfLoading,
+      portOfDischarge: sharedDetails.portOfDischarge,
+      freight: Number(sharedDetails.freight) || 0,
+      insurance: Number(sharedDetails.insurance) || 0,
+      totalValue,
+      insuranceValue: selectedDocs.includes("insurance")
+        ? Number(docDetails.insurance?.insuredValue || 0)
+        : undefined,
+      invoiceItems: items.map((item) => ({
+        quantity: Number(item.quantity) || 0,
+      })),
+      packingCartons: packingCartons.map((carton) => ({
+        quantity: Number(carton.quantity) || 0,
+        netWeightKg: Number(carton.netWeightKg) || 0,
+        grossWeightKg: Number(carton.grossWeightKg) || 0,
+      })),
+      shippingBillPortOfLoading: docDetails.shippingBill.portOfLoading,
+      shippingBillPortOfDischarge: docDetails.shippingBill.portOfDischarge,
+    })
+
+    sharedValidation.errors.forEach((validationError) => {
+      switch (validationError.field) {
+        case "incoterm":
+          errors.incoterm = errors.incoterm || validationError.message
+          break
+        case "portOfLoading":
+          errors.portOfLoading = errors.portOfLoading || validationError.message
+          break
+        case "portOfDischarge":
+          errors.portOfDischarge = errors.portOfDischarge || validationError.message
+          break
+        case "freight":
+          errors.freight = errors.freight || validationError.message
+          break
+        case "insurance":
+        case "insuredValue":
+          errors.insuredValue = errors.insuredValue || validationError.message
+          break
+        case "packingList":
+        case "ports":
+          errors.packingList = errors.packingList || validationError.message
+          break
+        default:
+          break
+      }
+    })
+
     return errors
   }
 
@@ -821,6 +871,43 @@ function DocumentsPage() {
   const formattedTotalValue = new Intl.NumberFormat('en-US').format(totalValue)
   const formattedFOB = new Intl.NumberFormat('en-US').format(calculatedFOB)
   const formattedCIF = calculatedCIF ? new Intl.NumberFormat('en-US').format(calculatedCIF) : 'N/A'
+  const liveCrossDocumentValidation = useMemo(
+    () =>
+      validateCrossDocumentInputs({
+        incoterm: sharedDetails.incoterm,
+        portOfLoading: sharedDetails.portOfLoading,
+        portOfDischarge: sharedDetails.portOfDischarge,
+        freight: Number(sharedDetails.freight) || 0,
+        insurance: Number(sharedDetails.insurance) || 0,
+        totalValue,
+        insuranceValue: selectedDocs.includes("insurance")
+          ? Number(docDetails.insurance?.insuredValue || 0)
+          : undefined,
+        invoiceItems: items.map((item) => ({ quantity: Number(item.quantity) || 0 })),
+        packingCartons: packingCartons.map((carton) => ({
+          quantity: Number(carton.quantity) || 0,
+          netWeightKg: Number(carton.netWeightKg) || 0,
+          grossWeightKg: Number(carton.grossWeightKg) || 0,
+        })),
+        shippingBillPortOfLoading: docDetails.shippingBill.portOfLoading,
+        shippingBillPortOfDischarge: docDetails.shippingBill.portOfDischarge,
+      }),
+    [
+      sharedDetails.incoterm,
+      sharedDetails.portOfLoading,
+      sharedDetails.portOfDischarge,
+      sharedDetails.freight,
+      sharedDetails.insurance,
+      totalValue,
+      selectedDocs,
+      docDetails.insurance?.insuredValue,
+      docDetails.shippingBill.portOfLoading,
+      docDetails.shippingBill.portOfDischarge,
+      items,
+      packingCartons,
+    ]
+  )
+  const hasBlockingValidationErrors = liveCrossDocumentValidation.errors.length > 0
   const formErrorLines = formError
     .split("\n")
     .map(line => line.trim())
@@ -2040,7 +2127,7 @@ function DocumentsPage() {
               <div className="mt-8">
                 <PrimaryButton
                   onClick={handleGenerate}
-                  disabled={isGenerating}
+                  disabled={isGenerating || hasBlockingValidationErrors}
                 >
                   {isGenerating ? "Generating…" : "Generate documents"}
                 </PrimaryButton>

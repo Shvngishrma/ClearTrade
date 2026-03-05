@@ -8,6 +8,7 @@ import { validateInvoicePackingAlignment } from "@/lib/documentConsistencyEngine
 import { runMasterCompliancePipeline, canGenerateDocuments, getAllBlockers } from "@/lib/masterCompliancePipeline"
 import { initializeInvoiceLifecycle } from "@/lib/documentLifecycle"
 import { normalizeShippingBillCargoType } from "@/lib/shippingBillCargoType"
+import { validateCrossDocumentInputs } from "@/lib/validation/sharedValidationEngine"
 
 const DEFAULT_EXCHANGE_RATES = {
   USD: 83.5,
@@ -323,6 +324,43 @@ export async function POST(req: Request) {
           error: "VALIDATION_ERROR",
           message: detailedMessage,
           errors: validationErrors,
+        }),
+        { status: 400, headers: { "Content-Type": "application/json" } }
+      )
+    }
+
+    const sharedValidation = validateCrossDocumentInputs({
+      incoterm: sharedDetails.incoterm,
+      portOfLoading: sharedDetails.portOfLoading,
+      portOfDischarge: sharedDetails.portOfDischarge,
+      freight: sharedDetails.freight ? parseFloat(sharedDetails.freight) : 0,
+      insurance: sharedDetails.insurance ? parseFloat(sharedDetails.insurance) : 0,
+      totalValue: items.reduce(
+        (sum: number, i: any) => sum + Number(i.quantity) * Number(i.unitPrice),
+        0
+      ),
+      insuranceValue: selectedDocs.includes("insurance")
+        ? Number(docDetails?.insurance?.insuredValue || 0)
+        : undefined,
+      invoiceItems: items.map((item: any) => ({
+        quantity: Number(item.quantity),
+      })),
+      packingCartons: computedPackingList?.cartons.map((carton: any) => ({
+        quantity: Number(carton.quantity),
+        netWeightKg: Number(carton.netWeightKg),
+        grossWeightKg: Number(carton.grossWeightKg),
+      })) || [],
+      shippingBillPortOfLoading: docDetails?.shippingBill?.portOfLoading,
+      shippingBillPortOfDischarge: docDetails?.shippingBill?.portOfDischarge,
+    })
+
+    if (!sharedValidation.valid) {
+      return new NextResponse(
+        JSON.stringify({
+          type: "VALIDATION_ERROR",
+          error: "VALIDATION_ERROR",
+          message: sharedValidation.errors[0]?.message || "Cross-document validation failed",
+          errors: sharedValidation.errors,
         }),
         { status: 400, headers: { "Content-Type": "application/json" } }
       )

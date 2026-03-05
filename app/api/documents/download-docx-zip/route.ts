@@ -2,6 +2,7 @@ import JSZip from "jszip"
 import { prisma } from "@/lib/db"
 import { checkUsage } from "@/lib/usage"
 import { validateBeforeRelease } from "@/lib/preSubmissionValidationGate"
+import { humanizeReleaseBlockers } from "@/lib/validation/sharedValidationEngine"
 
 const DOCX_ROUTES: Record<string, string> = {
   invoice: "/api/documents/generate-invoice/docx",
@@ -77,12 +78,15 @@ export async function GET(req: Request) {
 
     const validation = await validateBeforeRelease(invoiceId)
     if (!validation.canRelease) {
+      const blockers = humanizeReleaseBlockers(validation.blockers)
+      const warnings = humanizeReleaseBlockers(validation.warnings)
+
       return new Response(
         JSON.stringify({
           error: "PRE_SUBMISSION_VALIDATION_FAILED",
           message: "Critical validation failed. Fix issues before DOCX ZIP download.",
-          blockers: validation.blockers,
-          warnings: validation.warnings,
+          blockers,
+          warnings,
           engines: validation.engines,
         }),
         {

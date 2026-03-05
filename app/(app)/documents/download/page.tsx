@@ -206,7 +206,12 @@ function DownloadPageContent() {
           )
         } else {
           const blockerText = blockers.length
-            ? blockers.map((b: any) => `• [${b.engine}] ${b.code}: ${b.message}${b.resolution ? `\n  Fix: ${b.resolution}` : ""}`).join("\n")
+            ? blockers
+                .map(
+                  (b: any) =>
+                    `• ${b.userMessage || b.message || "Validation issue detected"}${b.resolution ? `\n  Fix: ${b.resolution}` : ""}`
+                )
+                .join("\n")
             : null
           setDownloadError(
             blockerText

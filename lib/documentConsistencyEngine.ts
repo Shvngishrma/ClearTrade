@@ -1,5 +1,6 @@
 import { Prisma } from "@prisma/client"
 import { prisma } from "@/lib/db"
+import { validateCrossDocumentInputs } from "@/lib/validation/sharedValidationEngine"
 
 type ValidationResult = {
   valid: boolean
@@ -34,48 +35,43 @@ export function validateInvoicePackingConsistency(
   const errors: string[] = []
   const warnings: string[] = []
 
-  // --------------------------------
-  // 1️⃣ Total Quantity Check
-  // --------------------------------
+  const sharedValidation = validateCrossDocumentInputs({
+    invoiceItems: invoice.items.map((item) => ({ quantity: Number(item.quantity) || 0 })),
+    packingCartons: (packing.cartons || []).map((carton) => ({ quantity: Number(carton.quantity) || 0 })),
+  })
 
-  const invoiceQty = invoice.items.reduce((sum, i) => sum + i.quantity, 0)
+  if (sharedValidation.errors.some((error) => error.code === "QUANTITY_MISMATCH")) {
+    const invoiceQty = invoice.items.reduce((sum, i) => sum + i.quantity, 0)
+    const cartonQty = packing.cartons
+      ? packing.cartons.reduce((sum, c) => sum + c.quantity, 0)
+      : 0
 
-  const cartonQty = packing.cartons
-    ? packing.cartons.reduce((sum, c) => sum + c.quantity, 0)
-    : null
-
-  if (cartonQty !== null) {
-    if (invoiceQty !== cartonQty) {
-      errors.push(
-        `Quantity mismatch: Invoice (${invoiceQty}) vs Cartons (${cartonQty})`
-      )
-    }
+    errors.push(`Quantity mismatch: Invoice (${invoiceQty}) vs Cartons (${cartonQty})`)
   }
 
-  // --------------------------------
-  // 2️⃣ Net Weight Match (Strict)
-  // --------------------------------
+  const weightValidation = validateCrossDocumentInputs({
+    invoiceItems: [
+      {
+        quantity: 0,
+        netWeight: invoice.netWeight ? Number(invoice.netWeight) : undefined,
+        grossWeight: invoice.grossWeight ? Number(invoice.grossWeight) : undefined,
+      },
+    ],
+    packingCartons: [
+      {
+        quantity: 0,
+        netWeightKg: Number(packing.netWeight),
+        grossWeightKg: Number(packing.grossWeight),
+      },
+    ],
+  })
 
-  if (
-    invoice.netWeight &&
-    !invoice.netWeight.equals(packing.netWeight)
-  ) {
-    errors.push(
-      `Net Weight mismatch: Invoice (${invoice.netWeight}) vs Packing (${packing.netWeight})`
-    )
+  if (weightValidation.errors.some((error) => error.code === "NET_WEIGHT_MISMATCH")) {
+    errors.push(`Net Weight mismatch: Invoice (${invoice.netWeight}) vs Packing (${packing.netWeight})`)
   }
 
-  // --------------------------------
-  // 3️⃣ Gross Weight Match (Strict)
-  // --------------------------------
-
-  if (
-    invoice.grossWeight &&
-    !invoice.grossWeight.equals(packing.grossWeight)
-  ) {
-    errors.push(
-      `Gross Weight mismatch: Invoice (${invoice.grossWeight}) vs Packing (${packing.grossWeight})`
-    )
+  if (weightValidation.errors.some((error) => error.code === "GROSS_WEIGHT_MISMATCH")) {
+    errors.push(`Gross Weight mismatch: Invoice (${invoice.grossWeight}) vs Packing (${packing.grossWeight})`)
   }
 
   // --------------------------------

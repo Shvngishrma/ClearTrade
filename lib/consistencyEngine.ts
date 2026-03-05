@@ -18,6 +18,7 @@
  */
 
 import { prisma } from "@/lib/db"
+import { validateCrossDocumentInputs } from "@/lib/validation/sharedValidationEngine"
 
 // ============================================
 // TYPE DEFINITIONS
@@ -145,20 +146,21 @@ function validateValueMatch(docs: DocumentSet): {
 } {
   const invoiceValue = docs.invoice.totalValue
   const insuranceValue = docs.insurance?.insuredValue || invoiceValue
-  
-  // Insurance value should be >= invoice value
-  // Standard: 10% buffer for freight/insurance premium
-  const maxInsured = invoiceValue * 1.15 // Allow 15% max
-  const minInsured = invoiceValue * 0.95 // Allow 5% min
-  
-  const consistent = insuranceValue >= minInsured && insuranceValue <= maxInsured
+
+  const sharedValidation = validateCrossDocumentInputs({
+    totalValue: invoiceValue,
+    insuranceValue,
+  })
+
+  const valueError = sharedValidation.errors.find((error) => error.code === "VALUE_MISMATCH")
+  const consistent = !valueError
   
   if (!consistent) {
     return {
       consistent: false,
       invoiceValue,
       insuranceValue,
-      message: `❌ VALUE MISMATCH: Invoice ${invoiceValue} vs Insurance ${insuranceValue}. Insurance must be 95-115% of invoice value.`
+      message: `❌ VALUE MISMATCH: ${valueError?.message || `Invoice ${invoiceValue} vs Insurance ${insuranceValue}. Insurance must be 95-115% of invoice value.`}`
     }
   }
   
@@ -225,30 +227,32 @@ function validateIncotermMatch(docs: DocumentSet): {
     }
   }
   
-  // Check incoterm matches port requirements
   const portLoading = docs.invoice.portOfLoading
   const portDischarge = docs.invoice.portOfDischarge
-  
-  let consistent = true
+
+  const sharedValidation = validateCrossDocumentInputs({
+    incoterm,
+    portOfLoading: portLoading,
+    portOfDischarge: portDischarge,
+  })
+
+  const incotermError = sharedValidation.errors.find((error) => error.code === "INCOTERM_LOGIC_FAIL")
+  const consistent = !incotermError
+
   let portValidation = ""
-  
   if (incoterm === "EXW") {
-    consistent = !portLoading && !portDischarge
     portValidation = consistent
       ? "✅ EXW: No ports required"
       : "❌ EXW should not have ports specified"
   } else if (incoterm === "FOB") {
-    consistent = !!portLoading
     portValidation = consistent
       ? `✅ FOB: Port of loading required (${portLoading})`
       : "❌ FOB requires port of loading"
   } else if (incoterm === "CIF" || incoterm === "CFR") {
-    consistent = !!portLoading && !!portDischarge
     portValidation = consistent
       ? `✅ ${incoterm}: Both ports required (${portLoading} → ${portDischarge})`
       : `❌ ${incoterm} requires both port of loading and discharge`
   } else if (incoterm === "DDP") {
-    consistent = !!portDischarge
     portValidation = consistent
       ? `✅ DDP: Discharge port required (${portDischarge})`
       : "❌ DDP requires destination port"
@@ -291,16 +295,15 @@ function validateFreightLogic(docs: DocumentSet): {
   const maxAllowedFreight = docs.invoice.totalValue * maxFreightPercent
   const exceedsCap = invoiceFreight > maxAllowedFreight
 
-  let consistent = false
-  if (incoterm === "FOB") {
-    consistent = invoiceFreight === 0 && !exceedsCap
-  } else if (incoterm === "CIF" || incoterm === "CFR") {
-    consistent = invoiceFreight > 0 && !exceedsCap
-  } else if (incoterm === "EXW") {
-    consistent = !exceedsCap
-  } else {
-    consistent = !exceedsCap
-  }
+  const sharedValidation = validateCrossDocumentInputs({
+    incoterm,
+    freight: invoiceFreight,
+    insurance: docs.invoice.insurance || 0,
+    totalValue: docs.invoice.totalValue,
+  })
+
+  const freightError = sharedValidation.errors.find((error) => error.code === "FREIGHT_LOGIC_FAIL")
+  const consistent = !freightError && !exceedsCap
   
   return {
     consistent,
@@ -308,7 +311,7 @@ function validateFreightLogic(docs: DocumentSet): {
     allocatedFreight,
     message: consistent
       ? `✅ Freight logic valid: ${invoiceFreight} (${(invoiceFreight / docs.invoice.totalValue * 100).toFixed(2)}% of value)`
-      : `❌ FREIGHT LOGIC FAIL: ${invoiceFreight} exceeds 20% of invoice value or violates ${incoterm} freight rule`
+      : `❌ FREIGHT LOGIC FAIL: ${freightError?.message || `${invoiceFreight} exceeds 20% of invoice value or violates ${incoterm} freight rule`}`
   }
 }
 
@@ -329,11 +332,18 @@ function validatePortAlignment(docs: DocumentSet): {
   const billLoading = docs.shippingBill?.portOfLoading?.toUpperCase() || ""
   const billDischarge = docs.shippingBill?.portOfDischarge?.toUpperCase() || ""
   
+  const sharedValidation = validateCrossDocumentInputs({
+    portOfLoading: invoiceLoading,
+    portOfDischarge: invoiceDischarge,
+    shippingBillPortOfLoading: billLoading,
+    shippingBillPortOfDischarge: billDischarge,
+  })
+
   // Ports must match if specified in shipping bill
   const loadingMatch = !billLoading || invoiceLoading === billLoading
   const dischargeMatch = !billDischarge || invoiceDischarge === billDischarge
   
-  const consistent = loadingMatch && dischargeMatch
+  const consistent = loadingMatch && dischargeMatch && !sharedValidation.errors.some((error) => error.code === "PORT_MISMATCH")
   
   if (!consistent) {
     let mismatch = ""
@@ -375,8 +385,13 @@ function validateQuantityMatch(docs: DocumentSet): {
 } {
   const invoiceQty = docs.invoice.items.reduce((sum, item) => sum + item.quantity, 0)
   const packingListQty = docs.packingList?.items.reduce((sum, item) => sum + item.quantity, 0) || invoiceQty
-  
-  const consistent = invoiceQty === packingListQty
+
+  const sharedValidation = validateCrossDocumentInputs({
+    invoiceItems: docs.invoice.items.map((item) => ({ quantity: item.quantity })),
+    packingItems: docs.packingList?.items.map((item) => ({ quantity: item.quantity })) || [],
+  })
+
+  const consistent = invoiceQty === packingListQty && !sharedValidation.errors.some((error) => error.code === "QUANTITY_MISMATCH")
   
   if (!consistent) {
     return {

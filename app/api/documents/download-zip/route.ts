@@ -7,6 +7,7 @@ import { prisma } from "@/lib/db";
 import { checkUsage, incrementUsage } from "@/lib/usage";
 import { validateBeforeRelease } from "@/lib/preSubmissionValidationGate";
 import { lockInvoiceOnFirstPdfDownload } from "@/lib/documentLifecycle";
+import { humanizeReleaseBlockers } from "@/lib/validation/sharedValidationEngine";
 import {
   DocumentGenerationError,
   generateCertificateOfOriginPdfBuffer,
@@ -133,12 +134,15 @@ export async function GET(req: NextRequest) {
 
     const validation = await validateBeforeRelease(invoiceId);
     if (!validation.canRelease) {
+      const blockers = humanizeReleaseBlockers(validation.blockers)
+      const warnings = humanizeReleaseBlockers(validation.warnings)
+
       return new Response(
         JSON.stringify({
           error: "PRE_SUBMISSION_VALIDATION_FAILED",
           message: "Critical validation failed. Fix issues before ZIP download.",
-          blockers: validation.blockers,
-          warnings: validation.warnings,
+          blockers,
+          warnings,
           engines: validation.engines,
         }),
         {

@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/db"
 import { sumItems } from "@/lib/calculations"
+import { validateCrossDocumentInputs } from "@/lib/validation/sharedValidationEngine"
 
 // ISO 4217 Currency Codes
 const VALID_CURRENCIES = [
@@ -20,8 +21,6 @@ const VALID_CURRENCIES = [
   "BRL",
 ]
 
-// Valid Incoterms 2020
-const VALID_INCOTERMS = ["FOB", "CIF", "CFR", "EXW"]
 const INVOICE_NUMBER_REGEX = /^INV\/\d{4}\/\d{4}$/
 
 export interface ValidationError {
@@ -118,80 +117,24 @@ export async function validateInvoice(data: InvoiceData): Promise<ValidationErro
     })
   }
 
-  // 2. Validate Incoterm logic - STRICT ENFORCEMENT
-  if (data.incoterm) {
-    if (!VALID_INCOTERMS.includes(data.incoterm)) {
+  // 2. Validate Incoterm/freight/insurance logic via shared engine
+  const sharedCrossDocValidation = validateCrossDocumentInputs({
+    incoterm: data.incoterm,
+    portOfLoading: data.portOfLoading,
+    portOfDischarge: data.portOfDischarge,
+    freight: Number(data.freight || 0),
+    insurance: Number(data.insurance || 0),
+    totalValue: Number(data.totalValue || 0),
+  })
+
+  sharedCrossDocValidation.errors.forEach((sharedError) => {
+    if (["incoterm", "freight", "insurance"].includes(sharedError.field)) {
       errors.push({
-        field: "incoterm",
-        message: `Invalid Incoterm: ${data.incoterm}. Must be one of: ${VALID_INCOTERMS.join(", ")}`,
+        field: sharedError.field,
+        message: sharedError.message,
       })
     }
-
-    // CIF = Cost, Insurance, Freight - ALL THREE required
-    if (data.incoterm === "CIF") {
-      // MUST have freight
-      if (!data.freight || Number(data.freight) <= 0) {
-        errors.push({
-          field: "freight",
-          message: "CIF Incoterm REQUIRES freight cost. Buyer pays freight to destination.",
-        })
-      }
-
-      // MUST have insurance
-      if (!data.insurance || Number(data.insurance) <= 0) {
-        errors.push({
-          field: "insurance",
-          message: "CIF Incoterm REQUIRES insurance cost. Seller arranges and includes insurance.",
-        })
-      }
-    }
-
-    // CFR = Cost and Freight only (NO insurance in seller's responsibility)
-    if (data.incoterm === "CFR" || data.incoterm === "CNF") {
-      // MUST have freight
-      if (!data.freight || Number(data.freight) <= 0) {
-        errors.push({
-          field: "freight",
-          message: "CFR Incoterm REQUIRES freight cost.",
-        })
-      }
-
-      // MUST NOT have insurance (buyer arranges separately)
-      if (data.insurance && Number(data.insurance) > 0) {
-        errors.push({
-          field: "insurance",
-          message: "CFR Incoterm must NOT include insurance. Buyer arranges insurance separately. Set insurance to 0.",
-        })
-      }
-    }
-
-    // EXW = Ex Works (buyer arranges everything)
-    if (data.incoterm === "EXW") {
-      // EXW allows optional freight/insurance but warns user
-      if ((data.freight && Number(data.freight) > 0) || (data.insurance && Number(data.insurance) > 0)) {
-        console.warn(
-          "⚠️  EXW: Freight and insurance should typically be 0 (buyer's responsibility). Verify correctness."
-        )
-      }
-    }
-
-    // FOB = Free on Board
-    if (data.incoterm === "FOB") {
-      // FOB should not include freight or insurance (those are buyer's cost)
-      if (data.freight && Number(data.freight) > 0) {
-        errors.push({
-          field: "freight",
-          message: "FOB: Freight should be 0. Buyer pays freight beyond port of loading.",
-        })
-      }
-      if (data.insurance && Number(data.insurance) > 0) {
-        errors.push({
-          field: "insurance",
-          message: "FOB: Insurance should be 0. Buyer arranges insurance.",
-        })
-      }
-    }
-  }
+  })
 
   // 3. LC-specific requirements
   if (data.paymentTerms === "LC") {
