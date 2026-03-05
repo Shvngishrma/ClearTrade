@@ -1,3 +1,5 @@
+import { isValidPortCode } from "@/lib/validatePortCode"
+
 export type SharedValidationError = {
   field: string
   code: string
@@ -105,6 +107,22 @@ export function validateCrossDocumentInputs(input: CrossDocumentValidationInput)
     }
   }
 
+  if (portOfLoading && !isValidPortCode(portOfLoading)) {
+    errors.push({
+      field: "portOfLoading",
+      code: "INVALID_PORT_CODE",
+      message: "Port code is invalid. Please select a valid UN/LOCODE from the dropdown.",
+    })
+  }
+
+  if (portOfDischarge && !isValidPortCode(portOfDischarge)) {
+    errors.push({
+      field: "portOfDischarge",
+      code: "INVALID_PORT_CODE",
+      message: "Port code is invalid. Please select a valid UN/LOCODE from the dropdown.",
+    })
+  }
+
   if (totalValue > 0) {
     const maxAllowedFreight = totalValue * 0.2
     if (freight > maxAllowedFreight) {
@@ -167,6 +185,22 @@ export function validateCrossDocumentInputs(input: CrossDocumentValidationInput)
 
   const billLoading = String(input.shippingBillPortOfLoading || "").trim().toUpperCase()
   const billDischarge = String(input.shippingBillPortOfDischarge || "").trim().toUpperCase()
+
+  if (billLoading && !isValidPortCode(billLoading)) {
+    errors.push({
+      field: "ports",
+      code: "INVALID_PORT_CODE",
+      message: "Port code is invalid. Please select a valid UN/LOCODE from the dropdown.",
+    })
+  }
+
+  if (billDischarge && !isValidPortCode(billDischarge)) {
+    errors.push({
+      field: "ports",
+      code: "INVALID_PORT_CODE",
+      message: "Port code is invalid. Please select a valid UN/LOCODE from the dropdown.",
+    })
+  }
 
   if ((billLoading && billLoading !== portOfLoading) || (billDischarge && billDischarge !== portOfDischarge)) {
     errors.push({
@@ -235,6 +269,7 @@ const FRIENDLY_CODE_MESSAGES: Record<string, string> = {
   FREIGHT_LOGIC_FAIL: "Freight value conflicts with INCOTERM or exceeds allowed limits.",
   VALUE_MISMATCH: "Insurance value must stay within allowed range of invoice value.",
   PORT_MISMATCH: "Port details are inconsistent across documents.",
+  INVALID_PORT_CODE: "Port code is invalid. Please select a valid UN/LOCODE from the dropdown.",
   QUANTITY_MISMATCH: "Item quantities are inconsistent between invoice and packing list.",
   NET_WEIGHT_MISMATCH: "Net weight is inconsistent between invoice and packing list.",
   GROSS_WEIGHT_MISMATCH: "Gross weight is inconsistent between invoice and packing list.",

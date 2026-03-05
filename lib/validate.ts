@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/db"
 import { sumItems } from "@/lib/calculations"
 import { validateCrossDocumentInputs } from "@/lib/validation/sharedValidationEngine"
+import { isValidPortCode } from "@/lib/validatePortCode"
 
 // ISO 4217 Currency Codes
 const VALID_CURRENCIES = [
@@ -135,6 +136,22 @@ export async function validateInvoice(data: InvoiceData): Promise<ValidationErro
       })
     }
   })
+
+  const normalizedPortOfLoading = (data.portOfLoading || "").trim().toUpperCase()
+  if (normalizedPortOfLoading && !isValidPortCode(normalizedPortOfLoading)) {
+    errors.push({
+      field: "portOfLoading",
+      message: "Port code is invalid. Please select a valid UN/LOCODE from the dropdown.",
+    })
+  }
+
+  const normalizedPortOfDischarge = (data.portOfDischarge || "").trim().toUpperCase()
+  if (normalizedPortOfDischarge && !isValidPortCode(normalizedPortOfDischarge)) {
+    errors.push({
+      field: "portOfDischarge",
+      message: "Port code is invalid. Please select a valid UN/LOCODE from the dropdown.",
+    })
+  }
 
   // 3. LC-specific requirements
   if (data.paymentTerms === "LC") {

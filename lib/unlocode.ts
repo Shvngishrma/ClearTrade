@@ -1,4 +1,4 @@
-import JSZip from "jszip"
+import { UNLOCODE_PORTS, type UnlocodePort } from "@/lib/data/unlocodePorts"
 
 type UnlocodeEntry = {
   code: string
@@ -16,126 +16,40 @@ type UnlocodeCountry = {
 type UnlocodeCache = {
   entries: UnlocodeEntry[]
   countries: UnlocodeCountry[]
-  loadedAt: number
 }
 
-const UNLOCODE_ZIP_URL = "https://service.unece.org/trade/locode/loc242csv.zip"
-const UNLOCODE_PART_PATTERN = /UNLOCODE CodeListPart\d+\.csv/i
+const cache: UnlocodeCache = (() => {
+  const dedupedByCode = new Map<string, UnlocodePort>()
+  UNLOCODE_PORTS.forEach((port) => {
+    dedupedByCode.set(port.code.toUpperCase(), {
+      ...port,
+      code: port.code.toUpperCase(),
+      countryCode: port.countryCode.toUpperCase(),
+    })
+  })
 
-let cache: UnlocodeCache | null = null
-let inFlight: Promise<UnlocodeCache> | null = null
+  const entries = Array.from(dedupedByCode.values()).map((port) => ({
+    code: port.code,
+    country: port.countryCode,
+    location: port.code.slice(2),
+    name: port.name,
+    function: "1",
+  }))
 
-function parseCsvLine(line: string): string[] {
-  const result: string[] = []
-  let current = ""
-  let inQuotes = false
+  const countryMap = new Map<string, string>()
+  Array.from(dedupedByCode.values()).forEach((port) => {
+    countryMap.set(port.countryCode, port.countryName)
+  })
 
-  for (let i = 0; i < line.length; i += 1) {
-    const char = line[i]
+  const countries = Array.from(countryMap.entries())
+    .map(([code, name]) => ({ code, name }))
+    .sort((a, b) => a.name.localeCompare(b.name))
 
-    if (char === '"') {
-      const nextChar = line[i + 1]
-      if (inQuotes && nextChar === '"') {
-        current += '"'
-        i += 1
-      } else {
-        inQuotes = !inQuotes
-      }
-      continue
-    }
-
-    if (char === "," && !inQuotes) {
-      result.push(current)
-      current = ""
-      continue
-    }
-
-    current += char
-  }
-
-  result.push(current)
-  return result
-}
+  return { entries, countries }
+})()
 
 async function loadUnlocode(): Promise<UnlocodeCache> {
-  if (cache) {
-    return cache
-  }
-  if (inFlight) {
-    return inFlight
-  }
-
-  inFlight = (async () => {
-    const response = await fetch(UNLOCODE_ZIP_URL)
-    if (!response.ok) {
-      throw new Error(`Failed to fetch UN/LOCODE list: ${response.status}`)
-    }
-
-    const buffer = await response.arrayBuffer()
-    const zip = await JSZip.loadAsync(buffer)
-
-    const partFiles = Object.keys(zip.files).filter(name => UNLOCODE_PART_PATTERN.test(name))
-    const entries: UnlocodeEntry[] = []
-    const countryMap = new Map<string, string>()
-
-    for (const name of partFiles) {
-      const file = zip.file(name)
-      if (!file) continue
-
-      const text = await file.async("string")
-      const lines = text.split(/\r?\n/)
-
-      for (const line of lines) {
-        if (!line.trim()) continue
-
-        const columns = parseCsvLine(line)
-        const country = (columns[1] || "").trim()
-        const location = (columns[2] || "").trim()
-        const nameValue = (columns[3] || columns[4] || "").trim()
-        const functionCode = (columns[6] || "").trim()
-
-        if (!country) continue
-
-        if (!location) {
-          if (nameValue.startsWith(".")) {
-            countryMap.set(country, nameValue.replace(/^\./, ""))
-          }
-          continue
-        }
-
-        if (location.length !== 3 || !nameValue) {
-          continue
-        }
-
-        const code = `${country}${location}`
-        entries.push({
-          code,
-          country,
-          location,
-          name: nameValue,
-          function: functionCode,
-        })
-      }
-    }
-
-    const countries = Array.from(countryMap.entries())
-      .map(([code, name]) => ({ code, name }))
-      .sort((a, b) => a.name.localeCompare(b.name))
-
-    cache = {
-      entries,
-      countries,
-      loadedAt: Date.now(),
-    }
-
-    return cache
-  })()
-
-  try {
-    return await inFlight
-  } finally {
-    inFlight = null
-  }
+  return cache
 }
 
 export async function getUnlocodeCountries(): Promise<UnlocodeCountry[]> {
@@ -154,15 +68,11 @@ export async function getUnlocodeEntries(options: {
   const normalizedQuery = (query || "").trim().toLowerCase()
   const normalizedCountry = (country || "").trim().toUpperCase()
 
-  // UN/LOCODE function codes: 1 = port, 2 = rail terminal, 3 = road terminal, 4 = airport, 5 = postal, 6 = inland water, 7 = border
-  // We want seaports (1) and airports (4)
-  const portFunctionCodes = ["1", "4"]
-
   const filtered = data.entries.filter(entry => {
     if (normalizedCountry && entry.country !== normalizedCountry) {
       return false
     }
-    if (onlyPorts && !portFunctionCodes.some(code => entry.function.includes(code))) {
+    if (onlyPorts && !entry.function.includes("1")) {
       return false
     }
     if (!normalizedQuery) {

@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation"
 import PrimaryButton from "../../../components/PrimaryButton"
 import { SHIPPING_BILL_CARGO_TYPES } from "@/lib/shippingBillCargoType"
 import { validateCrossDocumentInputs } from "@/lib/validation/sharedValidationEngine"
+import { isValidPortCode } from "@/lib/validatePortCode"
 
 const DOCUMENTS = [
   { key: "invoice", label: "Commercial Invoice" },
@@ -168,6 +169,8 @@ function DocumentsPage() {
   const [dischargeCountry, setDischargeCountry] = useState("")
   const [loadingPortOptions, setLoadingPortOptions] = useState<PortOption[]>([])
   const [dischargePortOptions, setDischargePortOptions] = useState<PortOption[]>([])
+  const [loadingPortSearch, setLoadingPortSearch] = useState("")
+  const [dischargePortSearch, setDischargePortSearch] = useState("")
 
   const packingCartons = docDetails.packingList.cartons || []
 
@@ -273,7 +276,7 @@ function DocumentsPage() {
     let cancelled = false
 
     async function loadPorts() {
-      const query = sharedDetails.portOfLoading.trim()
+      const query = loadingPortSearch.trim()
       const params = new URLSearchParams()
       // Restrict port of loading to India
       params.set("country", "IN")
@@ -299,13 +302,13 @@ function DocumentsPage() {
     return () => {
       cancelled = true
     }
-  }, [sharedDetails.portOfLoading])
+  }, [loadingPortSearch])
 
   useEffect(() => {
     let cancelled = false
 
     async function loadPorts() {
-      const query = sharedDetails.portOfDischarge.trim()
+      const query = dischargePortSearch.trim()
       const params = new URLSearchParams()
       // Restrict port of discharge to selected final destination country
       if (sharedDetails.finalDestination) params.set("country", sharedDetails.finalDestination)
@@ -331,7 +334,7 @@ function DocumentsPage() {
     return () => {
       cancelled = true
     }
-  }, [sharedDetails.portOfDischarge, sharedDetails.finalDestination])
+  }, [dischargePortSearch, sharedDetails.finalDestination])
 
   useEffect(() => {
     // Auto-detect country from port code for loading/discharge
@@ -483,12 +486,9 @@ function DocumentsPage() {
 
     const portOfLoading = (sharedDetails.portOfLoading || "").trim().toUpperCase()
     if (!portOfLoading) {
-      errors.portOfLoading = "Enter a port of loading."
-    } else if (
-      loadingPortOptions.length > 0 &&
-      !loadingPortOptions.some(option => option.code === portOfLoading)
-    ) {
-      errors.portOfLoading = "Select a valid UN/LOCODE for port of loading."
+      errors.portOfLoading = "Select a port of loading."
+    } else if (!isValidPortCode(portOfLoading)) {
+      errors.portOfLoading = "Port code is invalid. Please select a valid UN/LOCODE from the dropdown."
     }
 
     if (!validPaymentTerms.includes(sharedDetails.paymentTerms)) {
@@ -641,13 +641,9 @@ function DocumentsPage() {
     const incotermRequiresDischarge = ["CIF", "CFR", "DDP"].includes(sharedDetails.incoterm)
     const portOfDischarge = (sharedDetails.portOfDischarge || "").trim().toUpperCase()
     if (incotermRequiresDischarge && !portOfDischarge) {
-      errors.portOfDischarge = "Port of discharge is required for CIF/CFR/DDP incoterms."
-    } else if (
-      portOfDischarge &&
-      dischargePortOptions.length > 0 &&
-      !dischargePortOptions.some(option => option.code === portOfDischarge)
-    ) {
-      errors.portOfDischarge = "Select a valid UN/LOCODE for port of discharge."
+      errors.portOfDischarge = "Select a port of discharge for CIF/CFR/DDP incoterms."
+    } else if (portOfDischarge && !isValidPortCode(portOfDischarge)) {
+      errors.portOfDischarge = "Port code is invalid. Please select a valid UN/LOCODE from the dropdown."
     }
 
     items.forEach((item, index) => {
@@ -1299,11 +1295,17 @@ function DocumentsPage() {
                 </select>
 
                 <div>
+                  <input
+                    placeholder="Search loading port by code or name"
+                    className="border rounded-md px-3 py-2 w-full mb-2"
+                    value={loadingPortSearch}
+                    onChange={e => setLoadingPortSearch(e.target.value)}
+                  />
                   <select
                     className={`border rounded-md px-3 py-2 w-full ${fieldErrors.portOfLoading ? "border-red-500" : ""}`}
                     value={sharedDetails.portOfLoading}
                     onChange={e =>
-                      setSharedDetails({ ...sharedDetails, portOfLoading: e.target.value.toUpperCase() })
+                      setSharedDetails({ ...sharedDetails, portOfLoading: e.target.value })
                     }
                   >
                     <option value="">Select port of loading</option>
@@ -1319,11 +1321,17 @@ function DocumentsPage() {
                 </div>
 
                 <div>
+                  <input
+                    placeholder="Search discharge port by code or name"
+                    className="border rounded-md px-3 py-2 w-full mb-2"
+                    value={dischargePortSearch}
+                    onChange={e => setDischargePortSearch(e.target.value)}
+                  />
                   <select
                     className={`border rounded-md px-3 py-2 w-full ${fieldErrors.portOfDischarge ? "border-red-500" : ""}`}
                     value={sharedDetails.portOfDischarge}
                     onChange={e =>
-                      setSharedDetails({ ...sharedDetails, portOfDischarge: e.target.value.toUpperCase() })
+                      setSharedDetails({ ...sharedDetails, portOfDischarge: e.target.value })
                     }
                   >
                     <option value="">Select port of discharge</option>
@@ -2150,16 +2158,6 @@ function DocumentsPage() {
 
           </div>
         )}
-        <datalist id="port-codes-loading">
-          {loadingPortOptions.map(option => (
-            <option key={option.code} value={option.code} />
-          ))}
-        </datalist>
-        <datalist id="port-codes-discharge">
-          {dischargePortOptions.map(option => (
-            <option key={option.code} value={option.code} />
-          ))}
-        </datalist>
       </div>
     )
 }

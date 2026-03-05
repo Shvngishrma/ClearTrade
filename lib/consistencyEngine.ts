@@ -19,6 +19,7 @@
 
 import { prisma } from "@/lib/db"
 import { validateCrossDocumentInputs } from "@/lib/validation/sharedValidationEngine"
+import { isValidPortCode } from "@/lib/validatePortCode"
 
 // ============================================
 // TYPE DEFINITIONS
@@ -321,6 +322,7 @@ function validateFreightLogic(docs: DocumentSet): {
 
 function validatePortAlignment(docs: DocumentSet): {
   consistent: boolean
+  errorCode?: "PORT_MISMATCH" | "INVALID_PORT_CODE"
   invoiceLoading: string
   invoiceDischarge: string
   billLoading: string
@@ -331,6 +333,22 @@ function validatePortAlignment(docs: DocumentSet): {
   const invoiceDischarge = docs.invoice.portOfDischarge?.toUpperCase() || ""
   const billLoading = docs.shippingBill?.portOfLoading?.toUpperCase() || ""
   const billDischarge = docs.shippingBill?.portOfDischarge?.toUpperCase() || ""
+
+  const invalidCode = [invoiceLoading, invoiceDischarge, billLoading, billDischarge]
+    .filter(Boolean)
+    .find((code) => !isValidPortCode(code))
+
+  if (invalidCode) {
+    return {
+      consistent: false,
+      errorCode: "INVALID_PORT_CODE",
+      invoiceLoading,
+      invoiceDischarge,
+      billLoading,
+      billDischarge,
+      message: "Port code is invalid. Please select a valid UN/LOCODE from the dropdown.",
+    }
+  }
   
   const sharedValidation = validateCrossDocumentInputs({
     portOfLoading: invoiceLoading,
@@ -355,6 +373,7 @@ function validatePortAlignment(docs: DocumentSet): {
     }
     return {
       consistent: false,
+      errorCode: "PORT_MISMATCH",
       invoiceLoading,
       invoiceDischarge,
       billLoading,
@@ -568,7 +587,7 @@ export async function validateDocumentConsistency(
   })
   if (!portCheck.consistent) {
     errors.push({
-      code: "PORT_MISMATCH",
+      code: portCheck.errorCode || "PORT_MISMATCH",
       message: portCheck.message,
       documents: ["invoice", "shippingBill"],
       fieldAffected: "ports",
