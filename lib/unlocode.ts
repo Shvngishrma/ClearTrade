@@ -19,6 +19,14 @@ type UnlocodeCache = {
 }
 
 const cache: UnlocodeCache = (() => {
+  const functionCodeByType: Record<UnlocodePort["type"], string> = {
+    SEA: "1",
+    AIR: "4",
+    RAIL: "2",
+  }
+
+  const countryNameLookup = new Intl.DisplayNames(["en"], { type: "region" })
+
   const dedupedByCode = new Map<string, UnlocodePort>()
   UNLOCODE_PORTS.forEach((port) => {
     dedupedByCode.set(port.code.toUpperCase(), {
@@ -33,12 +41,13 @@ const cache: UnlocodeCache = (() => {
     country: port.countryCode,
     location: port.code.slice(2),
     name: port.name,
-    function: "1",
+    function: functionCodeByType[port.type],
   }))
 
   const countryMap = new Map<string, string>()
   Array.from(dedupedByCode.values()).forEach((port) => {
-    countryMap.set(port.countryCode, port.countryName)
+    const countryName = countryNameLookup.of(port.countryCode) || port.countryCode
+    countryMap.set(port.countryCode, countryName)
   })
 
   const countries = Array.from(countryMap.entries())
@@ -72,7 +81,7 @@ export async function getUnlocodeEntries(options: {
     if (normalizedCountry && entry.country !== normalizedCountry) {
       return false
     }
-    if (onlyPorts && !entry.function.includes("1")) {
+    if (onlyPorts && !["1", "2", "4"].some((code) => entry.function.includes(code))) {
       return false
     }
     if (!normalizedQuery) {

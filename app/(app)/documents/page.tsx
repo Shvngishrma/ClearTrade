@@ -6,6 +6,7 @@ import PrimaryButton from "../../../components/PrimaryButton"
 import { SHIPPING_BILL_CARGO_TYPES } from "@/lib/shippingBillCargoType"
 import { validateCrossDocumentInputs } from "@/lib/validation/sharedValidationEngine"
 import { isValidPortCode } from "@/lib/validatePortCode"
+import { UNLOCODE_PORTS } from "@/lib/data/unlocodePorts"
 
 const DOCUMENTS = [
   { key: "invoice", label: "Commercial Invoice" },
@@ -121,12 +122,6 @@ function DocumentsPage() {
   const [isGenerating, setIsGenerating] = useState(false)
   const [formError, setFormError] = useState("")
 
-  type PortOption = {
-    code: string
-    name: string
-    country: string
-  }
-
   type FieldErrors = {
     invoiceNumber?: string
     invoiceDate?: string
@@ -167,8 +162,58 @@ function DocumentsPage() {
   const [portCountries, setPortCountries] = useState<Array<{ code: string; name: string }>>([])
   const [loadingCountry, setLoadingCountry] = useState("")
   const [dischargeCountry, setDischargeCountry] = useState("")
-  const [loadingPortOptions, setLoadingPortOptions] = useState<PortOption[]>([])
-  const [dischargePortOptions, setDischargePortOptions] = useState<PortOption[]>([])
+
+  const selectedTransportMode = (sharedDetails.modeOfTransport || "").trim().toUpperCase()
+  const exporterCountryCode = (sharedDetails.countryOfOrigin || "").trim().toUpperCase()
+  const buyerCountryCode = (sharedDetails.finalDestination || "").trim().toUpperCase()
+
+  const loadingPorts = useMemo(() => {
+    if (!exporterCountryCode) return []
+    if (!["SEA", "AIR", "RAIL"].includes(selectedTransportMode)) return []
+
+    return UNLOCODE_PORTS.filter(
+      (port) =>
+        port.type === selectedTransportMode &&
+        port.countryCode === exporterCountryCode
+    )
+  }, [selectedTransportMode, exporterCountryCode])
+
+  const dischargePorts = useMemo(() => {
+    if (!buyerCountryCode) return []
+    if (!["SEA", "AIR", "RAIL"].includes(selectedTransportMode)) return []
+
+    return UNLOCODE_PORTS.filter(
+      (port) =>
+        port.type === selectedTransportMode &&
+        port.countryCode === buyerCountryCode
+    )
+  }, [selectedTransportMode, buyerCountryCode])
+
+  const loadingPortCodes = useMemo(
+    () => new Set(loadingPorts.map((port) => port.code.toUpperCase())),
+    [loadingPorts]
+  )
+
+  const loadingPortNameToCode = useMemo(() => {
+    const map = new Map<string, string>()
+    loadingPorts.forEach((port) => {
+      map.set(port.name.trim().toUpperCase(), port.code.toUpperCase())
+    })
+    return map
+  }, [loadingPorts])
+
+  const dischargePortCodes = useMemo(
+    () => new Set(dischargePorts.map((port) => port.code.toUpperCase())),
+    [dischargePorts]
+  )
+
+  const dischargePortNameToCode = useMemo(() => {
+    const map = new Map<string, string>()
+    dischargePorts.forEach((port) => {
+      map.set(port.name.trim().toUpperCase(), port.code.toUpperCase())
+    })
+    return map
+  }, [dischargePorts])
 
   const packingCartons = docDetails.packingList.cartons || []
 
@@ -271,68 +316,26 @@ function DocumentsPage() {
   }, [])
 
   useEffect(() => {
-    let cancelled = false
-
-    async function loadPorts() {
-      const query = sharedDetails.portOfLoading.trim()
-      const params = new URLSearchParams()
-      // Restrict port of loading to India
-      params.set("country", "IN")
-      if (query) params.set("q", query)
-      params.set("limit", "200")
-
-      try {
-        const res = await fetch(`/api/unlocode?${params.toString()}`)
-        if (!res.ok) return
-        const data = await res.json()
-        if (!cancelled) {
-          setLoadingPortOptions(Array.isArray(data.ports) ? data.ports : [])
-        }
-      } catch {
-        if (!cancelled) {
-          setLoadingPortOptions([])
-        }
-      }
-    }
-
-    loadPorts()
-
-    return () => {
-      cancelled = true
-    }
-  }, [sharedDetails.portOfLoading])
+    setSharedDetails((prev) => ({
+      ...prev,
+      portOfLoading: "",
+      portOfDischarge: "",
+    }))
+  }, [selectedTransportMode])
 
   useEffect(() => {
-    let cancelled = false
+    setSharedDetails((prev) => ({
+      ...prev,
+      portOfLoading: "",
+    }))
+  }, [exporterCountryCode])
 
-    async function loadPorts() {
-      const query = sharedDetails.portOfDischarge.trim()
-      const params = new URLSearchParams()
-      // Restrict port of discharge to selected final destination country
-      if (sharedDetails.finalDestination) params.set("country", sharedDetails.finalDestination)
-      if (query) params.set("q", query)
-      params.set("limit", "200")
-
-      try {
-        const res = await fetch(`/api/unlocode?${params.toString()}`)
-        if (!res.ok) return
-        const data = await res.json()
-        if (!cancelled) {
-          setDischargePortOptions(Array.isArray(data.ports) ? data.ports : [])
-        }
-      } catch {
-        if (!cancelled) {
-          setDischargePortOptions([])
-        }
-      }
-    }
-
-    loadPorts()
-
-    return () => {
-      cancelled = true
-    }
-  }, [sharedDetails.portOfDischarge, sharedDetails.finalDestination])
+  useEffect(() => {
+    setSharedDetails((prev) => ({
+      ...prev,
+      portOfDischarge: "",
+    }))
+  }, [buyerCountryCode])
 
   useEffect(() => {
     // Auto-detect country from port code for loading/discharge
@@ -769,8 +772,6 @@ function DocumentsPage() {
     docDetails.lc?.partialShipmentAllowed,
     docDetails.lc?.tolerancePercent,
     docDetails.lc?.lcExpiryDate,
-    loadingPortOptions,
-    dischargePortOptions,
   ])
 
   function formatComplianceError(error: any): string | null {
@@ -1262,6 +1263,22 @@ function DocumentsPage() {
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-4">
+                <div className="sm:col-span-2">
+                  <select
+                    className="border rounded-md px-3 py-2 w-full"
+                    value={sharedDetails.modeOfTransport}
+                    onChange={e =>
+                      setSharedDetails({ ...sharedDetails, modeOfTransport: e.target.value })
+                    }
+                  >
+                    <option value="Sea">Sea</option>
+                    <option value="Air">Air</option>
+                    <option value="Road">Road</option>
+                    <option value="Rail">Rail</option>
+                    <option value="Courier">Courier</option>
+                  </select>
+                </div>
+
                 <select
                   className="border rounded-md px-3 py-2"
                   value={sharedDetails.countryOfOrigin}
@@ -1299,8 +1316,24 @@ function DocumentsPage() {
                     className={`border rounded-md px-3 py-2 w-full ${fieldErrors.portOfLoading ? "border-red-500" : ""}`}
                     value={sharedDetails.portOfLoading}
                     onChange={e =>
-                      setSharedDetails({ ...sharedDetails, portOfLoading: e.target.value.toUpperCase() })
+                      setSharedDetails({ ...sharedDetails, portOfLoading: e.target.value })
                     }
+                    onBlur={e => {
+                      const raw = e.target.value.trim()
+                      if (!raw) return
+
+                      const normalized = raw.toUpperCase()
+                      if (loadingPortCodes.has(normalized)) {
+                        setSharedDetails((prev) => ({ ...prev, portOfLoading: normalized }))
+                        return
+                      }
+
+                      const matchedCode = loadingPortNameToCode.get(normalized)
+                      setSharedDetails((prev) => ({
+                        ...prev,
+                        portOfLoading: matchedCode || "",
+                      }))
+                    }}
                   />
                   {fieldErrors.portOfLoading && (
                     <p className="text-xs text-red-500 mt-1">{fieldErrors.portOfLoading}</p>
@@ -1314,27 +1347,29 @@ function DocumentsPage() {
                     className={`border rounded-md px-3 py-2 w-full ${fieldErrors.portOfDischarge ? "border-red-500" : ""}`}
                     value={sharedDetails.portOfDischarge}
                     onChange={e =>
-                      setSharedDetails({ ...sharedDetails, portOfDischarge: e.target.value.toUpperCase() })
+                      setSharedDetails({ ...sharedDetails, portOfDischarge: e.target.value })
                     }
+                    onBlur={e => {
+                      const raw = e.target.value.trim()
+                      if (!raw) return
+
+                      const normalized = raw.toUpperCase()
+                      if (dischargePortCodes.has(normalized)) {
+                        setSharedDetails((prev) => ({ ...prev, portOfDischarge: normalized }))
+                        return
+                      }
+
+                      const matchedCode = dischargePortNameToCode.get(normalized)
+                      setSharedDetails((prev) => ({
+                        ...prev,
+                        portOfDischarge: matchedCode || "",
+                      }))
+                    }}
                   />
                   {fieldErrors.portOfDischarge && (
                     <p className="text-xs text-red-500 mt-1">{fieldErrors.portOfDischarge}</p>
                   )}
                 </div>
-
-                <select
-                  className="border rounded-md px-3 py-2"
-                  value={sharedDetails.modeOfTransport}
-                  onChange={e =>
-                    setSharedDetails({ ...sharedDetails, modeOfTransport: e.target.value })
-                  }
-                >
-                  <option value="Sea">Sea</option>
-                  <option value="Air">Air</option>
-                  <option value="Road">Road</option>
-                  <option value="Rail">Rail</option>
-                  <option value="Courier">Courier</option>
-                </select>
 
                 <input
                   placeholder="Vessel / Flight (optional)"
@@ -2135,17 +2170,21 @@ function DocumentsPage() {
           </div>
         )}
         <datalist id="port-codes-loading">
-          {loadingPortOptions.map(option => (
-            <option key={option.code} value={option.code}>
-              {option.name}
-            </option>
+          {loadingPorts.map(option => (
+            <option
+              key={option.code}
+              value={option.code}
+              label={`${option.code} — ${option.name}`}
+            />
           ))}
         </datalist>
         <datalist id="port-codes-discharge">
-          {dischargePortOptions.map(option => (
-            <option key={option.code} value={option.code}>
-              {option.name}
-            </option>
+          {dischargePorts.map(option => (
+            <option
+              key={option.code}
+              value={option.code}
+              label={`${option.code} — ${option.name}`}
+            />
           ))}
         </datalist>
       </div>
