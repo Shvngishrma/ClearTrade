@@ -169,8 +169,6 @@ function DocumentsPage() {
   const [dischargeCountry, setDischargeCountry] = useState("")
   const [loadingPortOptions, setLoadingPortOptions] = useState<PortOption[]>([])
   const [dischargePortOptions, setDischargePortOptions] = useState<PortOption[]>([])
-  const [loadingPortSearch, setLoadingPortSearch] = useState("")
-  const [dischargePortSearch, setDischargePortSearch] = useState("")
 
   const packingCartons = docDetails.packingList.cartons || []
 
@@ -276,7 +274,7 @@ function DocumentsPage() {
     let cancelled = false
 
     async function loadPorts() {
-      const query = loadingPortSearch.trim()
+      const query = sharedDetails.portOfLoading.trim()
       const params = new URLSearchParams()
       // Restrict port of loading to India
       params.set("country", "IN")
@@ -302,13 +300,13 @@ function DocumentsPage() {
     return () => {
       cancelled = true
     }
-  }, [loadingPortSearch])
+  }, [sharedDetails.portOfLoading])
 
   useEffect(() => {
     let cancelled = false
 
     async function loadPorts() {
-      const query = dischargePortSearch.trim()
+      const query = sharedDetails.portOfDischarge.trim()
       const params = new URLSearchParams()
       // Restrict port of discharge to selected final destination country
       if (sharedDetails.finalDestination) params.set("country", sharedDetails.finalDestination)
@@ -334,7 +332,7 @@ function DocumentsPage() {
     return () => {
       cancelled = true
     }
-  }, [dischargePortSearch, sharedDetails.finalDestination])
+  }, [sharedDetails.portOfDischarge, sharedDetails.finalDestination])
 
   useEffect(() => {
     // Auto-detect country from port code for loading/discharge
@@ -1296,25 +1294,14 @@ function DocumentsPage() {
 
                 <div>
                   <input
-                    placeholder="Search loading port by code or name"
-                    className="border rounded-md px-3 py-2 w-full mb-2"
-                    value={loadingPortSearch}
-                    onChange={e => setLoadingPortSearch(e.target.value)}
-                  />
-                  <select
+                    list="port-codes-loading"
+                    placeholder="Port of loading (type code or name)"
                     className={`border rounded-md px-3 py-2 w-full ${fieldErrors.portOfLoading ? "border-red-500" : ""}`}
                     value={sharedDetails.portOfLoading}
                     onChange={e =>
-                      setSharedDetails({ ...sharedDetails, portOfLoading: e.target.value })
+                      setSharedDetails({ ...sharedDetails, portOfLoading: e.target.value.toUpperCase() })
                     }
-                  >
-                    <option value="">Select port of loading</option>
-                    {loadingPortOptions.map(option => (
-                      <option key={option.code} value={option.code}>
-                        {option.code} - {option.name}
-                      </option>
-                    ))}
-                  </select>
+                  />
                   {fieldErrors.portOfLoading && (
                     <p className="text-xs text-red-500 mt-1">{fieldErrors.portOfLoading}</p>
                   )}
@@ -1322,25 +1309,14 @@ function DocumentsPage() {
 
                 <div>
                   <input
-                    placeholder="Search discharge port by code or name"
-                    className="border rounded-md px-3 py-2 w-full mb-2"
-                    value={dischargePortSearch}
-                    onChange={e => setDischargePortSearch(e.target.value)}
-                  />
-                  <select
+                    list="port-codes-discharge"
+                    placeholder="Port of discharge (type code or name)"
                     className={`border rounded-md px-3 py-2 w-full ${fieldErrors.portOfDischarge ? "border-red-500" : ""}`}
                     value={sharedDetails.portOfDischarge}
                     onChange={e =>
-                      setSharedDetails({ ...sharedDetails, portOfDischarge: e.target.value })
+                      setSharedDetails({ ...sharedDetails, portOfDischarge: e.target.value.toUpperCase() })
                     }
-                  >
-                    <option value="">Select port of discharge</option>
-                    {dischargePortOptions.map(option => (
-                      <option key={option.code} value={option.code}>
-                        {option.code} - {option.name}
-                      </option>
-                    ))}
-                  </select>
+                  />
                   {fieldErrors.portOfDischarge && (
                     <p className="text-xs text-red-500 mt-1">{fieldErrors.portOfDischarge}</p>
                   )}
@@ -2158,6 +2134,20 @@ function DocumentsPage() {
 
           </div>
         )}
+        <datalist id="port-codes-loading">
+          {loadingPortOptions.map(option => (
+            <option key={option.code} value={option.code}>
+              {option.name}
+            </option>
+          ))}
+        </datalist>
+        <datalist id="port-codes-discharge">
+          {dischargePortOptions.map(option => (
+            <option key={option.code} value={option.code}>
+              {option.name}
+            </option>
+          ))}
+        </datalist>
       </div>
     )
 }

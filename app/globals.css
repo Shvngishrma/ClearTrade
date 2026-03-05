@@ -65,6 +65,15 @@
 		@apply bg-zinc-900 border-zinc-700 text-zinc-100;
 	}
 
+	html.dark .documents-page input[type="number"],
+	html.dark .documents-page input[type="date"],
+	html.dark .documents-page input[type="time"],
+	html.dark .documents-page input[type="month"],
+	html.dark .documents-page input[type="week"],
+	html.dark .documents-page select {
+		color-scheme: dark;
+	}
+
 	html.dark .documents-page input::placeholder,
 	html.dark .documents-page textarea::placeholder {
 		@apply text-zinc-400;
