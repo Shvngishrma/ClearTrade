@@ -25,6 +25,7 @@ model Exporter {
   name      String
   address   String
   iec       String
+  adCode    String?
   gstin     String?
   gstType   String    @default("registered") // registered | unregistered | composition | sez | deemed_export
   createdAt DateTime  @default(now())
@@ -222,6 +223,7 @@ model Carton {
 model ShippingBill {
   id              String   @id @default(uuid())
   invoiceId       String
+  adCode          String?
   portOfLoading   String
   portOfDischarge String
   cargoType       String

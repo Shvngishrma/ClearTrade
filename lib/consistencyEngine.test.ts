@@ -37,7 +37,7 @@ describe("Engine 7: Cross-Document Consistency Engine (THE MOAT)", () => {
       freight: 0,
       insurance: 2000,
       portOfLoading: "INMAA",
-      portOfDischarge: "JNPT",
+      portOfDischarge: "INNSA",
       items: [
         { hsCode: "6203", quantity: 100, unitPrice: 500 },
         { hsCode: "6204", quantity: 100, unitPrice: 500 }
@@ -56,7 +56,7 @@ describe("Engine 7: Cross-Document Consistency Engine (THE MOAT)", () => {
     shippingBill: {
       id: "SB-001",
       portOfLoading: "INMAA",
-      portOfDischarge: "JNPT",
+      portOfDischarge: "INNSA",
       cargoType: "General"
     },
     insurance: {
@@ -182,14 +182,14 @@ describe("Engine 7: Cross-Document Consistency Engine (THE MOAT)", () => {
     it("should fail when invoice and shipping bill ports don't match", async () => {
       const docs = createValidDocumentSet()
       docs.invoice.portOfLoading = "INMAA"
-      docs.shippingBill!.portOfLoading = "INMAB1" // Different port!
+      docs.shippingBill!.portOfLoading = "INBOM" // Different valid port
       
       const result = await validateDocumentConsistency(docs)
       
       expect(result.portConsistent).toBe(false)
       expect(result.errors.some(e => e.code === "PORT_MISMATCH")).toBe(true)
       expect(result.errors[0]?.severity).toBe("FATAL")
-      console.log("✅ Test 5b: Port mismatch CAUGHT (INMAA vs INMAB1) - BLOCKS PDF")
+      console.log("✅ Test 5b: Port mismatch CAUGHT (INMAA vs INBOM) - BLOCKS PDF")
     })
   })
   
@@ -261,7 +261,7 @@ describe("Engine 7: Cross-Document Consistency Engine (THE MOAT)", () => {
       docs.insurance!.insuredValue = 40000 // Too low - VALUE MISMATCH
       
       docs.invoice.portOfLoading = "INMAA"
-      docs.shippingBill!.portOfLoading = "INMAB1" // PORT MISMATCH
+      docs.shippingBill!.portOfLoading = "INBOM" // PORT MISMATCH
       
       docs.invoice.items[0].quantity = 100
       docs.packingList!.items[0].quantity = 80 // QUANTITY MISMATCH
@@ -345,8 +345,8 @@ describe("Engine 7: Cross-Document Consistency Engine (THE MOAT)", () => {
           incoterm: "CIF",
           freight: 8000,
           insurance: 3000,
-          portOfLoading: "INMAE", // Cochin - for fish
-          portOfDischarge: "SG", // Singapore discharge
+          portOfLoading: "INMAA", // Valid UN/LOCODE for fixture stability
+          portOfDischarge: "SGSIN", // Singapore discharge
           items: [{ hsCode: "0302", quantity: 500, unitPrice: 160 }]
         },
         packingList: {
@@ -358,8 +358,8 @@ describe("Engine 7: Cross-Document Consistency Engine (THE MOAT)", () => {
         },
         shippingBill: {
           id: "SB-FISH",
-          portOfLoading: "INMAE",
-          portOfDischarge: "SG",
+          portOfLoading: "INMAA",
+          portOfDischarge: "SGSIN",
           cargoType: "Perishable"
         },
         insurance: {
@@ -377,7 +377,7 @@ describe("Engine 7: Cross-Document Consistency Engine (THE MOAT)", () => {
       console.log("   Status:", result.allConsistent ? "✅ CONSISTENT" : "❌ INCONSISTENT")
       
       expect(result.allConsistent).toBe(true)
-      expect(result.consistency.portMatch.loading).toBe("INMAE")
+      expect(result.consistency.portMatch.loading).toBe("INMAA")
     })
   })
   
@@ -445,7 +445,7 @@ describe("Engine 7: Cross-Document Consistency Engine (THE MOAT)", () => {
         {
           name: "Port Mismatch",
           setup: (docs: DocumentSet) => {
-            docs.shippingBill!.portOfLoading = "INMAB1"
+            docs.shippingBill!.portOfLoading = "INBOM"
             return docs
           },
           expectPass: false

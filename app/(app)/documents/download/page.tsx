@@ -29,6 +29,8 @@ const DOC_LABELS: Record<string, string> = {
   lc: "LC Supporting Documents",
 }
 
+const FREE_PLAN_LIMIT = 7
+
 function DownloadPageContent() {
   const router = useRouter()
   const params = useSearchParams()
@@ -59,10 +61,23 @@ function DownloadPageContent() {
   const [invoiceStatus, setInvoiceStatus] = useState(initialStatus)
   const [invoiceVersion, setInvoiceVersion] = useState<number>(1)
   const [isPro, setIsPro] = useState(false)
+  const [usageCount, setUsageCount] = useState(0)
+  const [usageLoading, setUsageLoading] = useState(true)
+  const [customerName, setCustomerName] = useState("")
+  const [customerEmail, setCustomerEmail] = useState("")
   const [includedDocs, setIncludedDocs] = useState<string[]>([])
   const [includedDocsLoading, setIncludedDocsLoading] = useState(true)
   const [includedDocsError, setIncludedDocsError] = useState<string | null>(null)
   const [autoDownloadTriggered, setAutoDownloadTriggered] = useState(false)
+  const isFreeLimitReached = !isPro && usageCount >= FREE_PLAN_LIMIT
+
+  function openLimitUpgradeModal(message?: string) {
+    setUpgradeContext({
+      reason: "LIMIT_EXCEEDED",
+      message: message || "Free plan limit reached",
+    })
+    setShowUpgradeModal(true)
+  }
   // Fetch included document list for this invoice
   useEffect(() => {
     if (!invoiceId) return
@@ -128,22 +143,47 @@ function DownloadPageContent() {
   useEffect(() => {
     let cancelled = false
 
-    async function loadUserPlan() {
+    async function loadPlanAndUsage() {
+      setUsageLoading(true)
       try {
-        const res = await fetch("/api/user", { credentials: "include" })
-        if (!res.ok || cancelled) return
-        const data = await res.json()
-        if (!cancelled) {
-          setIsPro(Boolean(data?.isPro))
+        const [userRes, usageRes] = await Promise.all([
+          fetch("/api/user", { credentials: "include" }),
+          fetch("/api/usage", { credentials: "include" }),
+        ])
+
+        if (cancelled) return
+
+        if (userRes.ok) {
+          const userData = await userRes.json()
+          setCustomerName(String(userData?.name || ""))
+          setCustomerEmail(String(userData?.email || ""))
+          setIsPro(Boolean(userData?.isPro))
+        }
+
+        if (usageRes.ok) {
+          const usageData = await usageRes.json()
+          const nextCount = Number(usageData?.count || 0)
+          const nextIsPro = Boolean(usageData?.isPro)
+          setUsageCount(nextCount)
+          setIsPro(nextIsPro)
+
+          if (!nextIsPro && nextCount >= FREE_PLAN_LIMIT) {
+            openLimitUpgradeModal("Free plan limit reached")
+          }
         }
       } catch {
         if (!cancelled) {
           setIsPro(false)
+          setUsageCount(0)
+        }
+      } finally {
+        if (!cancelled) {
+          setUsageLoading(false)
         }
       }
     }
 
-    loadUserPlan()
+    loadPlanAndUsage()
     return () => {
       cancelled = true
     }
@@ -163,6 +203,11 @@ function DownloadPageContent() {
   }
 
   async function handleDownload() {
+    if (isFreeLimitReached) {
+      openLimitUpgradeModal("You’ve generated all 7 documents included in the free plan.")
+      return
+    }
+
     console.log("[DOWNLOAD] Button clicked")
     setIsDownloading(true)
     setDownloadSuccess(false)
@@ -192,6 +237,12 @@ function DownloadPageContent() {
           : Array.isArray(nested?.blockers)
             ? nested.blockers
             : []
+
+        if (res.status === 429 || errorPayload?.error === "FREE_LIMIT_EXCEEDED") {
+          openLimitUpgradeModal(errorPayload?.message || "You have reached the free tier limit. Please upgrade to continue.")
+          setIsDownloading(false)
+          return
+        }
 
         // Special handling for Puppeteer/Chrome missing error
         if (
@@ -268,6 +319,9 @@ function DownloadPageContent() {
       console.log("[DOWNLOAD] Download complete")
 
       setDownloadSuccess(true)
+      if (!isPro) {
+        setUsageCount((prev) => prev + 1)
+      }
       await loadInvoiceStatus()
       setIsDownloading(false)
     } catch (err) {
@@ -346,6 +400,11 @@ function DownloadPageContent() {
   async function handleDownloadComplianceCertificate() {
     if (!invoiceId) return
 
+    if (isFreeLimitReached) {
+      openLimitUpgradeModal("You’ve generated all 7 documents included in the free plan.")
+      return
+    }
+
     setIsDownloadingCompliance(true)
     setDownloadError(null)
 
@@ -356,6 +415,10 @@ function DownloadPageContent() {
 
       if (!res.ok) {
         const errorPayload = await res.json().catch(async () => ({ message: await res.text() }))
+        if (res.status === 429 || errorPayload?.error === "FREE_LIMIT_EXCEEDED") {
+          openLimitUpgradeModal(errorPayload?.message || "You have reached the free tier limit. Please upgrade to continue.")
+          return
+        }
         const blockers = Array.isArray(errorPayload?.blockers) ? errorPayload.blockers : []
         const blockerText = blockers.length
           ? blockers
@@ -395,6 +458,11 @@ function DownloadPageContent() {
   useEffect(() => {
     if (!invoiceId || autoDownloadTriggered) return
     if (autoDownload === "pdf") {
+      if (isFreeLimitReached) {
+        openLimitUpgradeModal("You’ve generated all 7 documents included in the free plan.")
+        setAutoDownloadTriggered(true)
+        return
+      }
       setAutoDownloadTriggered(true)
       void handleDownload()
       return
@@ -403,11 +471,17 @@ function DownloadPageContent() {
       setAutoDownloadTriggered(true)
       void handleDownloadAllDocxZip()
     }
-  }, [invoiceId, autoDownload, autoDownloadTriggered, isPro])
+  }, [invoiceId, autoDownload, autoDownloadTriggered, isPro, isFreeLimitReached])
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-zinc-950 p-4">
       <div className="ui-panel rounded-lg max-w-md w-full p-8 border border-gray-200 dark:border-zinc-800 shadow-sm dark:shadow-none">
+        {!isPro && !usageLoading && (
+          <div className="mb-4 rounded-lg border border-gray-200 dark:border-zinc-700 bg-gray-50 dark:bg-zinc-900 px-4 py-3 text-sm text-gray-700 dark:text-zinc-200">
+            Free plan usage: {usageCount} / {FREE_PLAN_LIMIT} documents used
+          </div>
+        )}
+
         {downloadError && (
           <div className="mb-4 p-3 rounded bg-red-50 border border-red-200 text-red-800 text-sm whitespace-pre-line">
             <strong className="block mb-1">Download Error</strong>
@@ -512,6 +586,29 @@ function DownloadPageContent() {
           isOpen={showUpgradeModal}
           onClose={() => setShowUpgradeModal(false)}
           context={upgradeContext}
+          title="Free plan limit reached"
+          body={"You’ve generated all 7 documents included in the free plan.\n\nUpgrade to Pro to continue generating export documents."}
+          benefits={[
+            "✓ Unlimited document generation",
+            "✓ No watermark",
+            "✓ DOCX + ZIP downloads",
+            "✓ Dashboard & document history",
+          ]}
+          primaryLabel="Upgrade to Pro"
+          secondaryLabel="Back"
+          checkoutConfig={{
+            amount: 999,
+            customerName,
+            customerEmail,
+            onSuccess: () => {
+              setIsPro(true)
+              setShowUpgradeModal(false)
+              setUpgradeContext(null)
+            },
+            onError: (message: string) => {
+              setDownloadError(message)
+            },
+          }}
         />
 
         {/* Success Message */}

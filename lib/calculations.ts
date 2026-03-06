@@ -264,7 +264,8 @@ export function calculateInvoiceTotals(
   freight: number = 0,
   insurance: number = 0,
   currency: string = "USD",
-  date: Date = new Date()
+  date: Date = new Date(),
+  exchangeRateOverride?: number
 ) {
   // Step 1: Sum all items (FORCE CALCULATION)
   const totalValue = sumItems(items)
@@ -283,7 +284,7 @@ export function calculateInvoiceTotals(
   }
 
   // Step 4: Get exchange rates with snapshots (DATE-SPECIFIC)
-  const totalValueINRData = convertToINRWithSnapshot(totalValue, currency, date)
+  const totalValueINRData = convertToINRWithSnapshot(totalValue, currency, date, exchangeRateOverride)
   const fobValueINRData = convertToINRWithSnapshot(fobValue, currency, date, totalValueINRData.rate)
   const cifValueINRData = cifValue
     ? convertToINRWithSnapshot(cifValue, currency, date, totalValueINRData.rate)

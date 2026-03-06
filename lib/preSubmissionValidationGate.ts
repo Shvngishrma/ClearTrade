@@ -1,8 +1,6 @@
 import { prisma } from "@/lib/db"
 import { runMasterCompliancePipeline, canGenerateDocuments, getAllBlockers } from "@/lib/masterCompliancePipeline"
 import { validateLCCompliance } from "@/lib/lcComplianceEngine"
-import { validateHSCodeWithLiveData } from "@/lib/hsCodeLiveValidationService"
-import { validateADIECPortChain } from "@/lib/rbiIECValidationService"
 import { canGeneratePDF } from "@/lib/consistencyEngine"
 import { validateInvoicePackingAlignment } from "@/lib/documentConsistencyEngine"
 import { markInvoiceReady } from "@/lib/documentLifecycle"
@@ -229,53 +227,44 @@ export async function validateBeforeRelease(invoiceId: string): Promise<ReleaseV
     }
   }
 
-  // 3) HS engine gate
+  // 3) HS engine gate (structural-only)
   for (const item of invoice.items) {
-    try {
-      const hsResult = await validateHSCodeWithLiveData(
-        item.hsCode,
-        item.description,
-        Number(item.quantity),
-        Number(item.unitPrice),
-        invoice.currency
-      )
+    const normalizedHSCode = (item.hsCode || "").trim()
+    const isHsStructurallyValid = /^\d{6}(\d{2})?$/.test(normalizedHSCode)
 
-      const hsErrors = hsResult.issues.filter((issue) => issue.severity === "Error")
-      if (hsErrors.length > 0) {
-        engines.HS_ENGINE = "FAILED"
-        blockers.push(
-          ...hsErrors.map((issue) => ({
-            engine: "HS_ENGINE" as const,
-            code: `HS_${item.hsCode}`,
-            message: issue.message,
-            resolution: issue.resolution,
-          }))
-        )
-      }
-    } catch (error: any) {
+    if (!isHsStructurallyValid) {
       engines.HS_ENGINE = "FAILED"
       blockers.push({
         engine: "HS_ENGINE",
-        code: "HS_ENGINE_ERROR",
-        message: `HS validation failed for ${item.hsCode}: ${error?.message || "Unknown error"}`,
-        resolution: "Verify HS code data and retry.",
+        code: "HS_FORMAT_INVALID",
+        message: `HS code ${item.hsCode || "N/A"} is invalid. HS code must be a 6-digit or 8-digit numeric code.`,
+        resolution: "Correct the HS code format and retry.",
       })
     }
   }
 
-  // 4) IEC chain gate
+  // 4) IEC chain gate (structural-only)
   try {
     const normalizedPort = (invoice.portOfLoading || latestShipping?.portOfLoading || invoice.portOfLoadingCode || "")
       .trim()
       .toUpperCase()
+    const normalizedIEC = (invoice.exporter.iec || "").trim()
 
-    if (!invoice.exporter.iec) {
+    if (!normalizedIEC) {
       engines.IEC_CHAIN = "FAILED"
       blockers.push({
         engine: "IEC_CHAIN",
         code: "IEC_MISSING",
         message: "Exporter IEC is missing",
         resolution: "Add exporter IEC before PDF generation.",
+      })
+    } else if (!/^\d{10}$/.test(normalizedIEC)) {
+      engines.IEC_CHAIN = "FAILED"
+      blockers.push({
+        engine: "IEC_CHAIN",
+        code: "IEC_FORMAT_INVALID",
+        message: "Invalid IEC format. IEC must be exactly 10 numeric digits.",
+        resolution: "Update exporter IEC to a 10-digit numeric value.",
       })
     } else if (!normalizedPort) {
       engines.IEC_CHAIN = "FAILED"
@@ -291,64 +280,12 @@ export async function validateBeforeRelease(invoiceId: string): Promise<ReleaseV
         invoice.exporter.adMappings[0]
 
       if (!adMapping?.adCode) {
-        engines.IEC_CHAIN = "FAILED"
-        blockers.push({
+        warnings.push({
           engine: "IEC_CHAIN",
-          code: "AD_CODE_MISSING",
-          message: "No active AD code mapping found for exporter",
-          resolution: "Configure exporter AD-code mapping for the selected port.",
+          code: "AD_CODE_NOT_CONFIGURED",
+          message: "No AD code mapping configured for this exporter/port. This does not block release in structural-only mode.",
+          resolution: "Optionally configure AD mapping for internal traceability.",
         })
-      } else {
-        const chain = await validateADIECPortChain(
-          invoice.exporter.iec,
-          adMapping.adCode,
-          normalizedPort,
-          invoice.items.map((i) => i.hsCode)
-        )
-
-        const chainErrors = chain.issues.filter((issue) => issue.severity === "Error")
-        const chainWarnings = chain.issues.filter((issue) => issue.severity === "Warning")
-
-        if (!chain.valid || chainErrors.length > 0) {
-          const masterDataErrors = chainErrors.filter((issue) =>
-            issue.message.includes("not found in RBI master")
-          )
-          const hardErrors = chainErrors.filter(
-            (issue) => !issue.message.includes("not found in RBI master")
-          )
-
-          if (hardErrors.length > 0) {
-            engines.IEC_CHAIN = "FAILED"
-            blockers.push(
-              ...hardErrors.map((issue) => ({
-                engine: "IEC_CHAIN" as const,
-                code: "IEC_CHAIN_INVALID",
-                message: issue.message,
-                resolution: issue.resolution,
-              }))
-            )
-          }
-
-          warnings.push(
-            ...masterDataErrors.map((issue) => ({
-              engine: "IEC_CHAIN" as const,
-              code: "IEC_CHAIN_MASTER_DATA_MISSING",
-              message: issue.message,
-              resolution:
-                issue.resolution ||
-                "RBI mock master does not include this IEC/AD yet. Configure master data for strict validation.",
-            }))
-          )
-        }
-
-        warnings.push(
-          ...chainWarnings.map((issue) => ({
-            engine: "IEC_CHAIN" as const,
-            code: "IEC_CHAIN_WARNING",
-            message: issue.message,
-            resolution: issue.resolution,
-          }))
-        )
       }
     }
   } catch (error: any) {

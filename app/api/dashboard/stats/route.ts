@@ -10,6 +10,10 @@ export async function GET() {
     return new NextResponse("Unauthorized", { status: 401 })
   }
 
+  if (!session.user.isPro) {
+    return NextResponse.json({ error: "PRO_REQUIRED" }, { status: 403 })
+  }
+
   const [totalDocs, inProgress, pending] = await Promise.all([
     prisma.document.count({ where: { userId: session.user.id } }),
     prisma.document.count({ where: { userId: session.user.id, status: "IN_PROGRESS" } }),

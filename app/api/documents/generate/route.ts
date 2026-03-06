@@ -4,17 +4,12 @@ import { checkUsage, incrementUsage } from "@/lib/usage"
 import { getCurrentUser } from "@/lib/auth"
 import { validateInvoice } from "@/lib/validate"
 import { calculateInvoiceTotals } from "@/lib/calculations"
+import { getPublicExchangeRateWithCache } from "@/lib/exchangeRateService"
 import { validateInvoicePackingAlignment } from "@/lib/documentConsistencyEngine"
 import { runMasterCompliancePipeline, canGenerateDocuments, getAllBlockers } from "@/lib/masterCompliancePipeline"
 import { initializeInvoiceLifecycle } from "@/lib/documentLifecycle"
 import { normalizeShippingBillCargoType } from "@/lib/shippingBillCargoType"
 import { validateCrossDocumentInputs } from "@/lib/validation/sharedValidationEngine"
-
-const DEFAULT_EXCHANGE_RATES = {
-  USD: 83.5,
-  EUR: 91.2,
-  GBP: 105.8,
-}
 
 export async function POST(req: Request) {
   const user = await getCurrentUser()
@@ -54,7 +49,26 @@ export async function POST(req: Request) {
     const normalizedBlOrAwbNumber = (sharedDetails?.blOrAwbNumber || "").trim()
     const normalizedContainerNumber = (sharedDetails?.containerNumber || "").trim()
     const normalizedMarksAndNumbers = (sharedDetails?.marksAndNumbers || "").trim()
+    const normalizedAdCode = String(sharedDetails?.adCode || "").trim().toUpperCase()
+    const adCodePattern = /^[A-Z0-9]{7,11}$/
+    const shippingBillSelected = Array.isArray(selectedDocs) && selectedDocs.includes("shippingBill")
     const lcDetails = docDetails?.lc || {}
+
+    if (shippingBillSelected && !adCodePattern.test(normalizedAdCode)) {
+      return new NextResponse(
+        JSON.stringify({
+          error: "VALIDATION_ERROR",
+          message: "Authorized Dealer (AD) Code is required for Shipping Bill.",
+          errors: [
+            {
+              field: "sharedDetails.adCode",
+              message: "Authorized Dealer (AD) Code is required for Shipping Bill.",
+            },
+          ],
+        }),
+        { status: 400, headers: { "Content-Type": "application/json" } }
+      )
+    }
 
     const normalizedLcNumber = String(lcDetails?.lcNumber || "").trim()
     const normalizedIssuingBank = String(lcDetails?.issuingBank || "").trim()
@@ -282,6 +296,7 @@ export async function POST(req: Request) {
     // 0️⃣ Validate Invoice Data - BULLETPROOF VERSION
     const validationErrors = await validateInvoice({
       invoiceNumber: normalizedInvoiceNumber,
+      exporterIEC: sharedDetails.exporterIEC,
       invoiceDate: normalizedInvoiceDate,
       paymentTerms: sharedDetails.paymentTerms,
       currency: sharedDetails.currency,
@@ -316,7 +331,9 @@ export async function POST(req: Request) {
     if (validationErrors.length > 0) {
       const firstValidationError = validationErrors[0]
       const detailedMessage = firstValidationError
-        ? `${firstValidationError.field}: ${firstValidationError.message}`
+        ? firstValidationError.field === "exporterIEC"
+          ? firstValidationError.message
+          : `${firstValidationError.field}: ${firstValidationError.message}`
         : "Invoice validation failed"
 
       return new NextResponse(
@@ -453,59 +470,11 @@ export async function POST(req: Request) {
       name: sharedDetails.exporterName,
       address: sharedDetails.exporterAddress,
       iec: sharedDetails.exporterIEC,
+      adCode: adCodePattern.test(normalizedAdCode) ? normalizedAdCode : null,
       gstin: sharedDetails.exporterGSTIN,
       gstType: sharedDetails.gstType || "registered", // Default to registered
     } as any,
   })
-
-  const normalizedLoadingPort = (sharedDetails.portOfLoading || "").trim().toUpperCase()
-  const normalizedIEC = (sharedDetails.exporterIEC || "").trim()
-
-  const adCandidatesByIEC: Record<string, string[]> = {
-    "0123456788": ["AD0001", "AD0002", "AD0005"],
-    "0123456789": ["AD0003"],
-  }
-
-  const adCandidatesByPort: Record<string, string[]> = {
-    INMAA: ["AD0001", "AD0005", "AD0002"],
-    INMAA1: ["AD0001", "AD0005", "AD0002"],
-    INMCT: ["AD0001", "AD0005"],
-    INMCT1: ["AD0001", "AD0005"],
-    INBOM: ["AD0002", "AD0005"],
-    INBOM1: ["AD0002", "AD0005"],
-    INDEL: ["AD0002"],
-    INDEL1: ["AD0002"],
-    INKOL: ["AD0005"],
-    INKOL1: ["AD0005"],
-  }
-
-  const preferredByIEC = adCandidatesByIEC[normalizedIEC] || []
-  const preferredByPort = adCandidatesByPort[normalizedLoadingPort] || []
-
-  let resolvedAdCode = preferredByIEC.find((code) => preferredByPort.includes(code))
-
-  if (!resolvedAdCode && preferredByIEC.length > 0) {
-    resolvedAdCode = preferredByIEC[0]
-  }
-
-  if (!resolvedAdCode && preferredByPort.length > 0) {
-    resolvedAdCode = preferredByPort[0]
-  }
-
-  if (!resolvedAdCode) {
-    resolvedAdCode = "AD0001"
-  }
-
-  if (normalizedLoadingPort) {
-    await prisma.exporterADMapping.create({
-      data: {
-        exporterId: exporter.id,
-        adCode: resolvedAdCode,
-        portCode: normalizedLoadingPort,
-        isActive: true,
-      },
-    })
-  }
 
   // 2️⃣ Create Buyer
   const buyer = await prisma.buyer.create({
@@ -517,6 +486,13 @@ export async function POST(req: Request) {
   })
 
   // 3️⃣ Auto Calculation Engine
+  const exchangeRateDate = sharedDetails.exchangeRateDate ? new Date(sharedDetails.exchangeRateDate) : new Date()
+  const fxRateResult = await getPublicExchangeRateWithCache(sharedDetails.currency)
+
+  if (fxRateResult.fallbackMessage) {
+    console.warn(`[FX_FALLBACK] ${fxRateResult.fallbackMessage}`)
+  }
+
   const calculations = calculateInvoiceTotals(
     items.map((i: any) => ({
       description: i.description,
@@ -528,7 +504,8 @@ export async function POST(req: Request) {
     sharedDetails.freight ? parseFloat(sharedDetails.freight) : 0,
     sharedDetails.insurance ? parseFloat(sharedDetails.insurance) : 0,
     sharedDetails.currency,
-    sharedDetails.exchangeRateDate ? new Date(sharedDetails.exchangeRateDate) : new Date()
+    exchangeRateDate,
+    fxRateResult.rate
   )
 
     const incrementInvoiceNumber = (invoiceNumber: string) => {
@@ -682,6 +659,7 @@ export async function POST(req: Request) {
     await prisma.shippingBill.create({
       data: {
         invoiceId: invoice.id,
+        adCode: normalizedAdCode,
         portOfLoading: docDetails.shippingBill.portOfLoading,
         portOfDischarge: docDetails.shippingBill.portOfDischarge,
         cargoType,

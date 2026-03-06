@@ -149,14 +149,7 @@ export async function generateShippingBillPdfBuffer(
   const invoice = await prisma.invoice.findUnique({
     where: { id: invoiceId },
     include: {
-      exporter: {
-        include: {
-          adMappings: {
-            where: { isActive: true },
-            orderBy: { createdAt: "desc" },
-          },
-        },
-      },
+      exporter: true,
       buyer: true,
       items: true,
       shippingBills: true,

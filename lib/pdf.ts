@@ -246,14 +246,7 @@ export async function generateShippingBillPDF(invoice: any, sb: any, usage?: any
   }).format(exportDate)
 
   const shippingBillNo = `SB-${String(sb.id || "DRAFT").slice(0, 8).toUpperCase()}`
-  const adCode =
-    invoice.exporter?.adMappings?.find((mapping: any) => {
-      const mappedPort = (mapping.portCode || "").trim().toUpperCase()
-      const invoicePort = (sb.portOfLoading || invoice.portOfLoading || "").trim().toUpperCase()
-      return mappedPort === invoicePort
-    })?.adCode ||
-    invoice.exporter?.adMappings?.[0]?.adCode ||
-    "N/A"
+  const adCode = (sb?.adCode || invoice.exporter?.adCode || "").trim().toUpperCase() || "N/A"
 
   const lineValueByItem = invoice.items.map((item: any) => {
     const qty = Number(item.quantity) || 0

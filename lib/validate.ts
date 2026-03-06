@@ -31,6 +31,7 @@ export interface ValidationError {
 
 export interface InvoiceData {
   invoiceNumber: string
+  exporterIEC?: string
   invoiceDate?: Date
   paymentTerms?: string
   totalValue?: number
@@ -70,6 +71,14 @@ export async function validateInvoice(data: InvoiceData): Promise<ValidationErro
     errors.push({
       field: "invoiceNumber",
       message: "Invoice Number must follow INV/YYYY/NNNN format (example: INV/2026/0001)",
+    })
+  }
+
+  const rawIEC = String(data.exporterIEC || "")
+  if (!/^\d{10}$/.test(rawIEC)) {
+    errors.push({
+      field: "exporterIEC",
+      message: "Invalid IEC format. IEC must be exactly 10 numeric digits.",
     })
   }
 

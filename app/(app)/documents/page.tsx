@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from "react"
 import { useRouter } from "next/navigation"
 import PrimaryButton from "../../../components/PrimaryButton"
+import { UpgradeModal } from "@/components/UpgradeModal"
 import { SHIPPING_BILL_CARGO_TYPES } from "@/lib/shippingBillCargoType"
 import { validateCrossDocumentInputs } from "@/lib/validation/sharedValidationEngine"
 import { isValidPortCode } from "@/lib/validatePortCode"
@@ -17,6 +18,8 @@ const DOCUMENTS = [
   { key: "insurance", label: "Insurance Declaration" },
   { key: "lc", label: "LC Supporting Documents" },
 ]
+
+const FREE_PLAN_LIMIT = 7
 
 function DocumentsPage() {
   const router = useRouter()
@@ -53,6 +56,7 @@ function DocumentsPage() {
     exporterName: "",
     exporterAddress: "",
     exporterIEC: "",
+    adCode: "",
     exporterGSTIN: "",
     buyerName: "",
     buyerAddress: "",
@@ -121,12 +125,21 @@ function DocumentsPage() {
 
   const [isGenerating, setIsGenerating] = useState(false)
   const [formError, setFormError] = useState("")
+  const [usageCount, setUsageCount] = useState(0)
+  const [isPro, setIsPro] = useState(false)
+  const [usageLoading, setUsageLoading] = useState(true)
+  const [showUpgradeModal, setShowUpgradeModal] = useState(false)
+  const [upgradeContext, setUpgradeContext] = useState<{
+    reason: "DOCX_RESTRICTED" | "LIMIT_EXCEEDED"
+    message: string
+  } | null>(null)
 
   type FieldErrors = {
     invoiceNumber?: string
     invoiceDate?: string
     exporterName?: string
     exporterIEC?: string
+    adCode?: string
     exporterGSTIN?: string
     buyerName?: string
     incoterm?: string
@@ -153,7 +166,10 @@ function DocumentsPage() {
 
   const [fieldErrors, setFieldErrors] = useState<FieldErrors>({ hsCodeErrors: [] })
 
+  const isFreeLimitReached = !isPro && usageCount >= FREE_PLAN_LIMIT
+
   const invoiceNumberPattern = /^INV\/\d{4}\/\d{4}$/
+  const adCodePattern = /^[A-Z0-9]{7,11}$/
   const gstinPattern = /^[0-9A-Z]{15}$/i
   const policyNumberPattern = /^[A-Z0-9][A-Z0-9/-]{4,28}[A-Z0-9]$/i
 
@@ -287,8 +303,65 @@ function DocumentsPage() {
   }
 
   function handleUpgradeError(status: number, message: string, code: string) {
-    alert(`${message}\n\nPlease upgrade your plan to continue.`)
+    setUpgradeContext({
+      reason: "LIMIT_EXCEEDED",
+      message: message || "You have reached the free tier limit. Please upgrade to continue.",
+    })
+    setShowUpgradeModal(true)
   }
+
+  useEffect(() => {
+    let cancelled = false
+
+    async function loadUsage() {
+      setUsageLoading(true)
+      try {
+        const res = await fetch("/api/usage", { credentials: "include" })
+
+        if (res.status === 401) {
+          router.push("/login")
+          return
+        }
+
+        if (!res.ok) {
+          throw new Error("Failed to load usage")
+        }
+
+        const data = await res.json()
+
+        if (cancelled) return
+
+        const nextCount = Number(data?.count || 0)
+        const nextIsPro = Boolean(data?.isPro)
+
+        setUsageCount(nextCount)
+        setIsPro(nextIsPro)
+
+        if (!nextIsPro && nextCount >= FREE_PLAN_LIMIT) {
+          setUpgradeContext({
+            reason: "LIMIT_EXCEEDED",
+            message: "Free plan limit reached",
+          })
+          setShowUpgradeModal(true)
+        }
+      } catch {
+        if (!cancelled) {
+          setUsageCount(0)
+          setIsPro(false)
+        }
+      } finally {
+        if (!cancelled) {
+          setUsageLoading(false)
+        }
+      }
+    }
+
+    loadUsage()
+
+    return () => {
+      cancelled = true
+    }
+  }, [router])
 
   useEffect(() => {
     let cancelled = false
@@ -417,11 +490,17 @@ function DocumentsPage() {
       errors.exporterName = "Exporter name is required."
     }
 
-    const normalizedIEC = (sharedDetails.exporterIEC || "").trim()
-    if (!normalizedIEC) {
-      errors.exporterIEC = "Exporter IEC is required for AD/IEC validation."
-    } else if (!/^\d{10}$/.test(normalizedIEC)) {
-      errors.exporterIEC = "Exporter IEC must be 10 digits."
+    const normalizedIEC = sharedDetails.exporterIEC || ""
+    if (!/^\d{10}$/.test(normalizedIEC)) {
+      errors.exporterIEC = "IEC must be exactly 10 digits."
+    }
+
+    const normalizedAdCode = (sharedDetails.adCode || "").trim().toUpperCase()
+    const requiresAdCode = selectedDocs.includes("shippingBill")
+    if (requiresAdCode && !normalizedAdCode) {
+      errors.adCode = "Authorized Dealer (AD) Code is required for Shipping Bill."
+    } else if (normalizedAdCode && !adCodePattern.test(normalizedAdCode)) {
+      errors.adCode = "AD Code must be 7-11 uppercase letters/numbers with no spaces."
     }
 
     const normalizedGSTIN = (sharedDetails.exporterGSTIN || "").trim()
@@ -429,56 +508,6 @@ function DocumentsPage() {
       errors.exporterGSTIN = "GSTIN must be exactly 15 characters."
     } else if (normalizedGSTIN && !gstinPattern.test(normalizedGSTIN)) {
       errors.exporterGSTIN = "GSTIN format: 2 digits (state) + 10 alphanumeric (PAN) + 3 chars (entity/check/reserved). Example: 27AABCT1234H1Z0." 
-    }
-
-    if (!normalizedIEC) {
-      // Already handled above
-    } else {
-      const normalizedLoadingPort = (sharedDetails.portOfLoading || "").trim().toUpperCase()
-
-      const adCandidatesByIEC: Record<string, string[]> = {
-        "0123456788": ["AD0001", "AD0002", "AD0005"],
-        "0123456789": ["AD0003"],
-      }
-
-      const adCandidatesByPort: Record<string, string[]> = {
-        INMAA: ["AD0001", "AD0005", "AD0002"],
-        INMAA1: ["AD0001", "AD0005", "AD0002"],
-        INMCT: ["AD0001", "AD0005"],
-        INMCT1: ["AD0001", "AD0005"],
-        INBOM: ["AD0002", "AD0005"],
-        INBOM1: ["AD0002", "AD0005"],
-        INDEL: ["AD0002"],
-        INDEL1: ["AD0002"],
-        INKOL: ["AD0005"],
-        INKOL1: ["AD0005"],
-      }
-
-      const adOwnerIEC: Record<string, string> = {
-        AD0001: "0123456788",
-        AD0002: "0123456788",
-        AD0003: "0123456789",
-        AD0005: "0123456788",
-      }
-
-      const preferredByIEC = adCandidatesByIEC[normalizedIEC] || []
-      const preferredByPort = adCandidatesByPort[normalizedLoadingPort] || []
-
-      let resolvedAdCode = preferredByIEC.find(code => preferredByPort.includes(code))
-      if (!resolvedAdCode && preferredByIEC.length > 0) {
-        resolvedAdCode = preferredByIEC[0]
-      }
-      if (!resolvedAdCode && preferredByPort.length > 0) {
-        resolvedAdCode = preferredByPort[0]
-      }
-      if (!resolvedAdCode) {
-        resolvedAdCode = "AD0001"
-      }
-
-      const mappedIEC = adOwnerIEC[resolvedAdCode]
-      if (mappedIEC && mappedIEC !== normalizedIEC) {
-        errors.exporterIEC = `IEC/AD mismatch risk: ${resolvedAdCode} is registered to IEC ${mappedIEC}, but entered IEC is ${normalizedIEC}. Use matching IEC or change port/ad setup.`
-      }
     }
 
     if (!sharedDetails.buyerName?.trim()) {
@@ -716,6 +745,7 @@ function DocumentsPage() {
       errors.incoterm ||
       errors.exporterName ||
       errors.exporterIEC ||
+      errors.adCode ||
       errors.buyerName ||
       errors.paymentTerms ||
       errors.packingList ||
@@ -755,6 +785,7 @@ function DocumentsPage() {
     sharedDetails.incoterm,
     sharedDetails.exporterName,
     sharedDetails.exporterIEC,
+    sharedDetails.adCode,
     sharedDetails.buyerName,
     sharedDetails.portOfLoading,
     sharedDetails.portOfDischarge,
@@ -903,12 +934,22 @@ function DocumentsPage() {
     ]
   )
   const hasBlockingValidationErrors = liveCrossDocumentValidation.errors.length > 0
+  const isIECStructurallyValid = /^\d{10}$/.test(sharedDetails.exporterIEC || "")
   const formErrorLines = formError
     .split("\n")
     .map(line => line.trim())
     .filter(Boolean)
 
   async function handleGenerate() {
+    if (isFreeLimitReached) {
+      setUpgradeContext({
+        reason: "LIMIT_EXCEEDED",
+        message: "Free plan limit reached",
+      })
+      setShowUpgradeModal(true)
+      return
+    }
+
     setFormError("")
     const isValid = validateGenerateInput()
     if (!isValid) {
@@ -954,6 +995,7 @@ function DocumentsPage() {
           sharedDetails: {
             ...sharedDetails,
             invoiceNumber: sharedDetails.invoiceNumber.trim().toUpperCase(),
+            adCode: (sharedDetails.adCode || "").trim().toUpperCase(),
           },
           items,
           docDetails: payloadDocDetails,
@@ -1019,7 +1061,14 @@ function DocumentsPage() {
   }
 
   return (
-    <div className="documents-page px-4 sm:px-6 lg:px-8 pt-8 pb-10 max-w-7xl text-gray-900 dark:text-zinc-100 rounded-2xl">
+    <div className="documents-page px-4 sm:px-6 lg:px-8 pt-8 pb-10 max-w-7xl text-gray-900 dark:text-zinc-100 rounded-2xl relative">
+      {!isPro && !usageLoading && (
+        <div className="mb-4 rounded-lg border border-gray-200 dark:border-zinc-700 bg-gray-50 dark:bg-zinc-900 px-4 py-3 text-sm text-gray-700 dark:text-zinc-200">
+          Free plan usage: {usageCount} / {FREE_PLAN_LIMIT} documents used
+        </div>
+      )}
+
+      <div className={isFreeLimitReached ? "pointer-events-none opacity-60" : ""}>
       <h1 className="text-2xl font-semibold mb-2">
         Generate export documents
       </h1>
@@ -1143,6 +1192,27 @@ function DocumentsPage() {
                 {fieldErrors.exporterIEC && (
                   <p className="text-xs text-red-500">{fieldErrors.exporterIEC}</p>
                 )}
+                <p className="text-xs text-gray-500">
+                  IEC is structurally validated (10 digits) and treated as user-provided data.
+                </p>
+
+                <input
+                  placeholder="AD Code (required for Shipping Bill)"
+                  className={`border rounded-md px-3 py-2 ${fieldErrors.adCode ? "border-red-500" : ""}`}
+                  value={sharedDetails.adCode}
+                  onChange={e =>
+                    setSharedDetails({
+                      ...sharedDetails,
+                      adCode: e.target.value.toUpperCase().replace(/\s+/g, "").replace(/[^A-Z0-9]/g, ""),
+                    })
+                  }
+                />
+                {fieldErrors.adCode && (
+                  <p className="text-xs text-red-500 mt-1">{fieldErrors.adCode}</p>
+                )}
+                <p className="text-xs text-gray-500">
+                  Format: 7-11 uppercase alphanumeric characters (example: ADX12345).
+                </p>
 
                 <input
                   placeholder="GSTIN (optional)"
@@ -1310,62 +1380,40 @@ function DocumentsPage() {
                 </select>
 
                 <div>
-                  <input
-                    list="port-codes-loading"
-                    placeholder="Port of loading (type code or name)"
+                  <select
                     className={`border rounded-md px-3 py-2 w-full ${fieldErrors.portOfLoading ? "border-red-500" : ""}`}
                     value={sharedDetails.portOfLoading}
                     onChange={e =>
                       setSharedDetails({ ...sharedDetails, portOfLoading: e.target.value })
                     }
-                    onBlur={e => {
-                      const raw = e.target.value.trim()
-                      if (!raw) return
-
-                      const normalized = raw.toUpperCase()
-                      if (loadingPortCodes.has(normalized)) {
-                        setSharedDetails((prev) => ({ ...prev, portOfLoading: normalized }))
-                        return
-                      }
-
-                      const matchedCode = loadingPortNameToCode.get(normalized)
-                      setSharedDetails((prev) => ({
-                        ...prev,
-                        portOfLoading: matchedCode || "",
-                      }))
-                    }}
-                  />
+                  >
+                    <option value="">Select port of loading</option>
+                    {loadingPorts.map(port => (
+                      <option key={port.code} value={port.code}>
+                        {port.code} — {port.name}
+                      </option>
+                    ))}
+                  </select>
                   {fieldErrors.portOfLoading && (
                     <p className="text-xs text-red-500 mt-1">{fieldErrors.portOfLoading}</p>
                   )}
                 </div>
 
                 <div>
-                  <input
-                    list="port-codes-discharge"
-                    placeholder="Port of discharge (type code or name)"
+                  <select
                     className={`border rounded-md px-3 py-2 w-full ${fieldErrors.portOfDischarge ? "border-red-500" : ""}`}
                     value={sharedDetails.portOfDischarge}
                     onChange={e =>
                       setSharedDetails({ ...sharedDetails, portOfDischarge: e.target.value })
                     }
-                    onBlur={e => {
-                      const raw = e.target.value.trim()
-                      if (!raw) return
-
-                      const normalized = raw.toUpperCase()
-                      if (dischargePortCodes.has(normalized)) {
-                        setSharedDetails((prev) => ({ ...prev, portOfDischarge: normalized }))
-                        return
-                      }
-
-                      const matchedCode = dischargePortNameToCode.get(normalized)
-                      setSharedDetails((prev) => ({
-                        ...prev,
-                        portOfDischarge: matchedCode || "",
-                      }))
-                    }}
-                  />
+                  >
+                    <option value="">Select port of discharge</option>
+                    {dischargePorts.map(port => (
+                      <option key={port.code} value={port.code}>
+                        {port.code} — {port.name}
+                      </option>
+                    ))}
+                  </select>
                   {fieldErrors.portOfDischarge && (
                     <p className="text-xs text-red-500 mt-1">{fieldErrors.portOfDischarge}</p>
                   )}
@@ -2146,7 +2194,7 @@ function DocumentsPage() {
               <div className="mt-8">
                 <PrimaryButton
                   onClick={handleGenerate}
-                  disabled={isGenerating || hasBlockingValidationErrors}
+                  disabled={isGenerating || hasBlockingValidationErrors || !isIECStructurallyValid}
                 >
                   {isGenerating ? "Generating…" : "Generate documents"}
                 </PrimaryButton>
@@ -2169,25 +2217,35 @@ function DocumentsPage() {
 
           </div>
         )}
-        <datalist id="port-codes-loading">
-          {loadingPorts.map(option => (
-            <option
-              key={option.code}
-              value={option.code}
-              label={`${option.code} — ${option.name}`}
-            />
-          ))}
-        </datalist>
-        <datalist id="port-codes-discharge">
-          {dischargePorts.map(option => (
-            <option
-              key={option.code}
-              value={option.code}
-              label={`${option.code} — ${option.name}`}
-            />
-          ))}
-        </datalist>
       </div>
+
+      <UpgradeModal
+        isOpen={showUpgradeModal}
+        onClose={() => setShowUpgradeModal(false)}
+        context={upgradeContext}
+        title="Free plan limit reached"
+        body={"You’ve generated all 7 documents included in the free plan.\n\nUpgrade to Pro to continue generating export documents."}
+        benefits={[
+          "✓ Unlimited document generation",
+          "✓ No watermark",
+          "✓ DOCX + ZIP downloads",
+          "✓ Dashboard & document history",
+        ]}
+        primaryLabel="Upgrade to Pro"
+        secondaryLabel="Back"
+        checkoutConfig={{
+          amount: 999,
+          onSuccess: () => {
+            setIsPro(true)
+            setShowUpgradeModal(false)
+            setUpgradeContext(null)
+          },
+          onError: (message: string) => {
+            setFormError(message)
+          },
+        }}
+      />
+    </div>
     )
 }
 

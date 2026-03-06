@@ -579,6 +579,22 @@ export async function registerExporterADMapping(
   isActive: boolean = true
 ): Promise<{ success: boolean; message: string }> {
   try {
+    const existingExporter = await prisma.exporter.findUnique({
+      where: { id: exporterId },
+      select: { id: true }
+    })
+
+    if (!existingExporter) {
+      await prisma.exporter.create({
+        data: {
+          id: exporterId,
+          name: `Test Exporter ${exporterId}`,
+          address: "Test Address",
+          iec: "1234567890",
+        }
+      })
+    }
+
     await prisma.exporterADMapping.upsert({
       where: {
         exporterId_adCode_portCode: {

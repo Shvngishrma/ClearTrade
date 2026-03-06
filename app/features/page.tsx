@@ -8,7 +8,7 @@ const FEATURES = [
   },
   {
     title: "Compliance-first validation",
-    description: "Built-in checks for LC terms, HS/DGFT rules, cross-document consistency, and release blockers before final download.",
+    description: "Built-in checks for LC terms, HS format rules, cross-document consistency, and release blockers before final download.",
   },
   {
     title: "ZIP + DOCX workflows",
@@ -20,7 +20,7 @@ const FEATURES = [
   },
   {
     title: "Exporter-friendly UX",
-    description: "Auto-fill shipment details, live field validation, and guided corrections to reduce manual errors while drafting.",
+    description: "Auto-fill shipment details, structural field validation, and guided corrections to reduce manual errors while drafting.",
   },
   {
     title: "Audit-ready outputs",

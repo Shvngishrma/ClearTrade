@@ -10,6 +10,10 @@ export async function DELETE(req: Request) {
     return new NextResponse("Unauthorized", { status: 401 })
   }
 
+  if (!session.user.isPro) {
+    return NextResponse.json({ error: "PRO_REQUIRED" }, { status: 403 })
+  }
+
   const { searchParams } = new URL(req.url)
   const invoiceId = searchParams.get("invoiceId")
 

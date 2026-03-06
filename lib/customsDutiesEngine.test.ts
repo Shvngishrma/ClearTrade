@@ -2,10 +2,10 @@
  * ENGINE 2: CUSTOMS DUTIES - TEST SUITE
  * 
  * 12 test cases covering all 5 rules + edge cases + bank rejection scenarios
- * Ready to run with: npm run test lib/customsDutiesEngine.test.ts
+          hsCode: "100100",
  */
 
-import { describe, it, expect } from "vitest"
+          hsCode: "620300",
 import { 
   validateCustomsDuties,
   canGenerateInvoiceDocuments_Duties,
@@ -113,7 +113,7 @@ describe("Engine 2: Customs Duties Enforcement", () => {
         "INV-DT-006",
         [{
           lineNo: 1,
-          hsCode: "6203",
+          hsCode: "620300",
           commodity: "Cotton T-Shirts",
           quantity: 100,
           unitPrice: 500,
@@ -130,7 +130,7 @@ describe("Engine 2: Customs Duties Enforcement", () => {
         "INV-DT-007",
         [{
           lineNo: 1,
-          hsCode: "0302",
+          hsCode: "030200",
           commodity: "Fish (Fresh/Chilled)",
           quantity: 50,
           unitPrice: 800,
@@ -147,7 +147,7 @@ describe("Engine 2: Customs Duties Enforcement", () => {
         "INV-DT-008",
         [{
           lineNo: 1,
-          hsCode: "1001",
+          hsCode: "100100",
           commodity: "Wheat",
           quantity: 100,
           unitPrice: 200,
@@ -170,7 +170,7 @@ describe("Engine 2: Customs Duties Enforcement", () => {
         "INV-DT-009",
         [{
           lineNo: 1,
-          hsCode: "6203",
+          hsCode: "620300",
           commodity: "Cotton T-Shirts",
           quantity: 100,
           unitPrice: 500,  // 100 × 500 = 50,000 CIF
@@ -191,7 +191,7 @@ describe("Engine 2: Customs Duties Enforcement", () => {
         [
           {
             lineNo: 1,
-            hsCode: "6203",
+            hsCode: "620300",
             commodity: "Cotton T-Shirts",
             quantity: 100,
             unitPrice: 500,  // CIF: 50,000
@@ -199,7 +199,7 @@ describe("Engine 2: Customs Duties Enforcement", () => {
           },
           {
             lineNo: 2,
-            hsCode: "0302",
+            hsCode: "030200",
             commodity: "Fish",
             quantity: 50,
             unitPrice: 800,  // CIF: 40,000
@@ -217,7 +217,7 @@ describe("Engine 2: Customs Duties Enforcement", () => {
         "INV-DT-011",
         [{
           lineNo: 1,
-          hsCode: "9999",  // Not in master
+          hsCode: "999900",  // Not in master
           commodity: "Unknown Commodity",
           quantity: 100,
           unitPrice: 500,
@@ -239,7 +239,7 @@ describe("Engine 2: Customs Duties Enforcement", () => {
         "INV-DT-012",
         [{
           lineNo: 1,
-          hsCode: "6203",
+          hsCode: "620300",
           commodity: "Cotton T-Shirts",
           quantity: 100,
           unitPrice: 500,
@@ -257,7 +257,7 @@ describe("Engine 2: Customs Duties Enforcement", () => {
         "INV-DT-013",
         [{
           lineNo: 1,
-          hsCode: "6203",
+          hsCode: "620300",
           commodity: "Cotton T-Shirts",
           quantity: 100,
           unitPrice: 500,
@@ -276,7 +276,7 @@ describe("Engine 2: Customs Duties Enforcement", () => {
         "INV-DT-014",
         [{
           lineNo: 1,
-          hsCode: "6203",
+          hsCode: "620300",
           commodity: "Cotton T-Shirts",
           quantity: 100,
           unitPrice: 500,
@@ -301,7 +301,7 @@ describe("Engine 2: Customs Duties Enforcement", () => {
         [
           {
             lineNo: 1,
-            hsCode: "6203",
+            hsCode: "620300",
             commodity: "Cotton T-Shirts",
             quantity: 50,
             unitPrice: 500,
@@ -310,7 +310,7 @@ describe("Engine 2: Customs Duties Enforcement", () => {
           },
           {
             lineNo: 2,
-            hsCode: "0302",
+            hsCode: "030200",
             commodity: "Fish",
             quantity: 25,
             unitPrice: 800,
@@ -330,7 +330,7 @@ describe("Engine 2: Customs Duties Enforcement", () => {
         [
           {
             lineNo: 1,
-            hsCode: "6203",
+            hsCode: "620300",
             commodity: "Cotton T-Shirts",
             quantity: 50,
             unitPrice: 500,
@@ -339,7 +339,7 @@ describe("Engine 2: Customs Duties Enforcement", () => {
           },
           {
             lineNo: 2,
-            hsCode: "0302",
+            hsCode: "030200",
             commodity: "Fish",
             quantity: 25,
             unitPrice: 800,
@@ -359,7 +359,7 @@ describe("Engine 2: Customs Duties Enforcement", () => {
         [
           {
             lineNo: 1,
-            hsCode: "6203",
+            hsCode: "620300",
             commodity: "Cotton T-Shirts",
             quantity: 100,
             unitPrice: 500,
@@ -372,7 +372,7 @@ describe("Engine 2: Customs Duties Enforcement", () => {
       expect(result.blockers.filter(b => b.code === "AD_CODE_INCONSISTENCY")).toHaveLength(0)
     })
   })
-
+          hsCode: "030200",
   // ============================================
   // BANK REJECTION SCENARIOS
   // ============================================
@@ -384,7 +384,7 @@ describe("Engine 2: Customs Duties Enforcement", () => {
         "INV-WHEAT-BAN",
         [{
           lineNo: 1,
-          hsCode: "1001",
+          hsCode: "100100",
           commodity: "Wheat",
           quantity: 200,
           unitPrice: 180,
@@ -422,8 +422,8 @@ describe("Engine 2: Customs Duties Enforcement", () => {
       const result = await validateCustomsDuties(
         "INV-AD-MIX",
         [
-          { lineNo: 1, hsCode: "6203", commodity: "T-Shirts", quantity: 50, unitPrice: 500, currency: "USD", adCode: "001" },
-          { lineNo: 2, hsCode: "6204", commodity: "Shirts", quantity: 50, unitPrice: 600, currency: "USD", adCode: "002" }
+          { lineNo: 1, hsCode: "620300", commodity: "T-Shirts", quantity: 50, unitPrice: 500, currency: "USD", adCode: "001" },
+          { lineNo: 2, hsCode: "620400", commodity: "Shirts", quantity: 50, unitPrice: 600, currency: "USD", adCode: "002" }
         ]
       )
 
@@ -438,7 +438,7 @@ describe("Engine 2: Customs Duties Enforcement", () => {
         "INV-FISH-NOCERT",
         [{
           lineNo: 1,
-          hsCode: "0302",
+          hsCode: "030200",
           commodity: "Fish",
           quantity: 50,
           unitPrice: 800,
@@ -463,7 +463,7 @@ describe("Engine 2: Customs Duties Enforcement", () => {
         [
           {
             lineNo: 1,
-            hsCode: "6203",
+            hsCode: "620300",
             commodity: "Cotton T-Shirts",
             quantity: 100,
             unitPrice: 500,
@@ -471,7 +471,7 @@ describe("Engine 2: Customs Duties Enforcement", () => {
           },
           {
             lineNo: 2,
-            hsCode: "1201",
+            hsCode: "120100",
             commodity: "Soya Beans",
             quantity: 50,
             unitPrice: 400,
@@ -490,7 +490,7 @@ describe("Engine 2: Customs Duties Enforcement", () => {
         "INV-001",
         [{
           lineNo: 1,
-          hsCode: "6203",
+          hsCode: "620300",
           commodity: "Cotton T-Shirts",
           quantity: 100,
           unitPrice: 500,
@@ -509,7 +509,7 @@ describe("Engine 2: Customs Duties Enforcement", () => {
         "INV-AUDIT",
         [{
           lineNo: 1,
-          hsCode: "6203",
+          hsCode: "620300",
           commodity: "Cotton T-Shirts",
           quantity: 100,
           unitPrice: 500,

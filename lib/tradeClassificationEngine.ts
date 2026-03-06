@@ -412,6 +412,19 @@ function flagSIONRequirement(
       details: "No SION requirement for this HS code"
     }
   }
+
+  const isSionOperationallyRequired =
+    sionItem.odal ||
+    sionItem.sanctuaryRestriction ||
+    sionItem.seasonalRestriction.restricted
+
+  if (!isSionOperationallyRequired) {
+    return {
+      sionRequired: false,
+      sionCode: "",
+      details: "No active SION restrictions for this HS code"
+    }
+  }
   
   let warning = `🏛️  SION Required: ${sionItem.sionCode}`
   

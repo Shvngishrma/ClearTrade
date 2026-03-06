@@ -59,7 +59,8 @@ describe("Engine 4: Commodity Enforcement", () => {
           commodity: "Fish (Fresh/Chilled)",
           quantity: 50,
           unit: "MT",
-          packaging: "Metal"
+          packaging: "Metal",
+          qualityCerts: ["APEDA", "Health Certificate", "Cold Chain Proof"]
         }
       ])
 

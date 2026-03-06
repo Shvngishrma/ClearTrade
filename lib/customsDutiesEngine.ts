@@ -177,6 +177,14 @@ function validateHSCodeFormat(hsCode: string): { valid: boolean; error?: string 
   return { valid: true }
 }
 
+function getMasterHSKey(hsCode: string): string {
+  const normalized = (hsCode || "").trim()
+  if (!/^\d{6}(\d{2})?$/.test(normalized)) {
+    return normalized
+  }
+  return normalized.slice(0, 4)
+}
+
 // ============================================
 // RULE 2: DGFT RESTRICTION CHECK
 // ============================================
@@ -193,8 +201,9 @@ async function checkDGFTRestriction(
   error?: string 
 }> {
   try {
+    const masterHSCode = getMasterHSKey(hsCode)
     const dgftResult = await validateHSCodeWithLiveData(
-      hsCode,
+      masterHSCode,
       commodity,
       quantity,
       unitPrice,
@@ -231,7 +240,8 @@ function calculateDutyRate(hsCode: string, cifValue: number): {
   calculation: DutyCalculation | null
   error?: string 
 } {
-  const masterRate = HS_DUTY_MASTER[hsCode]
+  const masterHSCode = getMasterHSKey(hsCode)
+  const masterRate = HS_DUTY_MASTER[masterHSCode]
 
   if (!masterRate) {
     return { calculation: null, error: `Duty rate not found for HS code ${hsCode}` }
@@ -240,6 +250,7 @@ function calculateDutyRate(hsCode: string, cifValue: number): {
   return {
     calculation: {
       ...masterRate,
+      hsCode,
       cifValue,
       dutyAmount: (masterRate.totalDutyRate / 100) * cifValue
     }

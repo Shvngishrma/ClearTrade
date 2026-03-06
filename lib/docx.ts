@@ -246,12 +246,7 @@ export async function generatePackingListDOCX(invoice: any, packing: any) {
 }
 
 export async function generateShippingBillDOCX(invoice: any, sb: any) {
-  const adCode =
-    invoice.exporter?.adMappings?.find((mapping: any) => {
-      const mappedPort = (mapping.portCode || "").trim().toUpperCase()
-      const port = (sb.portOfLoading || invoice.portOfLoading || "").trim().toUpperCase()
-      return mappedPort === port
-    })?.adCode || invoice.exporter?.adMappings?.[0]?.adCode || "N/A"
+  const adCode = (sb?.adCode || invoice.exporter?.adCode || "").trim().toUpperCase() || "N/A"
 
   const rows = (invoice.items || []).map((item: any, index: number) => {
     const lineValue = (Number(item.quantity) || 0) * (Number(item.unitPrice) || 0)

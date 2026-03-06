@@ -446,7 +446,7 @@ export function renderHeaderBlock({
   exporter,
   documentTitle,
   paymentTerms,
-  subtitle = "(Issued under FEMA & RBI Guidelines)",
+  subtitle = "(User-provided data · Structurally validated)",
   metadataRows,
 }: HeaderBlockParams): string {
   return `

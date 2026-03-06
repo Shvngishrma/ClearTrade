@@ -44,15 +44,7 @@ export function generateShippingBillHTML(invoice: any, sb: any, usage?: any): st
 
   const shippingBillNo = `SB-${String(sb?.id || "DRAFT").slice(0, 8).toUpperCase()}`
 
-  const adCode =
-    exporter?.adMappings?.find((mapping: any) => {
-      const mappedPort = (mapping.portCode || "").trim().toUpperCase()
-      const invoicePort = (sb?.portOfLoading || invoice.portOfLoading || "").trim().toUpperCase()
-      return mappedPort === invoicePort
-    })?.adCode ||
-    exporter?.adMappings?.[0]?.adCode ||
-    exporter?.adCode ||
-    "N/A"
+  const adCode = (sb?.adCode || exporter?.adCode || "").trim().toUpperCase()
 
   const lineValueByItem = (items || []).map((item: any) => {
     const qty = Number(item.quantity) || 0
@@ -262,7 +254,7 @@ ${sharedFooterStyles}
           metadataRows: [
             { label: "SHIPPING BILL NO:", value: shippingBillNo, valueClass: "invoice-number" },
             { label: "INVOICE REF:", value: invoice.invoiceNumber || "N/A", valueClass: "invoice-date" },
-            { label: "AD CODE:", value: adCode, valueClass: "header-meta-value" },
+            { label: "AD CODE:", value: adCode || "N/A", valueClass: "header-meta-value" },
             { label: "PORT OF LOADING:", value: sb?.portOfLoading || invoice.portOfLoading || "N/A", valueClass: "header-meta-value" },
             { label: "DESTINATION COUNTRY:", value: buyer?.country || "N/A", valueClass: "header-meta-value" },
             { label: "SCHEME:", value: schemeCode, valueClass: "header-meta-value" },

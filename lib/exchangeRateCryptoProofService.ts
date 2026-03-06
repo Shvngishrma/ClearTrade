@@ -13,6 +13,7 @@
 
 import * as crypto from "crypto"
 import { prisma } from "@/lib/db"
+import { getPublicExchangeRateWithCache } from "@/lib/exchangeRateService"
 
 export interface RBIReferenceDateSnapshot {
   date: Date
@@ -45,33 +46,6 @@ export interface AuditEntry {
   hash: string
   signature: string
   verified: boolean
-}
-
-// ============================================
-// RBI RATE MASTER (Mock - Production: Query RBI API)
-// ============================================
-
-const RBI_RATE_MASTER: Record<string, RBIReferenceDateSnapshot> = {
-  "2026-02-05": {
-    date: new Date("2026-02-05"),
-    rateID: "RBI/2026/FXD/20260205",
-    inr_usd: 82.50,
-    inr_gbp: 104.25,
-    inr_eur: 89.75,
-    inr_jpy: 0.5625,
-    publicationTime: new Date("2026-02-05T14:00:00Z"),
-    rbiSignature: "" // Will be populated by RBI
-  },
-  "2026-02-04": {
-    date: new Date("2026-02-04"),
-    rateID: "RBI/2026/FXD/20260204",
-    inr_usd: 82.45,
-    inr_gbp: 104.10,
-    inr_eur: 89.65,
-    inr_jpy: 0.5620,
-    publicationTime: new Date("2026-02-04T14:00:00Z"),
-    rbiSignature: ""
-  }
 }
 
 // ============================================
@@ -250,8 +224,8 @@ export async function verifyExchangeRateProof(
 // ============================================
 
 /**
- * Query RBI reference rate for specific date
- * PRODUCTION: Connect to RBI API with mutual TLS
+ * Query reference rate for specific date
+ * Uses public FX source with 24h in-memory cache and manual fallback.
  */
 export async function getRBIReferenceRate(
   date: Date,
@@ -265,46 +239,26 @@ export async function getRBIReferenceRate(
 }> {
   const dateStr = date.toISOString().split("T")[0]
 
-  // Mock: Check local master
-  const rbiData = RBI_RATE_MASTER[dateStr]
-
-  if (rbiData) {
-    const rate = currency === "USD" ? rbiData.inr_usd : 
-                 currency === "GBP" ? rbiData.inr_gbp :
-                 currency === "EUR" ? rbiData.inr_eur :
-                 currency === "JPY" ? rbiData.inr_jpy : null
+  try {
+    const fxRate = await getPublicExchangeRateWithCache(currency)
+    const rateIdPrefix = fxRate.source === "PUBLIC_API" ? "PUBLIC" : "MANUAL"
+    const rateID = `${rateIdPrefix}/${date.getUTCFullYear()}/FXD/${dateStr.replace(/-/g, "")}`
 
     return {
-      rate,
-      rateID: rbiData.rateID,
-      source: "RBI_Mock_Master",
-      verified: true,
-      issues: []
+      rate: fxRate.rate,
+      rateID,
+      source: fxRate.source,
+      verified: fxRate.source === "PUBLIC_API",
+      issues: fxRate.fallbackMessage ? [fxRate.fallbackMessage] : []
     }
-  }
-
-  // PRODUCTION:
-  // const response = await fetch(`https://rbi.gov.in/api/v1/rates?date=${dateStr}&currency=${currency}`, {
-  //   cert: fs.readFileSync("/path/to/client.crt"),
-  //   key: fs.readFileSync("/path/to/client.key"),
-  //   rejectUnauthorized: true
-  // })
-  // const data = response.json()
-  // return {
-  //   rate: data.rate,
-  //   rateID: data.rateID,
-  //   source: "RBI_API",
-  //   verified: true,
-  //   issues: []
-  // }
-
-  // Date not found
-  return {
-    rate: null,
-    rateID: null,
-    source: "None",
-    verified: false,
-    issues: [`RBI rate not available for ${dateStr} and ${currency}`]
+  } catch (error: any) {
+    return {
+      rate: null,
+      rateID: null,
+      source: "None",
+      verified: false,
+      issues: [error?.message || `Reference rate unavailable for ${dateStr} and ${currency}`]
+    }
   }
 }
 

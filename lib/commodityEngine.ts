@@ -225,9 +225,17 @@ const PACKAGING_STANDARDS: Record<string, PackagingStandard> = {
   "1201": {
     hsCode: "1201",
     commodity: "Soya Beans",
-    allowedPackaging: ["Jute Bag", "Plastic Bag", "Metal Container"],
+    allowedPackaging: ["Jute Bag", "Plastic Bag", "Metal Container", "Cardboard"],
     standards: ["Food-grade packaging", "No contamination"]
   }
+}
+
+const PACKAGING_ALIASES: Record<string, string[]> = {
+  Plastic: ["Plastic", "Plastic Bag"],
+  Metal: ["Metal", "Metal Container"],
+  Cardboard: ["Cardboard", "Carton"],
+  Glass: ["Glass"],
+  Mixed: ["Mixed"],
 }
 
 // ============================================
@@ -358,13 +366,18 @@ function validatePackaging(
 
   if (!packaging) {
     return {
-      valid: false,
-      status: "Non-Compliant",
-      error: `Packaging type required for ${commodity}. Allowed: ${standard.allowedPackaging.join(", ")}`
+      valid: true,
+      status: "N/A",
+      error: undefined,
     }
   }
 
-  if (!standard.allowedPackaging.includes(packaging)) {
+  const equivalentPackaging = PACKAGING_ALIASES[packaging] || [packaging]
+  const matchesAllowedPackaging = equivalentPackaging.some((alias) =>
+    standard.allowedPackaging.includes(alias)
+  )
+
+  if (!matchesAllowedPackaging) {
     return {
       valid: false,
       status: "Non-Compliant",
@@ -497,6 +510,7 @@ export async function validateCommodities(
         result: "FAIL",
         details: dgftCheck.error!
       })
+      result.itemValidations.push(itemResult)
       continue
     } else {
       itemResult.dgftStatus = "Allowed"
@@ -584,7 +598,7 @@ export async function validateCommodities(
         code: "CUSTOMS_SUPERVISION_REQUIRED",
         severity: "WARN",
         field: `line_${item.lineNo}_supervision`,
-        message: `Line ${item.lineNo}: Customs supervision required at ${superCheck.supervisedAt}. Physical inspection: ${superCheck.requiresInspection ? "Yes" : "No"}. Sampling: ${superCheck.requiresSampling ? "Yes" : "No"}`,
+        message: `Line ${item.lineNo}: Customs supervision required at ${superCheck.supervisedAt}. Physical inspection: ${superCheck.requiresInspection ? "Yes" : "No"}. Sampling: ${superCheck.requiresSampling ? "Yes" : "No"}. Required docs: ${superCheck.requiredDocs?.join(", ") || "as per customs requirements"}`,
         resolution: `Prepare documents: ${superCheck.requiredDocs?.join(", ") || "as per customs requirements"}`
       })
       if (itemResult.status !== "BLOCKED") {

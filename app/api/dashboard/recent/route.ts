@@ -10,6 +10,10 @@ export async function GET() {
     return new NextResponse("Unauthorized", { status: 401 })
   }
 
+  if (!session.user.isPro) {
+    return NextResponse.json({ error: "PRO_REQUIRED" }, { status: 403 })
+  }
+
   const invoices = await prisma.invoice.findMany({
     where: { userId: session.user.id },
     orderBy: { createdAt: "desc" },

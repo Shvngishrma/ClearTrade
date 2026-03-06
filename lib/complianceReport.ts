@@ -1,8 +1,6 @@
 import { prisma } from "@/lib/db"
 import { validateBeforeRelease } from "@/lib/preSubmissionValidationGate"
 import { runMasterCompliancePipeline } from "@/lib/masterCompliancePipeline"
-import { validateHSCodeWithLiveData } from "@/lib/hsCodeLiveValidationService"
-import { validateADIECPortChain } from "@/lib/rbiIECValidationService"
 import { generateExchangeRateHash, generateHMACSignature, getRBIReferenceRate } from "@/lib/exchangeRateCryptoProofService"
 
 export type ComplianceOverallStatus =
@@ -233,11 +231,11 @@ export async function buildComplianceReportData(invoiceId: string): Promise<Comp
     },
     {
       key: "hs_dgft",
-      title: "HS / DGFT Status",
+      title: "HS Format Status",
       status: validation.engines.HS_ENGINE === "FAILED" ? "FAIL" : "PASS",
       details: validation.engines.HS_ENGINE === "FAILED"
-        ? "HS/DGFT validation failed for one or more lines."
-        : "HS classification and DGFT checks are valid for current invoice lines.",
+        ? "HS format validation failed for one or more lines."
+        : "HS codes are structurally valid for current invoice lines.",
     },
     {
       key: "iec_ad_port",
@@ -253,7 +251,7 @@ export async function buildComplianceReportData(invoiceId: string): Promise<Comp
       status: exchangeStatus,
       details: invoice.exchangeRateDate
         ? `Exchange reference date recorded (${invoice.exchangeRateDate.toISOString().split("T")[0]}).`
-        : "Exchange reference date missing. Add exchange basis for stronger audit defensibility.",
+        : "Exchange reference date missing. Add exchange basis for stronger traceability.",
     },
     {
       key: "cross_document",
@@ -315,10 +313,10 @@ export async function buildComplianceReportData(invoiceId: string): Promise<Comp
       notes: lcFailed ? "LC terms mismatch detected" : lcWarnCount > 0 ? "Within tolerance; review LC warnings" : "Within tolerance ±5%",
     },
     {
-      engine: "HS + DGFT Validation",
+      engine: "HS Format Validation",
       status: toPassWarnFail(hsFailed, hsWarnings),
       score: hsFailed ? "0%" : hsWarnings ? "85%" : "100%",
-      notes: hsFailed ? "DGFT/HS issue detected" : "No restriction",
+      notes: hsFailed ? "HS format issue detected" : "HS format valid",
     },
     {
       engine: "IEC–AD–Port Chain",
@@ -330,7 +328,7 @@ export async function buildComplianceReportData(invoiceId: string): Promise<Comp
       engine: "Exchange Rate Proof",
       status: toPassWarnFail(exchangeFailed),
       score: "–",
-      notes: exchangeFailed ? "RBI reference date missing" : `RBI Ref ID: ${exchangeRefId}`,
+      notes: exchangeFailed ? "Exchange reference date missing" : `Reference ID: ${exchangeRefId}`,
     },
     {
       engine: "Cross-Document Consistency",
@@ -404,35 +402,15 @@ export async function buildComplianceReportData(invoiceId: string): Promise<Comp
     }
   }
 
-  // Risk Flag 4: DGFT advisory notice
-  const dgftAdvisories: string[] = []
-  for (const item of invoice.items) {
-    try {
-      const hsResult = await validateHSCodeWithLiveData(
-        item.hsCode,
-        item.description,
-        Number(item.quantity),
-        Number(item.unitPrice),
-        invoice.currency
-      )
+  const malformedHsLines = invoice.items
+    .filter((item) => !/^\d{6}(\d{2})?$/.test((item.hsCode || "").trim()))
+    .map((item) => item.hsCode || "N/A")
 
-      const advisoryIssues = hsResult.issues.filter(
-        (issue) => issue.category === "DGFT" && issue.severity === "Warning"
-      )
-
-      advisoryIssues.forEach((issue) => {
-        dgftAdvisories.push(`${item.hsCode}: ${issue.message.replace(/^⚠️\s*/, "")}`)
-      })
-    } catch {
-      // Non-blocking for report synthesis
-    }
-  }
-
-  if (dgftAdvisories.length > 0) {
+  if (malformedHsLines.length > 0) {
     riskFlags.push({
-      code: "DGFT_ADVISORY_NOTICE",
-      label: "DGFT advisory notice",
-      details: dgftAdvisories.slice(0, 2).join(" | "),
+      code: "HS_STRUCTURAL_ALERT",
+      label: "HS structural alert",
+      details: `Malformed HS code(s): ${malformedHsLines.slice(0, 4).join(", ")}${malformedHsLines.length > 4 ? ", ..." : ""}`,
     })
   }
 
@@ -445,7 +423,7 @@ export async function buildComplianceReportData(invoiceId: string): Promise<Comp
       : null
 
   const referenceRate = rbiRateQuery.rate ?? derivedRate ?? 0
-  const fallbackRateId = `RBI/${referenceDate.getUTCFullYear()}/FXD/${referenceDate.toISOString().slice(0, 10).replace(/-/g, "")}`
+  const fallbackRateId = `REFERENCE/${referenceDate.getUTCFullYear()}/FXD/${referenceDate.toISOString().slice(0, 10).replace(/-/g, "")}`
   const rbiReferenceId = rbiRateQuery.rateID || fallbackRateId
 
   const proofHash = generateExchangeRateHash(referenceRate, invoice.currency, referenceDate, rbiReferenceId)
@@ -463,23 +441,7 @@ export async function buildComplianceReportData(invoiceId: string): Promise<Comp
     invoice.exporter.adMappings[0]?.adCode ||
     "N/A"
 
-  let edpmsFlag = "Clear"
-  if (invoice.exporter.iec && adCode !== "N/A" && normalizedPort) {
-    try {
-      const chain = await validateADIECPortChain(
-        invoice.exporter.iec,
-        adCode,
-        normalizedPort,
-        invoice.items.map((item) => item.hsCode)
-      )
-      const hasEdpmsIssue = chain.iecStatus.edpmsFlags
-        ? Object.values(chain.iecStatus.edpmsFlags).some(Boolean)
-        : false
-      edpmsFlag = hasEdpmsIssue ? "Flagged" : "Clear"
-    } catch {
-      edpmsFlag = "Unknown"
-    }
-  }
+  const edpmsFlag = "Not evaluated (structural-only mode)"
 
   const technicalProof: ComplianceReportData["technicalProof"] = {
     exchangeRateProof: {
