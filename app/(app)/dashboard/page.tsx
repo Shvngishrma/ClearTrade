@@ -255,17 +255,17 @@ export default function DashboardPage() {
         <div className={previewMode ? "filter blur-[1.5px] pointer-events-none opacity-85 select-none" : ""}>
           <div className="grid grid-cols-3 gap-6">
             <div className="relative">
-              <span className="absolute top-2 right-2 z-10 text-[11px] px-2 py-0.5 rounded-full border border-zinc-300 dark:border-zinc-700 bg-zinc-100 dark:bg-zinc-800 text-zinc-500 dark:text-zinc-300">🔒 Pro</span>
+              {previewMode && <span className="absolute top-2 right-2 z-10 text-[11px] px-2 py-0.5 rounded-full border border-zinc-300 dark:border-zinc-700 bg-zinc-100 dark:bg-zinc-800 text-zinc-500 dark:text-zinc-300">🔒 Pro</span>}
               <StatCard number={displayTotalDocs} label="Documents generated this month" />
             </div>
 
             <div className="relative">
-              <span className="absolute top-2 right-2 z-10 text-[11px] px-2 py-0.5 rounded-full border border-zinc-300 dark:border-zinc-700 bg-zinc-100 dark:bg-zinc-800 text-zinc-500 dark:text-zinc-300">🔒 Pro</span>
+              {previewMode && <span className="absolute top-2 right-2 z-10 text-[11px] px-2 py-0.5 rounded-full border border-zinc-300 dark:border-zinc-700 bg-zinc-100 dark:bg-zinc-800 text-zinc-500 dark:text-zinc-300">🔒 Pro</span>}
               <StatCard number={displayInProgress} label="Automations in progress" />
             </div>
 
             <div className="relative">
-              <span className="absolute top-2 right-2 z-10 text-[11px] px-2 py-0.5 rounded-full border border-zinc-300 dark:border-zinc-700 bg-zinc-100 dark:bg-zinc-800 text-zinc-500 dark:text-zinc-300">🔒 Pro</span>
+              {previewMode && <span className="absolute top-2 right-2 z-10 text-[11px] px-2 py-0.5 rounded-full border border-zinc-300 dark:border-zinc-700 bg-zinc-100 dark:bg-zinc-800 text-zinc-500 dark:text-zinc-300">🔒 Pro</span>}
               <StatCard number={displayPending} label="Pending actions" />
             </div>
           </div>
