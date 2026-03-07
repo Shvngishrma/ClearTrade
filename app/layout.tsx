@@ -3,7 +3,7 @@
 import { useEffect } from "react"
 import { usePathname } from "next/navigation"
 import "./globals.css"
-import Providers from "./providers"
+import { Providers } from "./providers"
 import Navbar from "@/components/Navbar"
 import Sidebar from "@/components/Sidebar"
 

@@ -1,32 +1,30 @@
 "use client"
 
-import { useEffect } from "react"
-import { SessionProvider } from "next-auth/react"
-import posthog from "posthog-js"
-import { PostHogProvider as PHProvider } from "posthog-js/react"
+import { useEffect, useState } from "react"
+import { PostHogProvider } from "posthog-js/react"
 
-let posthogInitialized = false
+export function Providers({ children }: { children: React.ReactNode }) {
+  const [client, setClient] = useState<any>(null)
 
-export default function Providers({ children }: { children: React.ReactNode }) {
   useEffect(() => {
-    const posthogKey = process.env.NEXT_PUBLIC_POSTHOG_KEY
+    const initPostHog = async () => {
+      const posthog = (await import("posthog-js")).default
 
-    if (!posthogKey || posthogInitialized) {
-      return
+      posthog.init(
+        process.env.NEXT_PUBLIC_POSTHOG_KEY!,
+        {
+          api_host: "https://us.i.posthog.com",
+          capture_pageview: true,
+        }
+      )
+
+      setClient(posthog)
     }
 
-    posthog.init(posthogKey, {
-      api_host: "https://us.i.posthog.com",
-      capture_pageview: true,
-      autocapture: true,
-    })
-
-    posthogInitialized = true
+    initPostHog()
   }, [])
 
-  return (
-    <PHProvider client={posthog}>
-      <SessionProvider>{children}</SessionProvider>
-    </PHProvider>
-  )
+  if (!client) return <>{children}</>
+
+  return <PostHogProvider client={client}>{children}</PostHogProvider>
 }
