@@ -1,6 +1,7 @@
 "use client"
 
 import { useEffect, useState } from "react"
+import { SessionProvider } from "next-auth/react"
 import { PostHogProvider } from "posthog-js/react"
 
 export function Providers({ children }: { children: React.ReactNode }) {
@@ -24,7 +25,13 @@ export function Providers({ children }: { children: React.ReactNode }) {
     initPostHog()
   }, [])
 
-  if (!client) return <>{children}</>
+  if (!client) {
+    return <SessionProvider>{children}</SessionProvider>
+  }
 
-  return <PostHogProvider client={client}>{children}</PostHogProvider>
+  return (
+    <PostHogProvider client={client}>
+      <SessionProvider>{children}</SessionProvider>
+    </PostHogProvider>
+  )
 }
