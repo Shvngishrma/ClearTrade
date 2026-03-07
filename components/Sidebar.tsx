@@ -37,6 +37,9 @@ export default function Sidebar() {
   const { data: session } = useSession()
   
   const isPro = session?.user?.isPro || false
+  const isAdmin =
+    session?.user?.email === "knownconstant@gmail.com" ||
+    session?.user?.email === "gamingstation35@gmail.com"
   const profileImage = (session?.user?.image || "").trim()
   const emailInitial = (session?.user?.email || "").trim().charAt(0).toUpperCase() || "U"
 
@@ -126,6 +129,7 @@ export default function Sidebar() {
             <NavItem href="/" label="Home" />
             <NavItem href="/dashboard" label="Dashboard" />
             <NavItem href="/documents" label="Documents" />
+            {isAdmin && <NavItem href="/admin" label="Admin" />}
             <NavItem href="/settings" label="Settings" />
           </nav>
 
