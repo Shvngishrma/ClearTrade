@@ -3,7 +3,7 @@
 import { useEffect } from "react"
 import { usePathname } from "next/navigation"
 import "./globals.css"
-import { SessionProvider } from "next-auth/react"
+import Providers from "./providers"
 import Navbar from "@/components/Navbar"
 import Sidebar from "@/components/Sidebar"
 
@@ -22,13 +22,13 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="en" suppressHydrationWarning>
       <body>
-        <SessionProvider>
+        <Providers>
           <Sidebar />
           <Navbar />
           <div key={pathname} className="page-transition">
             {children}
           </div>
-        </SessionProvider>
+        </Providers>
       </body>
     </html>
   )
