@@ -4,27 +4,27 @@ import PrimaryButton from "../../components/PrimaryButton"
 const FEATURES = [
   {
     title: "One-click document generation",
-    description: "Generate commercial invoice, packing list, shipping bill, COO, insurance, and LC support docs from one workflow.",
+    description: "Produce structured export documents — invoices, packing lists, and supporting files — in a single controlled workflow.",
   },
   {
     title: "Compliance-first validation",
-    description: "Built-in checks for LC terms, HS format rules, cross-document consistency, and release blockers before final download.",
+    description: "Validate against LC terms, HS classification, DGFT restrictions, and cross-document consistency before final output.",
   },
   {
     title: "ZIP + DOCX workflows",
-    description: "Download complete document bundles as ZIP and unlock DOCX export for editable business document operations.",
+    description: "Export validated document sets as ZIP or editable DOCX for downstream business and banking workflows.",
   },
   {
     title: "Lifecycle control",
-    description: "Track DRAFT, READY, LOCKED, and AMENDED states with controlled versioning and traceable document integrity.",
+    description: "Manage document states — draft, ready, locked, and amended — with version control and audit traceability.",
   },
   {
     title: "Exporter-friendly UX",
-    description: "Auto-fill shipment details, structural field validation, and guided corrections to reduce manual errors while drafting.",
+    description: "Capture shipment data accurately, validate inputs in real time, and reduce manual errors during drafting.",
   },
   {
     title: "Audit-ready outputs",
-    description: "Generate compliance certificates, proof layers, and structured report sections designed for operational and banking review.",
+    description: "Generate structured outputs with compliance summaries, validation logs, and formats ready for bank and customs review.",
   },
 ]
 
@@ -49,8 +49,8 @@ export default function FeaturesPage() {
         </div>
 
         <div className="mt-12 text-center">
-          <PrimaryButton href="/documents" className="px-8">
-            Start generating documents
+          <PrimaryButton href="/documents">
+            Generate first document
           </PrimaryButton>
         </div>
       </section>

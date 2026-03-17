@@ -10,12 +10,7 @@ export default function LayoutShell({ children }: { children: React.ReactNode })
   const pathname = usePathname()
 
   useEffect(() => {
-    const saved = localStorage.getItem("theme-preference")
-    const theme = saved === "light" || saved === "dark" || saved === "system" ? saved : "system"
-    const prefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches
-    const shouldDark = theme === "dark" || (theme === "system" && prefersDark)
-
-    document.documentElement.classList.toggle("dark", shouldDark)
+    document.documentElement.classList.add("dark")
   }, [])
 
   return (

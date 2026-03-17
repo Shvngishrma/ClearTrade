@@ -1,54 +1,12 @@
 "use client"
 
-import { useEffect, useState } from "react"
 import { useSession, signOut } from "next-auth/react"
 import Link from "next/link"
 import PrimaryButton from "../../../components/PrimaryButton"
 
-type ThemePreference = "light" | "dark" | "system"
-
 export default function SettingsPage() {
   const { data: session } = useSession()
   const isPro = Boolean(session?.user?.isPro)
-  const [theme, setTheme] = useState<ThemePreference>("system")
-  const [mounted, setMounted] = useState(false)
-
-  function resolveIsDark(nextTheme: ThemePreference) {
-    if (nextTheme === "dark") return true
-    if (nextTheme === "light") return false
-    return window.matchMedia("(prefers-color-scheme: dark)").matches
-  }
-
-  function applyTheme(nextTheme: ThemePreference) {
-    const isDark = resolveIsDark(nextTheme)
-    document.documentElement.classList.toggle("dark", isDark)
-  }
-
-  function handleThemeChange(nextTheme: ThemePreference) {
-    setTheme(nextTheme)
-    localStorage.setItem("theme-preference", nextTheme)
-    applyTheme(nextTheme)
-  }
-
-  useEffect(() => {
-    const saved = localStorage.getItem("theme-preference")
-    const initialTheme: ThemePreference =
-      saved === "light" || saved === "dark" || saved === "system" ? saved : "system"
-
-    setTheme(initialTheme)
-    applyTheme(initialTheme)
-    setMounted(true)
-  }, [])
-
-  useEffect(() => {
-    if (theme !== "system") return
-
-    const mediaQuery = window.matchMedia("(prefers-color-scheme: dark)")
-    const listener = () => applyTheme("system")
-
-    mediaQuery.addEventListener("change", listener)
-    return () => mediaQuery.removeEventListener("change", listener)
-  }, [theme])
 
   return (
     <div className="p-6 sm:p-8 max-w-5xl mx-auto rounded-2xl">
@@ -67,9 +25,6 @@ export default function SettingsPage() {
           <div className="space-y-1 text-sm">
             <a href="#account" className="block px-3 py-2 rounded-lg text-gray-700 dark:text-zinc-200 bg-gray-50 dark:bg-zinc-800">
               Account
-            </a>
-            <a href="#appearance" className="block px-3 py-2 rounded-lg text-gray-600 dark:text-zinc-300 hover:bg-gray-50 dark:hover:bg-zinc-800">
-              Appearance
             </a>
             <a href="#about" className="block px-3 py-2 rounded-lg text-gray-600 dark:text-zinc-300 hover:bg-gray-50 dark:hover:bg-zinc-800">
               About
@@ -127,36 +82,6 @@ export default function SettingsPage() {
                     Sign in
                   </PrimaryButton>
                 )}
-              </div>
-            </div>
-          </section>
-
-          <section id="appearance" className="rounded-2xl border border-gray-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 p-5">
-            <h2 className="text-lg font-medium text-gray-900 dark:text-zinc-100 mb-4">Appearance</h2>
-
-            <div className="border border-gray-200 dark:border-zinc-700 rounded-xl px-4 py-3">
-              <p className="text-sm font-medium text-gray-900 dark:text-zinc-100 mb-2">Theme</p>
-              <p className="text-sm text-gray-500 dark:text-zinc-400 mb-3">Choose how Export SaaS looks for you.</p>
-
-              <div className="flex flex-wrap gap-2">
-                {(["light", "dark", "system"] as ThemePreference[]).map((option) => {
-                  const selected = theme === option
-                  return (
-                    <button
-                      key={option}
-                      type="button"
-                      onClick={() => handleThemeChange(option)}
-                      disabled={!mounted}
-                      className={`px-3 py-2 rounded-lg text-sm border transition ${
-                        selected
-                          ? "bg-gray-900 text-white border-gray-900 dark:bg-zinc-100 dark:text-zinc-900 dark:border-zinc-100"
-                          : "bg-white dark:bg-zinc-900 text-gray-700 dark:text-zinc-200 border-gray-300 dark:border-zinc-600 hover:bg-gray-50 dark:hover:bg-zinc-800"
-                      }`}
-                    >
-                      {option.charAt(0).toUpperCase() + option.slice(1)}
-                    </button>
-                  )
-                })}
               </div>
             </div>
           </section>
