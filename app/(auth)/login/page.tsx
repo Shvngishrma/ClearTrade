@@ -34,7 +34,7 @@ function LoginPageContent() {
 
   useEffect(() => {
     if (status === "authenticated") {
-      router.push("/dashboard")
+      router.push("/")
     }
   }, [status, router])
 
@@ -53,7 +53,7 @@ function LoginPageContent() {
       setError("Invalid email or password")
       setLoading(false)
     } else if (res?.ok) {
-      router.push("/dashboard")
+      router.push("/")
     }
   }
 
