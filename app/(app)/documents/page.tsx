@@ -2260,7 +2260,9 @@ function DocumentsPage() {
         context={upgradeContext}
         isGuest={!isLoggedIn}
         title={!isLoggedIn ? "Free guest limit reached" : "Free plan limit reached"}
-        body={"You’ve generated all 7 documents included in the free plan.\n\nUpgrade to Pro to continue generating export documents."}
+        body={!isLoggedIn
+          ? "You've used 7 free documents.\\n\\nCreate an account to continue — your progress will be saved."
+          : "You've used 7 free documents.\\n\\nUpgrade to Pro for unlimited — your work history is preserved."}
         benefits={!isLoggedIn
           ? [
               "✓ Unlimited document generation",
