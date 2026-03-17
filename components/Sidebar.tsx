@@ -81,7 +81,7 @@ export default function Sidebar() {
       <button
         onClick={() => setIsOpen(!isOpen)}
         onMouseEnter={handleMouseEnter}
-        className="fixed top-16 left-4 z-50 p-2 rounded-lg bg-white dark:bg-zinc-900 border border-gray-200 dark:border-zinc-700 hover:bg-gray-50 dark:hover:bg-zinc-800 transition-all shadow-sm text-gray-700 dark:text-zinc-200"
+        className="fixed top-[4.5rem] left-4 z-50 p-2 rounded-lg bg-white dark:bg-zinc-900 border border-gray-200 dark:border-zinc-700 hover:bg-gray-50 dark:hover:bg-zinc-800 transition-all shadow-sm text-gray-700 dark:text-zinc-200"
       >
         <svg
           className="w-5 h-5"
@@ -119,13 +119,13 @@ export default function Sidebar() {
       <aside
         onMouseEnter={handleMouseEnter}
         className={clsx(
-          "fixed top-14 left-0 h-[calc(100vh-3.5rem)] bg-white dark:bg-zinc-900 border-r border-gray-200 dark:border-zinc-700 z-40 flex flex-col transition-all duration-300 ease-in-out",
+          "fixed top-16 left-0 h-[calc(100vh-4rem)] bg-white dark:bg-zinc-900 border-r border-gray-200 dark:border-zinc-700 z-40 flex flex-col transition-all duration-300 ease-in-out",
           isOpen ? "w-64 translate-x-0" : "w-0 -translate-x-full"
         )}
       >
         <div className="flex-1 flex flex-col overflow-hidden">
           {/* Navigation */}
-          <nav className="flex flex-col gap-1 px-4 pt-14 pb-6">
+          <nav className="flex flex-col gap-1 px-4 pt-12 pb-6">
             <NavItem href="/" label="Home" />
             <NavItem href="/dashboard" label="Dashboard" />
             <NavItem href="/documents" label="Documents" />
