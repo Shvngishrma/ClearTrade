@@ -8,6 +8,7 @@ import { SHIPPING_BILL_CARGO_TYPES } from "@/lib/shippingBillCargoType"
 import { validateCrossDocumentInputs } from "@/lib/validation/sharedValidationEngine"
 import { isValidPortCode } from "@/lib/validatePortCode"
 import { UNLOCODE_PORTS } from "@/lib/data/unlocodePorts"
+import { useGuestTracking } from "@/lib/useGuestTracking"
 
 const DOCUMENTS = [
   { key: "invoice", label: "Commercial Invoice" },
@@ -26,6 +27,10 @@ function DocumentsPage() {
   const [selectedDocs, setSelectedDocs] = useState<string[]>([])
   const today = new Date().toISOString().split("T")[0]
   const autoInvoiceSequenceRef = useRef<number | null>(null)
+
+  // Guest tracking
+  const guestTracking = useGuestTracking(FREE_PLAN_LIMIT)
+  const [isLoggedIn, setIsLoggedIn] = useState(false)
 
   function getAutoInvoiceNumber(invoiceDate: string) {
     if (autoInvoiceSequenceRef.current === null) {
@@ -166,7 +171,10 @@ function DocumentsPage() {
 
   const [fieldErrors, setFieldErrors] = useState<FieldErrors>({ hsCodeErrors: [] })
 
-  const isFreeLimitReached = !isPro && usageCount >= FREE_PLAN_LIMIT
+  // Calculate if free limit is reached (for both logged-in and guest users)
+  const isFreeLimitReached = isLoggedIn 
+    ? (!isPro && usageCount >= FREE_PLAN_LIMIT)
+    : guestTracking.isLimitReached
 
   const invoiceNumberPattern = /^INV\/\d{4}\/\d{4}$/
   const adCodePattern = /^[A-Z0-9]{7,11}$/
@@ -319,7 +327,12 @@ function DocumentsPage() {
         const res = await fetch("/api/usage", { credentials: "include" })
 
         if (res.status === 401) {
-          router.push("/login")
+          // User is not logged in - allow guest mode
+          if (!cancelled) {
+            setIsLoggedIn(false)
+            setUsageCount(0)
+            setIsPro(false)
+          }
           return
         }
 
@@ -334,6 +347,7 @@ function DocumentsPage() {
         const nextCount = Number(data?.count || 0)
         const nextIsPro = Boolean(data?.isPro)
 
+        setIsLoggedIn(true)
         setUsageCount(nextCount)
         setIsPro(nextIsPro)
 
@@ -346,6 +360,7 @@ function DocumentsPage() {
         }
       } catch {
         if (!cancelled) {
+          setIsLoggedIn(false)
           setUsageCount(0)
           setIsPro(false)
         }
@@ -944,7 +959,9 @@ function DocumentsPage() {
     if (isFreeLimitReached) {
       setUpgradeContext({
         reason: "LIMIT_EXCEEDED",
-        message: "Free plan limit reached",
+        message: isLoggedIn 
+          ? "Free plan limit reached"
+          : "Free guest limit reached. Create an account to continue.",
       })
       setShowUpgradeModal(true)
       return
@@ -1049,6 +1066,11 @@ function DocumentsPage() {
         throw new Error("Invoice ID missing after generation")
       }
 
+      // Track guest generation if not logged in
+      if (!isLoggedIn) {
+        guestTracking.incrementCount()
+      }
+
       const statusParam = status ? `&status=${encodeURIComponent(String(status))}` : ""
       const docsParam = selectedDocs.length > 0 ? `&docs=${encodeURIComponent(selectedDocs.join(","))}` : ""
       router.push(`/documents/download?invoiceId=${invoiceId}${statusParam}${docsParam}`)
@@ -1062,9 +1084,22 @@ function DocumentsPage() {
 
   return (
     <div className="documents-page px-4 sm:px-6 lg:px-8 pt-8 pb-10 max-w-7xl text-gray-900 dark:text-zinc-100 rounded-2xl relative">
-      {!isPro && !usageLoading && (
+      {!usageLoading && (
         <div className="mb-4 rounded-lg border border-gray-200 dark:border-zinc-700 bg-gray-50 dark:bg-zinc-900 px-4 py-3 text-sm text-gray-700 dark:text-zinc-200">
-          Free plan usage: {usageCount} / {FREE_PLAN_LIMIT} documents used
+          {isLoggedIn ? (
+            !isPro && (
+              <div>
+                Free plan usage: {usageCount} / {FREE_PLAN_LIMIT} documents used
+              </div>
+            )
+          ) : (
+            <div className="flex items-center justify-between">
+              <span>Guest Mode</span>
+              <span className="font-medium">
+                {guestTracking.remaining} free {guestTracking.remaining === 1 ? "doc" : "docs"} remaining
+              </span>
+            </div>
+          )}
         </div>
       )}
 
@@ -2223,17 +2258,25 @@ function DocumentsPage() {
         isOpen={showUpgradeModal}
         onClose={() => setShowUpgradeModal(false)}
         context={upgradeContext}
-        title="Free plan limit reached"
+        isGuest={!isLoggedIn}
+        title={!isLoggedIn ? "Free guest limit reached" : "Free plan limit reached"}
         body={"You’ve generated all 7 documents included in the free plan.\n\nUpgrade to Pro to continue generating export documents."}
-        benefits={[
-          "✓ Unlimited document generation",
-          "✓ No watermark",
-          "✓ DOCX + ZIP downloads",
-          "✓ Dashboard & document history",
-        ]}
-        primaryLabel="Upgrade to Pro"
+        benefits={!isLoggedIn
+          ? [
+              "✓ Unlimited document generation",
+              "✓ Save and organize documents",
+              "✓ DOCX + ZIP downloads",
+              "✓ Advanced features",
+            ]
+          : [
+              "✓ Unlimited document generation",
+              "✓ No watermark",
+              "✓ DOCX + ZIP downloads",
+              "✓ Dashboard & document history",
+            ]}
+        primaryLabel={!isLoggedIn ? "Create Account" : "Upgrade to Pro"}
         secondaryLabel="Back"
-        checkoutConfig={{
+        checkoutConfig={isLoggedIn ? {
           amount: 999,
           onSuccess: () => {
             setIsPro(true)
@@ -2243,7 +2286,7 @@ function DocumentsPage() {
           onError: (message: string) => {
             setFormError(message)
           },
-        }}
+        } : undefined}
       />
     </div>
     )

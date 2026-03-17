@@ -2,6 +2,7 @@
 
 import PrimaryButton from "./PrimaryButton"
 import RazorpayCheckout from "./RazorpayCheckout"
+import { useRouter } from "next/navigation"
 
 interface UpgradeModalProps {
   isOpen: boolean
@@ -10,6 +11,7 @@ interface UpgradeModalProps {
     reason: "DOCX_RESTRICTED" | "LIMIT_EXCEEDED"
     message: string
   } | null
+  isGuest?: boolean
   title?: string
   body?: string
   benefits?: string[]
@@ -29,6 +31,7 @@ export function UpgradeModal({
   isOpen,
   onClose,
   context,
+  isGuest = false,
   title,
   body,
   benefits,
@@ -37,6 +40,8 @@ export function UpgradeModal({
   onUpgrade,
   checkoutConfig,
 }: UpgradeModalProps) {
+  const router = useRouter()
+  
   if (!isOpen || !context) return null
 
   const getTriggerMessage = () => {
@@ -44,7 +49,9 @@ export function UpgradeModal({
       case "DOCX_RESTRICTED":
         return "Word document exports are exclusively available to Pro members. Upgrade now to download invoices and shipping documents as DOCX files."
       case "LIMIT_EXCEEDED":
-        return "You've reached your free limit of 7 document generations. Pro members get unlimited documents, no watermarks, and full feature access."
+        return isGuest
+          ? "You've reached the free guest limit of 7 document generations. Create an account to generate unlimited documents."
+          : "You've reached your free limit of 7 document generations. Pro members get unlimited documents, no watermarks, and full feature access."
       default:
         return "Upgrade to Pro to unlock premium features."
     }
@@ -57,20 +64,40 @@ export function UpgradeModal({
         "✓ Edit and customize documents offline",
         "✓ Export in multiple formats",
       ]
-    : [
-        "✓ Unlimited document generations",
-        "✓ Remove watermarks",
-        "✓ Download as DOCX (Word)",
-        "✓ Download DOCX in ZIP bundles",
-        "✓ Priority support",
-      ]
+    : isGuest
+      ? [
+          "✓ Unlimited document generations",
+          "✓ Save your work to cloud",
+          "✓ Download as DOCX (Word)",
+          "✓ Full feature access",
+        ]
+      : [
+          "✓ Unlimited document generations",
+          "✓ Remove watermarks",
+          "✓ Download as DOCX (Word)",
+          "✓ Download DOCX in ZIP bundles",
+          "✓ Priority support",
+        ]
 
-  const modalTitle = title || "Upgrade to Pro"
+  const modalTitle = title || (isGuest ? "Create Account" : "Upgrade to Pro")
   const modalBody = body || getTriggerMessage()
   const featureBenefits = benefits && benefits.length > 0 ? benefits : defaultBenefits
-  const featuresTitle = context.reason === "DOCX_RESTRICTED" ? "DOCX Export Features:" : "Pro Features:"
-  const primaryText = primaryLabel || "Upgrade Now"
+  const featuresTitle = context.reason === "DOCX_RESTRICTED" ? "DOCX Export Features:" : "Account Features:"
+  const primaryText = primaryLabel || (isGuest ? "Create Account" : "Upgrade Now")
   const secondaryText = secondaryLabel || "Continue Free"
+
+  const handleUpgradClick = () => {
+    if (onUpgrade) {
+      onUpgrade()
+      return
+    }
+    if (isGuest) {
+      // Guests go to login instead of pricing
+      router.push("/login?from=upgrade")
+    } else {
+      window.location.href = "/pricing"
+    }
+  }
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
@@ -106,13 +133,7 @@ export function UpgradeModal({
             />
           ) : (
             <PrimaryButton
-              onClick={() => {
-                if (onUpgrade) {
-                  onUpgrade()
-                  return
-                }
-                window.location.href = "/pricing"
-              }}
+              onClick={handleUpgradClick}
               className="flex-1 px-4 py-2"
             >
               {primaryText}
