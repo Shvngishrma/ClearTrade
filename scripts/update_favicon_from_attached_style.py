@@ -1,43 +1,33 @@
-from PIL import Image, ImageDraw
+from PIL import Image
 import json
+from pathlib import Path
 
-S = 512
-img = Image.new("RGBA", (S, S), (242, 240, 240, 255))
-d = ImageDraw.Draw(img)
+SOURCE_CANDIDATES = [
+	Path("/Users/bhavya-mac/Downloads/Favicon - Transparent123.png"),
+	Path("public/logo-source.png"),
+]
 
-# Outer black segmented frame
-w = 56
-m = 58
-seg = 148
-# top-left
-d.rectangle((m, m, m + seg, m + w), fill=(0, 0, 0, 255))
-d.rectangle((m, m, m + w, m + seg), fill=(0, 0, 0, 255))
-# top-right
-d.rectangle((S - m - seg, m, S - m, m + w), fill=(0, 0, 0, 255))
-d.rectangle((S - m - w, m, S - m, m + seg), fill=(0, 0, 0, 255))
-# bottom-left
-d.rectangle((m, S - m - w, m + seg, S - m), fill=(0, 0, 0, 255))
-d.rectangle((m, S - m - seg, m + w, S - m), fill=(0, 0, 0, 255))
-# bottom-right
-d.rectangle((S - m - seg, S - m - w, S - m, S - m), fill=(0, 0, 0, 255))
-d.rectangle((S - m - w, S - m - seg, S - m, S - m), fill=(0, 0, 0, 255))
 
-# Inner light segmented frame
-wi = 34
-mi = 138
-segi = 110
-# top-left
-d.rectangle((mi, mi, mi + segi, mi + wi), fill=(240, 240, 240, 255))
-d.rectangle((mi, mi, mi + wi, mi + segi), fill=(240, 240, 240, 255))
-# top-right
-d.rectangle((S - mi - segi, mi, S - mi, mi + wi), fill=(240, 240, 240, 255))
-d.rectangle((S - mi - wi, mi, S - mi, mi + segi), fill=(240, 240, 240, 255))
-# bottom-left
-d.rectangle((mi, S - mi - wi, mi + segi, S - mi), fill=(240, 240, 240, 255))
-d.rectangle((mi, S - mi - segi, mi + wi, S - mi), fill=(240, 240, 240, 255))
-# bottom-right
-d.rectangle((S - mi - segi, S - mi - wi, S - mi, S - mi), fill=(240, 240, 240, 255))
-d.rectangle((S - mi - wi, S - mi - segi, S - mi, S - mi), fill=(240, 240, 240, 255))
+def load_source_image() -> Image.Image:
+	for candidate in SOURCE_CANDIDATES:
+		if candidate.exists():
+			return Image.open(candidate).convert("RGBA")
+	raise FileNotFoundError("No favicon source image found in expected locations")
+
+
+def to_square_canvas(src: Image.Image, size: int = 512) -> Image.Image:
+	canvas = Image.new("RGBA", (size, size), (0, 0, 0, 0))
+	src_w, src_h = src.size
+	scale = min(size / src_w, size / src_h)
+	new_w = max(1, int(round(src_w * scale)))
+	new_h = max(1, int(round(src_h * scale)))
+	resized = src.resize((new_w, new_h), Image.Resampling.LANCZOS)
+	x = (size - new_w) // 2
+	y = (size - new_h) // 2
+	canvas.paste(resized, (x, y), resized)
+	return canvas
+
+img = to_square_canvas(load_source_image(), size=512)
 
 img.save("public/logo-source.png", "PNG", optimize=True)
 img.resize((16, 16), Image.Resampling.LANCZOS).save("public/favicon-16x16.png", "PNG", optimize=True)
