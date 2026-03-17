@@ -1,6 +1,6 @@
 import { prisma } from "@/lib/db"
 import { runMasterCompliancePipeline, canGenerateDocuments, getAllBlockers } from "@/lib/masterCompliancePipeline"
-import { validateLCCompliance } from "@/lib/lcComplianceEngine"
+import { validateLCComplianceWithContext } from "@/lib/lcComplianceService"
 import { canGeneratePDF } from "@/lib/consistencyEngine"
 import { validateInvoicePackingAlignment } from "@/lib/documentConsistencyEngine"
 import { markInvoiceReady } from "@/lib/documentLifecycle"
@@ -181,8 +181,8 @@ export async function validateBeforeRelease(invoiceId: string): Promise<ReleaseV
         })
       } else {
       try {
-        const lcResult = await validateLCCompliance(
-          {
+        const lcResult = await validateLCComplianceWithContext({
+          invoice: {
             invoiceNumber: invoice.invoiceNumber,
             invoiceDate: invoice.invoiceDate,
             description: invoice.items.map((i) => i.description).join("; "),
@@ -192,7 +192,7 @@ export async function validateBeforeRelease(invoiceId: string): Promise<ReleaseV
             currencyCode: invoice.currency,
             invoiceValue: Number(invoice.totalValue),
           },
-          {
+          lc: {
             lcNumber: latestLC.lcNumber,
             lcDescriptionText: latestLC.lcDescriptionText || "",
             latestShipmentDate: latestLC.latestShipmentDate,
@@ -201,7 +201,7 @@ export async function validateBeforeRelease(invoiceId: string): Promise<ReleaseV
             tolerancePercent: latestLC.tolerancePercent || 0,
             governedBy: latestLC.governedBy || "UCP 600",
           }
-        )
+        })
 
         if (!lcResult.allowDocumentGeneration) {
           engines.LC_ENGINE = "FAILED"

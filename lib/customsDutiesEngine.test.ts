@@ -2,15 +2,22 @@
  * ENGINE 2: CUSTOMS DUTIES - TEST SUITE
  * 
  * 12 test cases covering all 5 rules + edge cases + bank rejection scenarios
-          hsCode: "100100",
  */
 
-          hsCode: "620300",
-import { 
+import { describe, it, expect } from "vitest"
+
+import {
   validateCustomsDuties,
-  canGenerateInvoiceDocuments_Duties,
-  type DutyLine
-} from "./customsDutiesEngine"
+  canGenerateInvoiceDocuments_Duties
+} from "@/lib/customsDutiesEngine"
+
+const mockInvoice = {
+  hsCode: "620300",
+  commodity: "Cotton T-Shirts",
+  quantity: 100,
+  unitPrice: 500,
+  currency: "USD"
+}
 
 describe("Engine 2: Customs Duties Enforcement", () => {
   
@@ -24,11 +31,8 @@ describe("Engine 2: Customs Duties Enforcement", () => {
         "INV-DT-001",
         [{
           lineNo: 1,
-          hsCode: "620300",  // Valid 6-digit
-          commodity: "Cotton T-Shirts",
-          quantity: 100,
-          unitPrice: 500,
-          currency: "USD"
+          ...mockInvoice,
+          hsCode: "620300"  // Valid 6-digit
         }]
       )
 
@@ -372,7 +376,6 @@ describe("Engine 2: Customs Duties Enforcement", () => {
       expect(result.blockers.filter(b => b.code === "AD_CODE_INCONSISTENCY")).toHaveLength(0)
     })
   })
-          hsCode: "030200",
   // ============================================
   // BANK REJECTION SCENARIOS
   // ============================================
@@ -403,7 +406,7 @@ describe("Engine 2: Customs Duties Enforcement", () => {
         "INV-DUTY-ERROR",
         [{
           lineNo: 1,
-          hsCode: "6203",
+          hsCode: "620300",
           commodity: "Cotton T-Shirts",
           quantity: 100,
           unitPrice: 500,

@@ -11,7 +11,6 @@
  * Auditor-proof: Every validation decision is logged
  */
 
-import { prisma } from "@/lib/db"
 
 export interface LCTerms {
   lcNumber: string
@@ -84,7 +83,188 @@ function normalizeDescription(text: string): string {
     .trim()
 }
 
-function validateDescriptionMatch(
+/**
+ * Extracts quantity and units from a given text (e.g. "100 MT", "25.5 KGS")
+ */
+function extractQuantityAndUnits(text: string): { quantity: number | null, unit: string | null }[] {
+  // Regex to match numbers followed by units
+  // Supports decimals and common suffixes
+  const pattern = /(\d+(?:\.\d+)?)\s*(MT|KGS|PCS|UNITS|UNIT|TONS|TONNE|METRIC TON|METRIC TONS|KG|PACKS|BAGS|PCS)/gi;
+  const matches = [...text.matchAll(pattern)];
+  
+  return matches.map(match => ({
+    quantity: parseFloat(match[1]),
+    unit: match[2].toUpperCase()
+  }));
+}
+
+function extractStandaloneQuantities(text: string): number[] {
+  const matches = [...text.matchAll(/\b(\d+(?:\.\d+)?)\b/g)]
+  return matches.map(match => parseFloat(match[1]))
+}
+
+function extractRelevantStandaloneNumbers(text: string, referenceQuantity?: number): number[] {
+  const keywordRegex = /\b(qty|quantity|units?|pcs|kg|kgs|mt)\b/i
+  const numericMatches = [...text.matchAll(/\b(\d+(?:\.\d+)?)\b/g)]
+
+  const candidates = numericMatches
+    .map(match => {
+      const value = parseFloat(match[1])
+      const index = match.index ?? 0
+      const windowStart = Math.max(0, index - 20)
+      const windowEnd = Math.min(text.length, index + match[0].length + 20)
+      const nearbyWindow = text.slice(windowStart, windowEnd)
+
+      return {
+        value,
+        hasKeywordNearby: keywordRegex.test(nearbyWindow)
+      }
+    })
+    .filter(candidate => {
+      if (typeof referenceQuantity !== "number" || referenceQuantity <= 0) {
+        return true
+      }
+
+      // Ignore likely non-quantity identifiers (e.g. year/batch) that are too large.
+      return candidate.value <= referenceQuantity * 10
+    })
+
+  if (candidates.length === 0) {
+    return []
+  }
+
+  const keywordCandidates = candidates.filter(candidate => candidate.hasKeywordNearby)
+  if (keywordCandidates.length > 0) {
+    return keywordCandidates.map(candidate => candidate.value)
+  }
+
+  // No keyword hints: prefer smaller numbers first.
+  return candidates
+    .map(candidate => candidate.value)
+    .sort((a, b) => a - b)
+}
+
+/**
+ * Normalizes units to shorthand for comparison
+ */
+function normalizeUnit(unit: string): string {
+  const mapping: Record<string, string> = {
+    "KGS": "KG",
+    "METRIC TON": "MT",
+    "METRIC TONS": "MT",
+    "TONS": "MT",
+    "TONNE": "MT",
+    "UNIT": "UNITS",
+    "PCS": "PCS"
+  };
+  return mapping[unit] || unit;
+}
+
+function getPrimaryQuantityAndUnit(text: string): { quantity: number; unit: string } | null {
+  const extracted = extractQuantityAndUnits(text)
+  const first = extracted.find(item => item.quantity !== null && item.unit)
+
+  if (!first || first.quantity === null || !first.unit) {
+    return null
+  }
+
+  return {
+    quantity: first.quantity,
+    unit: normalizeUnit(first.unit)
+  }
+}
+
+/**
+ * Checks for specific constraint keywords (EXCLUDING, NOT TO EXCEED, MAXIMUM)
+ * and ensures invoice does not violate them.
+ */
+function checkConstraintViolations(lcText: string, invoiceText: string): ValidationError[] {
+  const issues: ValidationError[] = [];
+  const upperLC = lcText.toUpperCase();
+  const upperInv = invoiceText.toUpperCase();
+
+  // EXCLUDING constraint
+  // Very simple check: find word after EXCLUDING
+  const exclusionKeywords = ["EXCLUDING", "EXCLUSIVE OF", "EXCEPT"];
+  for (const kw of exclusionKeywords) {
+    if (upperLC.includes(kw)) {
+      const remaining = upperLC.split(kw)[1];
+      // Get the first few words after EXCLUDING, until a punctuation or common conjunction
+      const match = remaining.match(/^\s+([\w\s]+)(?:\.|\s+AND|\s+OR|,|$)/);
+      if (match) {
+        const excludedItem = match[1].trim();
+        // If the excluded item words (at least one significant word) are in the invoice
+        const excludedWords = excludedItem.split(/\s+/).filter(w => w.length > 3);
+        for (const word of excludedWords) {
+          if (upperInv.includes(word)) {
+            issues.push({
+              code: "CONSTRAINT_EXCLUSION_VIOLATED",
+              field: "description",
+              message: `Invoice contains excluded item: "${word}" (from LC: "${kw} ${excludedItem}")`,
+              invoiceValue: invoiceText,
+              lcValue: lcText,
+              resolution: "Remove excluded item from invoice or request LC amendment",
+              severity: "BLOCK"
+            });
+            break;
+          }
+        }
+      }
+    }
+  }
+
+  // NOT TO EXCEED / MAXIMUM constraint for numeric values
+  // e.g., "NOT TO EXCEED 1000 MT" or "MAXIMUM 500 UNITS"
+  const limitPattern = /(?:NOT TO EXCEED|MAXIMUM)\s+(\d+(?:\.\d+)?)\s*(MT|KGS|PCS|UNITS)/gi;
+  const limits = [...upperLC.matchAll(limitPattern)];
+  
+  if (limits.length > 0) {
+    const invQuantities = extractQuantityAndUnits(invoiceText);
+    
+    for (const limit of limits) {
+      const limitVal = parseFloat(limit[1]);
+      const limitUnit = normalizeUnit(limit[2].toUpperCase());
+      const invoiceStandaloneNumbers = extractRelevantStandaloneNumbers(invoiceText, limitVal)
+      
+      // Find matching items in invoice
+      const matchingInvItems = invQuantities.filter(item => item.unit && normalizeUnit(item.unit) === limitUnit);
+      
+      for (const invItem of matchingInvItems) {
+        if (invItem.quantity !== null && invItem.quantity > limitVal) {
+          issues.push({
+            code: "CONSTRAINT_LIMIT_EXCEEDED",
+            field: "description",
+            message: `Invoice quantity (${invItem.quantity} ${limitUnit}) exceeds LC limit (${limitVal} ${limitUnit})`,
+            invoiceValue: `${invItem.quantity} ${limitUnit}`,
+            lcValue: `${limitVal} ${limitUnit}`,
+            resolution: "Reduce invoice quantity or request LC amendment",
+            severity: "BLOCK"
+          });
+        }
+      }
+
+      // Fallback layer: if no unit-based match exists, compare standalone numeric values.
+      if (matchingInvItems.length === 0 && invoiceStandaloneNumbers.length > 0) {
+        const maxInvoiceNumber = Math.max(...invoiceStandaloneNumbers)
+        if (maxInvoiceNumber > limitVal) {
+          issues.push({
+            code: "CONSTRAINT_LIMIT_EXCEEDED",
+            field: "description",
+            message: `Invoice quantity (${maxInvoiceNumber}) exceeds LC limit (${limitVal} ${limitUnit})`,
+            invoiceValue: maxInvoiceNumber,
+            lcValue: `${limitVal} ${limitUnit}`,
+            resolution: "Reduce invoice quantity or request LC amendment",
+            severity: "BLOCK"
+          })
+        }
+      }
+    }
+  }
+
+  return issues;
+}
+
+export function validateDescriptionMatch(
   invoiceDescription: string,
   lcDescription: string
 ): {
@@ -92,58 +272,146 @@ function validateDescriptionMatch(
   similarity: number
   issues: ValidationError[]
 } {
+  const issues: ValidationError[] = []
+  
+  // 1. Structured Quantity and Unit Comparison
+  const lcQuants = extractQuantityAndUnits(lcDescription);
+  const invQuants = extractQuantityAndUnits(invoiceDescription);
+
+  if (lcQuants.length > 0 && invQuants.length > 0) {
+    // For each unit found in LC, check if matching unit in Invoice has correct quantity
+    for (const lcItem of lcQuants) {
+      if (lcItem.unit) {
+        const normLCUnit = normalizeUnit(lcItem.unit);
+        const matchingInvItem = invQuants.find(iq => iq.unit && normalizeUnit(iq.unit) === normLCUnit);
+        
+        if (matchingInvItem) {
+          if (matchingInvItem.quantity !== lcItem.quantity) {
+            issues.push({
+              code: "QUANTITY_MISMATCH",
+              field: "description",
+              message: `Quantity mismatch for ${normLCUnit}: Invoice has ${matchingInvItem.quantity}, LC requires ${lcItem.quantity}`,
+              invoiceValue: matchingInvItem.quantity || 0,
+              lcValue: lcItem.quantity || 0,
+              resolution: "Ensure invoice quantity matches LC description exactly",
+              severity: "BLOCK"
+            });
+          }
+        } else {
+          // Unit mentioned in LC but not found in invoice description (might be okay if total matches, but usually a sign of error)
+          issues.push({
+            code: "UNIT_MISSING_IN_INVOICE",
+            field: "description",
+            message: `LC specifies ${lcItem.quantity} ${lcItem.unit}, but this unit is missing from invoice description`,
+            invoiceValue: "N/A",
+            lcValue: `${lcItem.quantity} ${lcItem.unit}`,
+            resolution: "Add unit-specific description to invoice to match LC requirements",
+            severity: "WARN"
+          });
+        }
+      }
+    }
+  }
+
+  // If invoice omits units entirely, compare numeric values only to avoid false unit-missing failures
+  if (lcQuants.length > 0 && invQuants.length === 0) {
+    const lcPrimary = lcQuants.find(item => item.quantity !== null)
+    const invoiceStandaloneQty = extractRelevantStandaloneNumbers(
+      invoiceDescription,
+      lcPrimary?.quantity ?? undefined
+    )[0]
+
+    if (lcPrimary && lcPrimary.quantity !== null && typeof invoiceStandaloneQty === "number") {
+      if (invoiceStandaloneQty !== lcPrimary.quantity) {
+        issues.push({
+          code: "QUANTITY_MISMATCH",
+          field: "description",
+          message: `Quantity mismatch: Invoice has ${invoiceStandaloneQty}, LC requires ${lcPrimary.quantity}`,
+          invoiceValue: invoiceStandaloneQty,
+          lcValue: lcPrimary.quantity,
+          resolution: "Ensure invoice quantity matches LC description exactly",
+          severity: "BLOCK"
+        })
+      }
+    }
+  }
+
+  // 2. Constraint Detection (EXCLUDING, NOT TO EXCEED, etc.)
+  const constraintIssues = checkConstraintViolations(lcDescription, invoiceDescription);
+  issues.push(...constraintIssues);
+
+  // 3. Fuzzy Matching as Secondary Check
   const normInvoice = normalizeDescription(invoiceDescription)
   const normLC = normalizeDescription(lcDescription)
   
-  // Exact match after normalization
+  // Split into words for similarity calc
+  const invoiceWords = normInvoice.split(" ").filter(w => w.length > 2)
+  const lcWords = normLC.split(" ").filter(w => w.length > 2)
+
+  // Use a more relaxed normalization for comparison if structured checks passed
+  const matchedWords = invoiceWords.filter(word => lcWords.includes(word))
+  const similarity = (matchedWords.length / Math.max(invoiceWords.length, lcWords.length)) * 100
+
+  // If we already have BLOCK issues from strict checks, we report them.
+  if (issues.some(i => i.severity === "BLOCK")) {
+    return {
+      matches: false,
+      similarity,
+      issues
+    }
+  }
+
+  // Exact match after normalization or high similarity
   if (normInvoice === normLC) {
     return {
       matches: true,
       similarity: 100,
-      issues: []
+      issues
     }
   }
 
-  // Check if invoice description is a subset of LC (acceptable)
-  const invoiceWords = normInvoice.split(" ").filter(w => w.length > 2)
-  const lcWords = normLC.split(" ").filter(w => w.length > 2)
-
-  const matchedWords = invoiceWords.filter(word => lcWords.includes(word))
-  const similarity = (matchedWords.length / Math.max(invoiceWords.length, lcWords.length)) * 100
+  // Special case: if quantities were extracted and matched, and all words in invoice exist in LC, it's a pass
+  const invoiceSubsetOfLC = invoiceWords.every(w => lcWords.includes(w));
+  if (invoiceSubsetOfLC && invQuants.length > 0) {
+     return {
+        matches: true,
+        similarity: 100,
+        issues
+     }
+  }
 
   if (similarity >= 85) {
+    issues.push({
+      code: "DESC_PARTIAL_MATCH",
+      field: "description",
+      message: `Description ${similarity.toFixed(0)}% similar (threshold 85%)`,
+      invoiceValue: invoiceDescription,
+      lcValue: lcDescription,
+      resolution: "Close enough - no amendment needed",
+      severity: "WARN"
+    });
     return {
       matches: true,
       similarity,
-      issues: [
-        {
-          code: "DESC_PARTIAL_MATCH",
-          field: "description",
-          message: `Description ${similarity.toFixed(0)}% similar (threshold 85%)`,
-          invoiceValue: invoiceDescription,
-          lcValue: lcDescription,
-          resolution: "Close enough - no amendment needed",
-          severity: "WARN"
-        }
-      ]
+      issues
     }
   }
 
   // Significant mismatch → BLOCK
+  issues.push({
+    code: "DESC_MISMATCH",
+    field: "description",
+    message: `Description mismatch: Only ${similarity.toFixed(0)}% similar (${similarity < 85 ? "FAIL" : "PASS"} threshold)`,
+    invoiceValue: invoiceDescription,
+    lcValue: lcDescription,
+    resolution: "Request LC amendment or modify invoice description",
+    severity: "BLOCK"
+  });
+
   return {
     matches: false,
     similarity,
-    issues: [
-      {
-        code: "DESC_MISMATCH",
-        field: "description",
-        message: `Description mismatch: Only ${similarity.toFixed(0)}% similar (${similarity < 85 ? "FAIL" : "PASS"} threshold)`,
-        invoiceValue: invoiceDescription,
-        lcValue: lcDescription,
-        resolution: "Request LC amendment or modify invoice description",
-        severity: "BLOCK"
-      }
-    ]
+    issues
   }
 }
 
@@ -194,6 +462,24 @@ function validateQuantityTolerance(
   variancePercent: number
   issues: ValidationError[]
 } {
+  if (!lcQuantity || lcQuantity === 0) {
+    return {
+      compliant: false,
+      variancePercent: 0,
+      issues: [
+        {
+          code: "INVALID_LC_QUANTITY",
+          field: "quantity",
+          message: "LC quantity cannot be zero or missing",
+          invoiceValue: invoiceQuantity,
+          lcValue: lcQuantity || 0,
+          resolution: "Provide a valid non-zero LC quantity before validation",
+          severity: "BLOCK"
+        }
+      ]
+    }
+  }
+
   const variance = Math.abs(invoiceQuantity - lcQuantity)
   const variancePercent = (variance / lcQuantity) * 100
 
@@ -456,8 +742,27 @@ export async function validateLCCompliance(
   })
 
   // RULE 4: Partial Shipment
+  const lcPrimaryQty = getPrimaryQuantityAndUnit(lc.lcDescriptionText)
+  const invoicePrimaryQty = getPrimaryQuantityAndUnit(invoice.description)
+
+  const inferredPartialFromInvoiceQty = Boolean(
+    lcPrimaryQty && invoice.quantity < lcPrimaryQty.quantity
+  )
+
+  const inferredPartialFromDescriptionQty = Boolean(
+    lcPrimaryQty &&
+      invoicePrimaryQty &&
+      invoicePrimaryQty.unit === lcPrimaryQty.unit &&
+      invoicePrimaryQty.quantity < lcPrimaryQty.quantity
+  )
+
+  const effectiveIsPartialShipment =
+    Boolean(invoice.isPartialShipment) ||
+    inferredPartialFromInvoiceQty ||
+    inferredPartialFromDescriptionQty
+
   const partialCheck = validatePartialShipmentAllowed(
-    invoice.isPartialShipment || false,
+    effectiveIsPartialShipment,
     lc.partialShipmentAllowed
   )
   auditLog.push({
@@ -465,7 +770,7 @@ export async function validateLCCompliance(
     ruleCode: "RULE_PARTIAL_SHIPMENT",
     ruleDescription: "LC partial shipment allowance must be respected",
     result: partialCheck.compliant ? "PASS" : "FAIL",
-    details: `Invoice Partial: ${invoice.isPartialShipment}, LC Allows: ${lc.partialShipmentAllowed}`
+    details: `Invoice Partial (effective): ${effectiveIsPartialShipment}, LC Allows: ${lc.partialShipmentAllowed}`
   })
   blockers.push(...partialCheck.issues)
 
@@ -521,107 +826,6 @@ export async function validateLCCompliance(
     warnings,
     allowDocumentGeneration,
     auditLog
-  }
-}
-
-// ============================================
-// DATABASE OPERATIONS: STORE VALIDATION RESULT
-// ============================================
-
-export async function storeLC(
-  invoiceId: string,
-  lc: LCTerms
-): Promise<string> {
-  try {
-    const stored = await prisma.letterOfCredit.create({
-      data: {
-        invoiceId,
-        lcNumber: lc.lcNumber,
-        lcDescriptionText: lc.lcDescriptionText,
-        latestShipmentDate: lc.latestShipmentDate,
-        presentationDays: lc.presentationDays,
-        partialShipmentAllowed: lc.partialShipmentAllowed,
-        tolerancePercent: lc.tolerancePercent,
-        governedBy: lc.governedBy || "UCP 600"
-      }
-    })
-
-    return stored.id
-  } catch (error: any) {
-    throw new Error(`Failed to store LC: ${error.message}`)
-  }
-}
-
-// ============================================
-// INTEGRATION: BLOCK DOCUMENT GENERATION
-// ============================================
-
-export async function canGenerateInvoiceDocuments(
-  invoiceId: string
-): Promise<{
-  allowed: boolean
-  blockers: string[]
-  warnings: string[]
-}> {
-  try {
-    // 1. Fetch invoice
-    const invoice = await prisma.invoice.findUnique({
-      where: { id: invoiceId },
-      include: { lettersOfCredit: true, items: true }
-    })
-
-    if (!invoice || !invoice.lettersOfCredit || invoice.lettersOfCredit.length === 0) {
-      return {
-        allowed: true,  // No LC = no restrictions
-        blockers: [],
-        warnings: []
-      }
-    }
-
-    const lc = invoice.lettersOfCredit[0]
-    const firstItem = invoice.items[0]
-
-    if (!firstItem) {
-      return {
-        allowed: false,
-        blockers: ["No items in invoice"],
-        warnings: []
-      }
-    }
-
-    // 2. Validate compliance
-    const compliance = await validateLCCompliance(
-      {
-        invoiceNumber: invoice.invoiceNumber || "UNKNOWN",
-        invoiceDate: invoice.invoiceDate,
-        description: firstItem.description,
-        quantity: firstItem.quantity,
-        shipmentDate: new Date(),  // Use current date or stored shipment date
-        currencyCode: invoice.currency,
-        invoiceValue: Number(invoice.totalValue)
-      },
-      {
-        lcNumber: lc.lcNumber,
-        lcDescriptionText: lc.lcDescriptionText,
-        latestShipmentDate: lc.latestShipmentDate,
-        presentationDays: lc.presentationDays,
-        partialShipmentAllowed: lc.partialShipmentAllowed,
-        tolerancePercent: lc.tolerancePercent || undefined,
-        governedBy: lc.governedBy
-      }
-    )
-
-    return {
-      allowed: compliance.allowDocumentGeneration,
-      blockers: compliance.blockers.map(b => b.message),
-      warnings: compliance.warnings.map(w => w.message)
-    }
-  } catch (error: any) {
-    return {
-      allowed: false,
-      blockers: [`LC compliance check failed: ${error.message}`],
-      warnings: []
-    }
   }
 }
 

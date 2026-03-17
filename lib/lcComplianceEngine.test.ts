@@ -7,10 +7,10 @@
 
 import { describe, it, expect } from "vitest"
 import { 
-  validateLCCompliance, 
-  canGenerateInvoiceDocuments,
+  validateLCCompliance,
   type LCComplianceCheckResult
 } from "./lcComplianceEngine"
+import { canGenerateInvoiceDocuments } from "./lcComplianceService"
 
 describe("Engine 1: LC Compliance Enforcement", () => {
   
@@ -117,6 +117,100 @@ describe("Engine 1: LC Compliance Enforcement", () => {
 
       expect(result.isCompliant).toBe(false)
       expect(result.blockers.length).toBeGreaterThan(0)
+    })
+
+    it("should PASS when LC has unit but invoice has same numeric quantity without unit", async () => {
+      const result = await validateLCCompliance(
+        {
+          invoiceNumber: "INV-004A",
+          description: "100",
+          quantity: 100,
+          shipmentDate: new Date("2030-03-10"),
+          invoiceValue: 50000,
+          currencyCode: "USD"
+        },
+        {
+          lcNumber: "LC2026/001",
+          lcDescriptionText: "100 MT",
+          latestShipmentDate: new Date("2030-03-15"),
+          presentationDays: 45,
+          partialShipmentAllowed: false,
+          tolerancePercent: 5
+        }
+      )
+
+      expect(result.isCompliant).toBe(true)
+      expect(result.blockers.some(b => b.code === "UNIT_MISSING_IN_INVOICE")).toBe(false)
+    })
+
+    it("should BLOCK constraint limit when invoice has numeric-only description without unit", async () => {
+      const result = await validateLCCompliance(
+        {
+          invoiceNumber: "INV-004B",
+          description: "550",
+          quantity: 100,
+          shipmentDate: new Date("2030-03-10"),
+          invoiceValue: 50000,
+          currencyCode: "USD"
+        },
+        {
+          lcNumber: "LC2026/001",
+          lcDescriptionText: "Shipment NOT TO EXCEED 500 UNITS",
+          latestShipmentDate: new Date("2030-03-15"),
+          presentationDays: 45,
+          partialShipmentAllowed: true,
+          tolerancePercent: 5
+        }
+      )
+
+      expect(result.blockers.some(b => b.code === "CONSTRAINT_LIMIT_EXCEEDED")).toBe(true)
+      expect(result.isCompliant).toBe(false)
+    })
+
+    it("should prefer quantity near keyword over unrelated larger numbers", async () => {
+      const result = await validateLCCompliance(
+        {
+          invoiceNumber: "INV-004C",
+          description: "Batch 2026 qty 90",
+          quantity: 90,
+          shipmentDate: new Date("2030-03-10"),
+          invoiceValue: 50000,
+          currencyCode: "USD"
+        },
+        {
+          lcNumber: "LC2026/001",
+          lcDescriptionText: "100 MT WHEAT",
+          latestShipmentDate: new Date("2030-03-15"),
+          presentationDays: 45,
+          partialShipmentAllowed: true,
+          tolerancePercent: 5
+        }
+      )
+
+      expect(result.blockers.some(b => b.code === "QUANTITY_MISMATCH")).toBe(true)
+    })
+
+    it("should prefer smaller number when no keyword exists", async () => {
+      const result = await validateLCCompliance(
+        {
+          invoiceNumber: "INV-004D",
+          description: "Batch 2026 ref 100",
+          quantity: 100,
+          shipmentDate: new Date("2030-03-10"),
+          invoiceValue: 50000,
+          currencyCode: "USD"
+        },
+        {
+          lcNumber: "LC2026/001",
+          lcDescriptionText: "100 MT",
+          latestShipmentDate: new Date("2030-03-15"),
+          presentationDays: 45,
+          partialShipmentAllowed: true,
+          tolerancePercent: 5
+        }
+      )
+
+      expect(result.blockers.some(b => b.code === "QUANTITY_MISMATCH")).toBe(false)
     })
   })
 
@@ -274,6 +368,30 @@ describe("Engine 1: LC Compliance Enforcement", () => {
       expect(result.isCompliant).toBe(true)  // Still compliant
       expect(result.warnings.some(w => w.code === "QUANTITY_WITHIN_TOLERANCE")).toBe(false)
     })
+
+    it("should BLOCK when LC quantity is zero to avoid divide-by-zero", async () => {
+      const result = await validateLCCompliance(
+        {
+          invoiceNumber: "INV-010A",
+          description: "0 MT Cotton T-Shirts",
+          quantity: 0,
+          shipmentDate: new Date("2030-03-10"),
+          invoiceValue: 50000,
+          currencyCode: "USD"
+        },
+        {
+          lcNumber: "LC2026/001",
+          lcDescriptionText: "0 MT Cotton T-Shirts",
+          latestShipmentDate: new Date("2030-03-15"),
+          presentationDays: 45,
+          partialShipmentAllowed: true,
+          tolerancePercent: 5
+        }
+      )
+
+      expect(result.blockers.some(b => b.code === "INVALID_LC_QUANTITY")).toBe(true)
+      expect(result.isCompliant).toBe(false)
+    })
   })
 
   // ============================================
@@ -350,6 +468,31 @@ describe("Engine 1: LC Compliance Enforcement", () => {
       )
 
       expect(result.isCompliant).toBe(true)
+    })
+
+    it("should BLOCK inferred partial shipment when LC disallows partial and invoice quantity is lower", async () => {
+      const result = await validateLCCompliance(
+        {
+          invoiceNumber: "INV-013A",
+          description: "50 MT WHEAT",
+          quantity: 50,
+          shipmentDate: new Date("2030-03-10"),
+          isPartialShipment: false,
+          invoiceValue: 25000,
+          currencyCode: "USD"
+        },
+        {
+          lcNumber: "LC2026/001",
+          lcDescriptionText: "100 MT WHEAT",
+          latestShipmentDate: new Date("2030-03-15"),
+          presentationDays: 45,
+          partialShipmentAllowed: false,
+          tolerancePercent: 0
+        }
+      )
+
+      expect(result.blockers.some(b => b.code === "PARTIAL_SHIPMENT_NOT_ALLOWED")).toBe(true)
+      expect(result.isCompliant).toBe(false)
     })
   })
 
