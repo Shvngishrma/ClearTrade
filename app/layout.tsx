@@ -1,34 +1,22 @@
-"use client"
-
-import { useEffect } from "react"
-import { usePathname } from "next/navigation"
+import type { Metadata } from "next"
 import "./globals.css"
-import { Providers } from "./providers"
-import Navbar from "@/components/Navbar"
-import Sidebar from "@/components/Sidebar"
+import LayoutShell from "@/components/LayoutShell"
+
+export const metadata: Metadata = {
+  icons: {
+    icon: [
+      { url: "/favicon.ico", sizes: "any" },
+      { url: "/favicon.png", type: "image/png", sizes: "32x32" },
+    ],
+    shortcut: ["/favicon.ico"],
+  },
+}
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
-  const pathname = usePathname()
-
-  useEffect(() => {
-    const saved = localStorage.getItem("theme-preference")
-    const theme = saved === "light" || saved === "dark" || saved === "system" ? saved : "system"
-    const prefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches
-    const shouldDark = theme === "dark" || (theme === "system" && prefersDark)
-
-    document.documentElement.classList.toggle("dark", shouldDark)
-  }, [])
-
   return (
     <html lang="en" suppressHydrationWarning>
       <body>
-        <Providers>
-          <Sidebar />
-          <Navbar />
-          <div key={pathname} className="page-transition">
-            {children}
-          </div>
-        </Providers>
+        <LayoutShell>{children}</LayoutShell>
       </body>
     </html>
   )
