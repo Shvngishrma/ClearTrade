@@ -107,15 +107,26 @@ export default function SettingsPage() {
               <div className="flex items-center justify-between gap-3 border border-gray-200 dark:border-zinc-700 rounded-xl px-4 py-3">
                 <div>
                   <p className="text-sm font-medium text-gray-900 dark:text-zinc-100">Session</p>
-                  <p className="text-sm text-gray-500 dark:text-zinc-400">Sign out from this account.</p>
+                  <p className="text-sm text-gray-500 dark:text-zinc-400">
+                    {session?.user ? "Sign out from this account." : "Sign in to sync your account and history."}
+                  </p>
                 </div>
-                <button
-                  type="button"
-                  onClick={() => signOut()}
-                  className="px-3 py-2 rounded-lg border border-gray-300 dark:border-zinc-600 text-sm text-gray-700 dark:text-zinc-200 hover:bg-gray-50 dark:hover:bg-zinc-800"
-                >
-                  Sign out
-                </button>
+                {session?.user ? (
+                  <button
+                    type="button"
+                    onClick={() => signOut()}
+                    className="px-3 py-2 rounded-lg border border-gray-300 dark:border-zinc-600 text-sm text-gray-700 dark:text-zinc-200 hover:bg-gray-50 dark:hover:bg-zinc-800"
+                  >
+                    Sign out
+                  </button>
+                ) : (
+                  <PrimaryButton
+                    href="/login"
+                    className="px-3 py-2 text-sm"
+                  >
+                    Sign in
+                  </PrimaryButton>
+                )}
               </div>
             </div>
           </section>
