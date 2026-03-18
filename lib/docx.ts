@@ -108,6 +108,217 @@ function signBlock(exporterName: string) {
   ]
 }
 
+function sectionHeading(text: string) {
+  return new Paragraph({
+    children: [
+      new TextRun({
+        text: text.toUpperCase(),
+        bold: true,
+        size: 22,
+        font: "Calibri",
+      }),
+    ],
+    spacing: { before: 220, after: 100 },
+  })
+}
+
+function invoiceMetaTable(rows: Array<[string, string]>) {
+  return new Table({
+    width: { size: 100, type: WidthType.PERCENTAGE },
+    rows: rows.map(
+      ([label, value]) =>
+        new TableRow({
+          children: [
+            new TableCell({
+              width: { size: 35, type: WidthType.PERCENTAGE },
+              children: [
+                new Paragraph({
+                  children: [new TextRun({ text: label, bold: true, size: 20, font: "Calibri" })],
+                }),
+              ],
+            }),
+            new TableCell({
+              width: { size: 65, type: WidthType.PERCENTAGE },
+              children: [
+                new Paragraph({
+                  children: [new TextRun({ text: value || "N/A", size: 20, font: "Calibri" })],
+                }),
+              ],
+            }),
+          ],
+        })
+    ),
+    borders: {
+      top: { style: BorderStyle.SINGLE, size: 1, color: "D9D9D9" },
+      bottom: { style: BorderStyle.SINGLE, size: 1, color: "D9D9D9" },
+      left: { style: BorderStyle.SINGLE, size: 1, color: "D9D9D9" },
+      right: { style: BorderStyle.SINGLE, size: 1, color: "D9D9D9" },
+      insideHorizontal: { style: BorderStyle.SINGLE, size: 1, color: "E5E5E5" },
+      insideVertical: { style: BorderStyle.SINGLE, size: 1, color: "E5E5E5" },
+    },
+  })
+}
+
+function partyInfoCell(lines: Array<{ text: string; bold?: boolean }>) {
+  return new TableCell({
+    children: lines.map(
+      (line) =>
+        new Paragraph({
+          children: [new TextRun({ text: line.text || "", bold: !!line.bold, size: 20, font: "Calibri" })],
+          spacing: { after: 60 },
+        })
+    ),
+  })
+}
+
+function exporterBuyerTable(invoice: any) {
+  return new Table({
+    width: { size: 100, type: WidthType.PERCENTAGE },
+    rows: [
+      new TableRow({
+        children: [
+          new TableCell({
+            children: [
+              new Paragraph({
+                children: [new TextRun({ text: "EXPORTER / SHIPPER", bold: true, size: 20, font: "Calibri" })],
+              }),
+            ],
+          }),
+          new TableCell({
+            children: [
+              new Paragraph({
+                children: [new TextRun({ text: "BUYER / IMPORTER", bold: true, size: 20, font: "Calibri" })],
+              }),
+            ],
+          }),
+        ],
+      }),
+      new TableRow({
+        children: [
+          partyInfoCell([
+            { text: invoice.exporter?.name || "N/A", bold: true },
+            { text: invoice.exporter?.address || "Address not provided" },
+            ...(invoice.exporter?.iec ? [{ text: `IEC: ${invoice.exporter.iec}` }] : []),
+            ...(invoice.exporter?.gstIN ? [{ text: `GSTIN: ${invoice.exporter.gstIN}` }] : []),
+          ]),
+          partyInfoCell([
+            { text: invoice.buyer?.name || "N/A", bold: true },
+            { text: invoice.buyer?.address || "Address not provided" },
+            ...(invoice.buyer?.country ? [{ text: `Country: ${invoice.buyer.country}` }] : []),
+            ...(invoice.buyer?.buyerTaxId ? [{ text: `Tax ID: ${invoice.buyer.buyerTaxId}` }] : []),
+            ...(invoice.buyer?.buyerVAT ? [{ text: `VAT: ${invoice.buyer.buyerVAT}` }] : []),
+            ...(invoice.buyer?.buyerRegistrationNumber
+              ? [{ text: `Registration No: ${invoice.buyer.buyerRegistrationNumber}` }]
+              : []),
+          ]),
+        ],
+      }),
+    ],
+    borders: {
+      top: { style: BorderStyle.SINGLE, size: 1, color: "D9D9D9" },
+      bottom: { style: BorderStyle.SINGLE, size: 1, color: "D9D9D9" },
+      left: { style: BorderStyle.SINGLE, size: 1, color: "D9D9D9" },
+      right: { style: BorderStyle.SINGLE, size: 1, color: "D9D9D9" },
+      insideHorizontal: { style: BorderStyle.SINGLE, size: 1, color: "E5E5E5" },
+      insideVertical: { style: BorderStyle.SINGLE, size: 1, color: "E5E5E5" },
+    },
+  })
+}
+
+function totalsTable(rows: Array<[string, string]>) {
+  return new Table({
+    width: { size: 100, type: WidthType.PERCENTAGE },
+    rows: rows.map(
+      ([label, value]) =>
+        new TableRow({
+          children: [
+            new TableCell({
+              width: { size: 70, type: WidthType.PERCENTAGE },
+              children: [
+                new Paragraph({
+                  children: [new TextRun({ text: label, size: 20, font: "Calibri", bold: label.includes("Total") })],
+                  alignment: AlignmentType.RIGHT,
+                }),
+              ],
+            }),
+            new TableCell({
+              width: { size: 30, type: WidthType.PERCENTAGE },
+              children: [
+                new Paragraph({
+                  children: [new TextRun({ text: value, size: 20, font: "Calibri", bold: label.includes("Total") })],
+                  alignment: AlignmentType.RIGHT,
+                }),
+              ],
+            }),
+          ],
+        })
+    ),
+    borders: {
+      top: { style: BorderStyle.SINGLE, size: 1, color: "D9D9D9" },
+      bottom: { style: BorderStyle.SINGLE, size: 1, color: "D9D9D9" },
+      left: { style: BorderStyle.SINGLE, size: 1, color: "D9D9D9" },
+      right: { style: BorderStyle.SINGLE, size: 1, color: "D9D9D9" },
+      insideHorizontal: { style: BorderStyle.SINGLE, size: 1, color: "E5E5E5" },
+      insideVertical: { style: BorderStyle.SINGLE, size: 1, color: "E5E5E5" },
+    },
+  })
+}
+
+function signatureTable(exporterName: string) {
+  return new Table({
+    width: { size: 100, type: WidthType.PERCENTAGE },
+    rows: [
+      new TableRow({
+        children: [
+          new TableCell({
+            width: { size: 60, type: WidthType.PERCENTAGE },
+            children: [new Paragraph({ text: "" })],
+            borders: {
+              top: { style: BorderStyle.NONE, size: 0, color: "FFFFFF" },
+              bottom: { style: BorderStyle.NONE, size: 0, color: "FFFFFF" },
+              left: { style: BorderStyle.NONE, size: 0, color: "FFFFFF" },
+              right: { style: BorderStyle.NONE, size: 0, color: "FFFFFF" },
+            },
+          }),
+          new TableCell({
+            width: { size: 40, type: WidthType.PERCENTAGE },
+            children: [
+              new Paragraph({
+                children: [new TextRun({ text: `For ${exporterName || "Exporter"}`, size: 20, font: "Calibri" })],
+                alignment: AlignmentType.RIGHT,
+                spacing: { after: 400 },
+              }),
+              new Paragraph({
+                children: [new TextRun({ text: "________________________", size: 20, font: "Calibri" })],
+                alignment: AlignmentType.RIGHT,
+                spacing: { after: 80 },
+              }),
+              new Paragraph({
+                children: [new TextRun({ text: "Authorized Signatory", bold: true, size: 20, font: "Calibri" })],
+                alignment: AlignmentType.RIGHT,
+              }),
+            ],
+            borders: {
+              top: { style: BorderStyle.NONE, size: 0, color: "FFFFFF" },
+              bottom: { style: BorderStyle.NONE, size: 0, color: "FFFFFF" },
+              left: { style: BorderStyle.NONE, size: 0, color: "FFFFFF" },
+              right: { style: BorderStyle.NONE, size: 0, color: "FFFFFF" },
+            },
+          }),
+        ],
+      }),
+    ],
+    borders: {
+      top: { style: BorderStyle.NONE, size: 0, color: "FFFFFF" },
+      bottom: { style: BorderStyle.NONE, size: 0, color: "FFFFFF" },
+      left: { style: BorderStyle.NONE, size: 0, color: "FFFFFF" },
+      right: { style: BorderStyle.NONE, size: 0, color: "FFFFFF" },
+      insideHorizontal: { style: BorderStyle.NONE, size: 0, color: "FFFFFF" },
+      insideVertical: { style: BorderStyle.NONE, size: 0, color: "FFFFFF" },
+    },
+  })
+}
+
 async function pack(children: (Paragraph | Table)[]) {
   const doc = new Document({
     sections: [{ children }],
@@ -116,17 +327,25 @@ async function pack(children: (Paragraph | Table)[]) {
 }
 
 export async function generateInvoiceDOCX(invoice: any) {
-  const rows = (invoice.items || []).map((item: any, index: number) => {
-    const lineTotal = (Number(item.quantity) || 0) * (Number(item.unitPrice) || 0)
-    return [
-      String(index + 1),
-      item.description || "",
-      item.hsCode || "",
-      String(item.quantity ?? ""),
-      String(item.unitPrice ?? ""),
-      `${invoice.currency || "USD"} ${lineTotal.toFixed(2)}`,
-    ]
-  })
+  const itemRows = (invoice.items || [])
+    .map((item: any) => {
+      const lineTotal = (Number(item.quantity) || 0) * (Number(item.unitPrice) || 0)
+      return {
+        ...item,
+        lineTotal,
+      }
+    })
+    .sort((a: any, b: any) => String(a.description || "").localeCompare(String(b.description || "")))
+
+  const rows = itemRows.map((item: any, index: number) => [
+    String(index + 1),
+    item.description || "",
+    item.hsCode || "-",
+    String(item.quantity ?? "0"),
+    item.unit || "PCS",
+    `${invoice.currency || "USD"} ${Number(item.unitPrice || 0).toFixed(2)}`,
+    `${invoice.currency || "USD"} ${item.lineTotal.toFixed(2)}`,
+  ])
 
   // Transport details
   const vesselOrFlight = (invoice.vesselOrFlightNumber || "").trim()
@@ -149,43 +368,71 @@ export async function generateInvoiceDOCX(invoice: any) {
     ? referenceDate.toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" })
     : null
 
-  return pack([
-    h1("COMMERCIAL INVOICE"),
-    kv("Invoice No", invoice.invoiceNumber || "N/A"),
-    kv("Invoice Date", invoice.invoiceDate ? new Date(invoice.invoiceDate).toLocaleDateString("en-GB") : "N/A"),
-    kv("Incoterm", invoice.incoterm || "N/A"),
-    kv("Payment Terms", invoice.paymentTerms || "N/A"),
-    kv("Port of Loading", invoice.portOfLoading || "N/A"),
-    kv("Port of Discharge", invoice.portOfDischarge || "N/A"),
-    kv("Country of Origin", invoice.countryOfOrigin || "N/A"),
-    kv("Mode of Transport", invoice.modeOfTransport || "N/A"),
-    h2("Exporter Details"),
-    kv("Name", invoice.exporter?.name || "N/A"),
-    kv("Address", invoice.exporter?.address || "N/A"),
-    kv("IEC", invoice.exporter?.iec || "N/A"),
-    h2("Buyer Details"),
-    kv("Name", invoice.buyer?.name || "N/A"),
-    kv("Address", invoice.buyer?.address || "N/A"),
-    kv("Country", invoice.buyer?.country || "N/A"),
-    h2("Goods"),
-    table(["SR", "Description", "HS Code", "Qty", "Unit Price", "Value"], rows),
-    h2("Transport Details"),
-    ...(vesselOrFlight ? [kv("Vessel / Flight", vesselOrFlight)] : []),
-    ...(blOrAwb ? [kv("BL / AWB No", blOrAwb)] : []),
-    ...(containerNumber ? [kv("Container No", containerNumber)] : []),
-    ...(marksAndNumbers ? [kv("Marks & Numbers", marksAndNumbers)] : []),
-    h2("Valuation"),
-    kv("Total Invoice Value", `${invoice.currency || "USD"} ${Number(invoice.totalValue || 0).toFixed(2)}`),
+  const invoiceDate = invoice.invoiceDate
+    ? new Date(invoice.invoiceDate).toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" })
+    : "N/A"
+
+  const subtotal = itemRows.reduce((sum: number, item: any) => sum + Number(item.lineTotal || 0), 0)
+  const freight = Number(invoice.freightCharges ?? invoice.freight ?? 0)
+  const insurance = Number(invoice.insuranceCharges ?? invoice.insurance ?? 0)
+  const totalValue = Number(invoice.totalValue || subtotal)
+
+  const metadataRows: Array<[string, string]> = [
+    ["INVOICE NO", invoice.invoiceNumber || "N/A"],
+    ["DATE", invoiceDate],
+    ["PAYMENT TERMS", invoice.paymentTerms || "N/A"],
+  ]
+
+  const shipmentRows: Array<[string, string]> = [
+    ["INCOTERM", invoice.incoterm || "Not specified"],
+    ["PORT OF LOADING", invoice.portOfLoading || "Not specified"],
+    ["PORT OF DISCHARGE", invoice.portOfDischarge || "Not specified"],
+    ["COUNTRY OF ORIGIN", invoice.countryOfOrigin || "Not specified"],
+    ["MODE OF TRANSPORT", invoice.modeOfTransport || "Not specified"],
+  ]
+
+  const transportRows: Array<[string, string]> = [
+    ["VESSEL / FLIGHT", vesselOrFlight],
+    ["BL / AWB NO", blOrAwb],
+    ["CONTAINER NO", containerNumber],
+    ["MARKS & NUMBERS", marksAndNumbers],
+  ].filter(([, value]) => !!value)
+
+  const summaryRows: Array<[string, string]> = [
+    ["Subtotal", `${invoice.currency || "USD"} ${subtotal.toFixed(2)}`],
+    ...(freight > 0 ? [["Freight", `${invoice.currency || "USD"} ${freight.toFixed(2)}`] as Array<string>] : []),
+    ...(insurance > 0 ? [["Insurance", `${invoice.currency || "USD"} ${insurance.toFixed(2)}`] as Array<string>] : []),
+    ["Total Invoice Value", `${invoice.currency || "USD"} ${totalValue.toFixed(2)}`],
     ...(hasExchangeDisclosure
+      ? [["Exchange Rate", `1 ${invoice.currency} = ₹${derivedExchangeRate?.toFixed(2)}`] as Array<string>]
+      : []),
+    ...(hasExchangeDisclosure ? [["Reference Date", formattedReferenceDate || "N/A"] as Array<string>] : []),
+  ] as Array<[string, string]>
+
+  return pack([
+    new Paragraph({
+      children: [new TextRun({ text: "COMMERCIAL INVOICE", bold: true, size: 30, font: "Calibri" })],
+      alignment: AlignmentType.CENTER,
+      spacing: { after: 220 },
+    }),
+    sectionHeading("Metadata"),
+    invoiceMetaTable(metadataRows),
+    sectionHeading("Exporter / Buyer"),
+    exporterBuyerTable(invoice),
+    sectionHeading("Shipment Details"),
+    invoiceMetaTable(shipmentRows),
+    ...(transportRows.length > 0
       ? [
-          kv(
-            "Exchange Rate",
-            `1 ${invoice.currency} = ₹${derivedExchangeRate?.toFixed(2)}`
-          ),
-          kv("Reference Date", formattedReferenceDate || "N/A"),
+          sectionHeading("Transport Details"),
+          invoiceMetaTable(transportRows),
         ]
       : []),
-    ...signBlock(invoice.exporter?.name || "Exporter"),
+    sectionHeading("Invoice Items"),
+    table(["SR", "Description", "HS Code", "Qty", "Unit", "Unit Price", "Amount"], rows),
+    sectionHeading("Totals"),
+    totalsTable(summaryRows),
+    sectionHeading("Signature"),
+    signatureTable(invoice.exporter?.name || "Exporter"),
   ])
 }
 

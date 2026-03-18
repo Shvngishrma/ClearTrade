@@ -1084,7 +1084,7 @@ function DocumentsPage() {
 
   return (
     <div className="documents-page px-4 sm:px-6 md:pl-16 lg:px-8 lg:pl-24 pt-8 pb-10 max-w-7xl text-gray-900 dark:text-zinc-100 rounded-2xl relative">
-      {!usageLoading && (
+      {!usageLoading && (!isLoggedIn || !isPro) && (
         <div className="mb-4 rounded-lg border border-gray-200 dark:border-zinc-700 bg-gray-50 dark:bg-zinc-900 px-4 py-3 text-sm text-gray-700 dark:text-zinc-200">
           {isLoggedIn ? (
             !isPro && (
