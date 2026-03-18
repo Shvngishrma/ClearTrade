@@ -1,7 +1,7 @@
 "use client"
 
 import { useEffect, useMemo, useRef, useState } from "react"
-import { useRouter } from "next/navigation"
+import { usePathname, useRouter } from "next/navigation"
 import PrimaryButton from "../../../components/PrimaryButton"
 import { UpgradeModal } from "@/components/UpgradeModal"
 import { SHIPPING_BILL_CARGO_TYPES } from "@/lib/shippingBillCargoType"
@@ -24,6 +24,8 @@ const FREE_PLAN_LIMIT = 7
 
 function DocumentsPage() {
   const router = useRouter()
+  const pathname = usePathname()
+  const isDetailsPage = pathname.endsWith("/documents/details")
   const [selectedDocs, setSelectedDocs] = useState<string[]>([])
   const today = new Date().toISOString().split("T")[0]
   const autoInvoiceSequenceRef = useRef<number | null>(null)
@@ -138,6 +140,40 @@ function DocumentsPage() {
     reason: "DOCX_RESTRICTED" | "LIMIT_EXCEEDED"
     message: string
   } | null>(null)
+
+  useEffect(() => {
+    if (!isDetailsPage) {
+      if (step !== "select") setStep("select")
+      return
+    }
+
+    if (typeof window === "undefined") {
+      return
+    }
+
+    const validDocKeys = new Set(DOCUMENTS.map((doc) => doc.key))
+    const params = new URLSearchParams(window.location.search)
+    const docsFromQuery = (params.get("docs") || "")
+      .split(",")
+      .map((doc) => doc.trim())
+      .filter((doc) => doc.length > 0 && validDocKeys.has(doc))
+
+    if (docsFromQuery.length === 0) {
+      router.replace("/documents")
+      return
+    }
+
+    setSelectedDocs((prev) => {
+      if (prev.length === docsFromQuery.length && prev.every((doc) => docsFromQuery.includes(doc))) {
+        return prev
+      }
+      return docsFromQuery
+    })
+
+    if (step !== "details") {
+      setStep("details")
+    }
+  }, [isDetailsPage, router, step])
 
   type FieldErrors = {
     invoiceNumber?: string
@@ -1104,56 +1140,68 @@ function DocumentsPage() {
       )}
 
       <div className={isFreeLimitReached ? "pointer-events-none opacity-60" : ""}>
-      <h1 className="text-2xl font-semibold mb-2">
-        Generate export documents
-      </h1>
+        {step === "select" && (
+          <>
+            <h1 className="text-2xl font-semibold mb-2">
+              Generate export documents
+            </h1>
 
-      <p className="text-gray-500 mb-8">
-        Select the documents you want to generate. You can choose multiple.
-      </p>
+            <p className="text-gray-500 mb-8">
+              Select the documents you want to generate. You can choose multiple.
+            </p>
 
-      {/* Document selection */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-          {DOCUMENTS.map(doc => {
-            const active = selectedDocs.includes(doc.key)
+            {/* Document selection */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+              {DOCUMENTS.map(doc => {
+                const active = selectedDocs.includes(doc.key)
 
-            return (
-              <button
-                key={doc.key}
-                onClick={() => toggleDoc(doc.key)}
-                className={`p-4 rounded-lg border text-left transition
-                  ${active
-                    ? "border-gray-900 bg-gray-900 text-white shadow-sm ring-2 ring-gray-900/20 dark:bg-zinc-100 dark:text-zinc-900 dark:border-zinc-100 dark:ring-zinc-200/40"
-                    : "border-gray-200 bg-white hover:border-gray-300 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-200 dark:hover:border-zinc-500"
-                  }`}
+                return (
+                  <button
+                    key={doc.key}
+                    onClick={() => toggleDoc(doc.key)}
+                    className={`p-4 rounded-lg border text-left transition
+                      ${active
+                        ? "border-gray-900 bg-gray-900 text-white shadow-sm ring-2 ring-gray-900/20 dark:bg-zinc-100 dark:text-zinc-900 dark:border-zinc-100 dark:ring-zinc-200/40"
+                        : "border-gray-200 bg-white hover:border-gray-300 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-200 dark:hover:border-zinc-500"
+                      }`}
+                  >
+                    <div className="flex items-center justify-between gap-3">
+                      <div className="font-medium">
+                        {doc.label}
+                      </div>
+                    </div>
+                    {!active && (
+                      <div className="mt-2 text-xs text-gray-500 dark:text-zinc-400">
+                        Click to include
+                      </div>
+                    )}
+                  </button>
+                )
+              })}
+            </div>
+
+            {/* Continue */}
+            <div className="mt-10">
+              <PrimaryButton
+                disabled={selectedDocs.length === 0}
+                onClick={() => router.push(`/documents/details?docs=${encodeURIComponent(selectedDocs.join(","))}`)}
               >
-                <div className="flex items-center justify-between gap-3">
-                  <div className="font-medium">
-                    {doc.label}
-                  </div>
-                </div>
-                {!active && (
-                  <div className="mt-2 text-xs text-gray-500 dark:text-zinc-400">
-                    Click to include
-                  </div>
-                )}
-              </button>
-            )
-          })}
-        </div>
-
-        {/* Continue */}
-        <div className="mt-10">
-          <PrimaryButton
-            disabled={selectedDocs.length === 0}
-            onClick={() => setStep("details")}
-          >
-            Continue
-          </PrimaryButton>
-        </div>
+                Continue
+              </PrimaryButton>
+            </div>
+          </>
+        )}
 
         {step === "details" && (
           <div className="mt-16 max-w-3xl">
+
+            <button
+              type="button"
+              className="mb-6 text-sm text-gray-600 dark:text-zinc-300 underline"
+              onClick={() => router.push("/documents")}
+            >
+              ← Back to document selection
+            </button>
 
             <h2 className="text-xl font-semibold mb-6">
               Shared details
