@@ -396,17 +396,17 @@ export async function generateInvoiceDOCX(invoice: any) {
     ["BL / AWB NO", blOrAwb],
     ["CONTAINER NO", containerNumber],
     ["MARKS & NUMBERS", marksAndNumbers],
-  ].filter(([, value]) => !!value)
+  ].filter((row): row is [string, string] => Boolean(row[1]))
 
   const summaryRows: Array<[string, string]> = [
     ["Subtotal", `${invoice.currency || "USD"} ${subtotal.toFixed(2)}`],
-    ...(freight > 0 ? [["Freight", `${invoice.currency || "USD"} ${freight.toFixed(2)}`] as Array<string>] : []),
-    ...(insurance > 0 ? [["Insurance", `${invoice.currency || "USD"} ${insurance.toFixed(2)}`] as Array<string>] : []),
+    ...(freight > 0 ? ([["Freight", `${invoice.currency || "USD"} ${freight.toFixed(2)}`]] as Array<[string, string]>) : []),
+    ...(insurance > 0 ? ([["Insurance", `${invoice.currency || "USD"} ${insurance.toFixed(2)}`]] as Array<[string, string]>) : []),
     ["Total Invoice Value", `${invoice.currency || "USD"} ${totalValue.toFixed(2)}`],
     ...(hasExchangeDisclosure
-      ? [["Exchange Rate", `1 ${invoice.currency} = ₹${derivedExchangeRate?.toFixed(2)}`] as Array<string>]
+      ? ([["Exchange Rate", `1 ${invoice.currency} = ₹${derivedExchangeRate?.toFixed(2)}`]] as Array<[string, string]>)
       : []),
-    ...(hasExchangeDisclosure ? [["Reference Date", formattedReferenceDate || "N/A"] as Array<string>] : []),
+    ...(hasExchangeDisclosure ? ([["Reference Date", formattedReferenceDate || "N/A"]] as Array<[string, string]>) : []),
   ] as Array<[string, string]>
 
   return pack([
