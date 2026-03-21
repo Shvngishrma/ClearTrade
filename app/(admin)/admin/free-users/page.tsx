@@ -5,6 +5,15 @@ import { authOptions } from "@/lib/authOptions"
 import { isAllowedAdminEmail } from "@/lib/adminDashboard"
 import { prisma } from "@/lib/db"
 
+function isMissingGuestUserTableError(error: unknown): boolean {
+  if (!error || typeof error !== "object") {
+    return false
+  }
+
+  const err = error as { code?: string; message?: string }
+  return err.code === "P2021" && String(err.message || "").includes("GuestUser")
+}
+
 export default async function FreeUsersPage() {
   const session = await getServerSession(authOptions)
 
@@ -23,16 +32,24 @@ export default async function FreeUsersPage() {
         createdAt: "desc",
       },
     }),
-    prisma.guestUser.findMany({
-      select: {
-        guestId: true,
-        docsGenerated: true,
-        createdAt: true,
-      },
-      orderBy: {
-        createdAt: "desc",
-      },
-    }),
+    prisma.guestUser
+      .findMany({
+        select: {
+          guestId: true,
+          docsGenerated: true,
+          createdAt: true,
+        },
+        orderBy: {
+          createdAt: "desc",
+        },
+      })
+      .catch((error) => {
+        if (isMissingGuestUserTableError(error)) {
+          return []
+        }
+
+        throw error
+      }),
   ])
 
   const freeUsers = [

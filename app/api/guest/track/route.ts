@@ -5,6 +5,15 @@ type GuestTrackRequest = {
   guestId?: string
 }
 
+function isMissingGuestUserTableError(error: unknown): boolean {
+  if (!error || typeof error !== "object") {
+    return false
+  }
+
+  const err = error as { code?: string; message?: string }
+  return err.code === "P2021" && String(err.message || "").includes("GuestUser")
+}
+
 export async function POST(req: Request) {
   try {
     const body = (await req.json()) as GuestTrackRequest
@@ -27,7 +36,11 @@ export async function POST(req: Request) {
     })
 
     return NextResponse.json({ ok: true })
-  } catch {
+  } catch (error) {
+    if (isMissingGuestUserTableError(error)) {
+      return NextResponse.json({ ok: true })
+    }
+
     return NextResponse.json({ error: "TRACK_FAILED" }, { status: 500 })
   }
 }

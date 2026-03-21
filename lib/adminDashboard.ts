@@ -36,6 +36,15 @@ export function isAllowedAdminEmail(email?: string | null): boolean {
   return ADMIN_ALLOWED_EMAILS.has(normalizedEmail)
 }
 
+function isMissingGuestUserTableError(error: unknown): boolean {
+  if (!error || typeof error !== "object") {
+    return false
+  }
+
+  const err = error as { code?: string; message?: string }
+  return err.code === "P2021" && String(err.message || "").includes("GuestUser")
+}
+
 function getTodayRange() {
   const start = new Date()
   start.setHours(0, 0, 0, 0)
@@ -48,6 +57,14 @@ function getTodayRange() {
 
 export async function getAdminDashboardStats(): Promise<AdminDashboardStats> {
   const { start, end } = getTodayRange()
+
+  const guestUsersCountPromise = prisma.guestUser.count().catch((error) => {
+    if (isMissingGuestUserTableError(error)) {
+      return 0
+    }
+
+    throw error
+  })
 
   const [
     totalRegisteredUsers,
@@ -62,7 +79,7 @@ export async function getAdminDashboardStats(): Promise<AdminDashboardStats> {
     prisma.user.count(),
     prisma.user.count({ where: { isPro: true } }),
     prisma.user.count({ where: { isPro: false } }),
-    prisma.guestUser.count(),
+    guestUsersCountPromise,
     prisma.document.count(),
     prisma.user.count({ where: { createdAt: { gte: start, lt: end } } }),
     prisma.document.count({ where: { createdAt: { gte: start, lt: end } } }),
