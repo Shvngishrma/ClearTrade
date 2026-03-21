@@ -50,7 +50,7 @@ export function RecentRow({ invoice, onRemove, isPro }: any) {
         {isPro && (
           <Link
             href={`/documents/download?invoiceId=${invoiceId}&status=${invoice.status || "DRAFT"}&autodownload=docx`}
-            className="text-xs px-2.5 py-1.5 rounded-md bg-gray-900 text-white dark:bg-zinc-100 dark:text-zinc-900 hover:bg-black dark:hover:bg-white"
+            className="text-xs px-2.5 py-1.5 rounded-md bg-gray-100 dark:bg-zinc-800 text-gray-700 dark:text-zinc-200 hover:bg-gray-200 dark:hover:bg-zinc-700"
           >
             Download DOCX ZIP
           </Link>
@@ -58,7 +58,7 @@ export function RecentRow({ invoice, onRemove, isPro }: any) {
 
         <Link
           href={`/documents/download?invoiceId=${invoiceId}&status=${invoice.status}`}
-          className="text-xs px-2.5 py-1.5 rounded-md bg-gray-900 text-white dark:bg-zinc-100 dark:text-zinc-900 hover:bg-black dark:hover:bg-white"
+          className="text-xs px-2.5 py-1.5 rounded-md bg-gray-100 dark:bg-zinc-800 text-gray-700 dark:text-zinc-200 hover:bg-gray-200 dark:hover:bg-zinc-700"
         >
           Download center
         </Link>

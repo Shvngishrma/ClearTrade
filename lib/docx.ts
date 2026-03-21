@@ -1,322 +1,19 @@
+import { Document, Packer, Paragraph, Table, TextRun } from "docx"
 import {
-  AlignmentType,
-  BorderStyle,
-  Document,
-  Packer,
-  Paragraph,
-  Table,
-  TableCell,
-  TableRow,
-  TextRun,
-  WidthType,
-} from "docx"
+  dataTable,
+  documentHeader,
+  keyValueTable,
+  partyDetailsTable,
+  sectionHeading,
+  signatureBlock,
+  totalsBlock,
+} from "./docx/layout"
 
-function h1(text: string) {
-  return new Paragraph({
-    children: [new TextRun({ text, bold: true, size: 32 })],
-    spacing: { after: 200 },
-  })
-}
-
-function h2(text: string) {
-  return new Paragraph({
-    children: [new TextRun({ text, bold: true, size: 24 })],
-    spacing: { before: 160, after: 120 },
-  })
-}
-
-function sub(text: string) {
-  return new Paragraph({
-    children: [new TextRun({ text, italics: true, size: 20 })],
-    spacing: { after: 140 },
-  })
-}
-
-function kv(label: string, value: string) {
-  return new Paragraph({
-    children: [
-      new TextRun({ text: `${label}: `, bold: true, size: 20 }),
-      new TextRun({ text: value || "N/A", size: 20 }),
-    ],
-    spacing: { after: 80 },
-  })
-}
-
-function bullet(text: string) {
-  return new Paragraph({
-    text,
-    bullet: { level: 0 },
-    spacing: { after: 100 },
-  })
-}
-
-function table(headers: string[], rows: string[][]) {
-  return new Table({
-    width: { size: 100, type: WidthType.PERCENTAGE },
-    rows: [
-      new TableRow({
-        children: headers.map(
-          (header) =>
-            new TableCell({
-              children: [
-                new Paragraph({
-                  children: [new TextRun({ text: header, bold: true })],
-                }),
-              ],
-            })
-        ),
-      }),
-      ...rows.map(
-        (row) =>
-          new TableRow({
-            children: row.map(
-              (value) =>
-                new TableCell({
-                  children: [new Paragraph(String(value ?? ""))],
-                })
-            ),
-          })
-      ),
-    ],
-    borders: {
-      top: { style: BorderStyle.SINGLE, size: 1, color: "D9D9D9" },
-      bottom: { style: BorderStyle.SINGLE, size: 1, color: "D9D9D9" },
-      left: { style: BorderStyle.SINGLE, size: 1, color: "D9D9D9" },
-      right: { style: BorderStyle.SINGLE, size: 1, color: "D9D9D9" },
-      insideHorizontal: { style: BorderStyle.SINGLE, size: 1, color: "E5E5E5" },
-      insideVertical: { style: BorderStyle.SINGLE, size: 1, color: "E5E5E5" },
-    },
-  })
-}
-
-function signBlock(exporterName: string) {
-  return [
-    new Paragraph({ text: "", spacing: { before: 240, after: 40 } }),
-    new Paragraph({
-      children: [new TextRun({ text: `For ${exporterName || "Exporter"}`, size: 20 })],
-      alignment: AlignmentType.RIGHT,
-      spacing: { after: 500 },
-    }),
-    new Paragraph({
-      children: [new TextRun({ text: "________________________", size: 20 })],
-      alignment: AlignmentType.RIGHT,
-    }),
-    new Paragraph({
-      children: [new TextRun({ text: "Authorized Signatory", bold: true, size: 20 })],
-      alignment: AlignmentType.RIGHT,
-    }),
-  ]
-}
-
-function sectionHeading(text: string) {
-  return new Paragraph({
-    children: [
-      new TextRun({
-        text: text.toUpperCase(),
-        bold: true,
-        size: 22,
-        font: "Calibri",
-      }),
-    ],
-    spacing: { before: 220, after: 100 },
-  })
-}
-
-function invoiceMetaTable(rows: Array<[string, string]>) {
-  return new Table({
-    width: { size: 100, type: WidthType.PERCENTAGE },
-    rows: rows.map(
-      ([label, value]) =>
-        new TableRow({
-          children: [
-            new TableCell({
-              width: { size: 35, type: WidthType.PERCENTAGE },
-              children: [
-                new Paragraph({
-                  children: [new TextRun({ text: label, bold: true, size: 20, font: "Calibri" })],
-                }),
-              ],
-            }),
-            new TableCell({
-              width: { size: 65, type: WidthType.PERCENTAGE },
-              children: [
-                new Paragraph({
-                  children: [new TextRun({ text: value || "N/A", size: 20, font: "Calibri" })],
-                }),
-              ],
-            }),
-          ],
-        })
-    ),
-    borders: {
-      top: { style: BorderStyle.SINGLE, size: 1, color: "D9D9D9" },
-      bottom: { style: BorderStyle.SINGLE, size: 1, color: "D9D9D9" },
-      left: { style: BorderStyle.SINGLE, size: 1, color: "D9D9D9" },
-      right: { style: BorderStyle.SINGLE, size: 1, color: "D9D9D9" },
-      insideHorizontal: { style: BorderStyle.SINGLE, size: 1, color: "E5E5E5" },
-      insideVertical: { style: BorderStyle.SINGLE, size: 1, color: "E5E5E5" },
-    },
-  })
-}
-
-function partyInfoCell(lines: Array<{ text: string; bold?: boolean }>) {
-  return new TableCell({
-    children: lines.map(
-      (line) =>
-        new Paragraph({
-          children: [new TextRun({ text: line.text || "", bold: !!line.bold, size: 20, font: "Calibri" })],
-          spacing: { after: 60 },
-        })
-    ),
-  })
-}
-
-function exporterBuyerTable(invoice: any) {
-  return new Table({
-    width: { size: 100, type: WidthType.PERCENTAGE },
-    rows: [
-      new TableRow({
-        children: [
-          new TableCell({
-            children: [
-              new Paragraph({
-                children: [new TextRun({ text: "EXPORTER / SHIPPER", bold: true, size: 20, font: "Calibri" })],
-              }),
-            ],
-          }),
-          new TableCell({
-            children: [
-              new Paragraph({
-                children: [new TextRun({ text: "BUYER / IMPORTER", bold: true, size: 20, font: "Calibri" })],
-              }),
-            ],
-          }),
-        ],
-      }),
-      new TableRow({
-        children: [
-          partyInfoCell([
-            { text: invoice.exporter?.name || "N/A", bold: true },
-            { text: invoice.exporter?.address || "Address not provided" },
-            ...(invoice.exporter?.iec ? [{ text: `IEC: ${invoice.exporter.iec}` }] : []),
-            ...(invoice.exporter?.gstIN ? [{ text: `GSTIN: ${invoice.exporter.gstIN}` }] : []),
-          ]),
-          partyInfoCell([
-            { text: invoice.buyer?.name || "N/A", bold: true },
-            { text: invoice.buyer?.address || "Address not provided" },
-            ...(invoice.buyer?.country ? [{ text: `Country: ${invoice.buyer.country}` }] : []),
-            ...(invoice.buyer?.buyerTaxId ? [{ text: `Tax ID: ${invoice.buyer.buyerTaxId}` }] : []),
-            ...(invoice.buyer?.buyerVAT ? [{ text: `VAT: ${invoice.buyer.buyerVAT}` }] : []),
-            ...(invoice.buyer?.buyerRegistrationNumber
-              ? [{ text: `Registration No: ${invoice.buyer.buyerRegistrationNumber}` }]
-              : []),
-          ]),
-        ],
-      }),
-    ],
-    borders: {
-      top: { style: BorderStyle.SINGLE, size: 1, color: "D9D9D9" },
-      bottom: { style: BorderStyle.SINGLE, size: 1, color: "D9D9D9" },
-      left: { style: BorderStyle.SINGLE, size: 1, color: "D9D9D9" },
-      right: { style: BorderStyle.SINGLE, size: 1, color: "D9D9D9" },
-      insideHorizontal: { style: BorderStyle.SINGLE, size: 1, color: "E5E5E5" },
-      insideVertical: { style: BorderStyle.SINGLE, size: 1, color: "E5E5E5" },
-    },
-  })
-}
-
-function totalsTable(rows: Array<[string, string]>) {
-  return new Table({
-    width: { size: 100, type: WidthType.PERCENTAGE },
-    rows: rows.map(
-      ([label, value]) =>
-        new TableRow({
-          children: [
-            new TableCell({
-              width: { size: 70, type: WidthType.PERCENTAGE },
-              children: [
-                new Paragraph({
-                  children: [new TextRun({ text: label, size: 20, font: "Calibri", bold: label.includes("Total") })],
-                  alignment: AlignmentType.RIGHT,
-                }),
-              ],
-            }),
-            new TableCell({
-              width: { size: 30, type: WidthType.PERCENTAGE },
-              children: [
-                new Paragraph({
-                  children: [new TextRun({ text: value, size: 20, font: "Calibri", bold: label.includes("Total") })],
-                  alignment: AlignmentType.RIGHT,
-                }),
-              ],
-            }),
-          ],
-        })
-    ),
-    borders: {
-      top: { style: BorderStyle.SINGLE, size: 1, color: "D9D9D9" },
-      bottom: { style: BorderStyle.SINGLE, size: 1, color: "D9D9D9" },
-      left: { style: BorderStyle.SINGLE, size: 1, color: "D9D9D9" },
-      right: { style: BorderStyle.SINGLE, size: 1, color: "D9D9D9" },
-      insideHorizontal: { style: BorderStyle.SINGLE, size: 1, color: "E5E5E5" },
-      insideVertical: { style: BorderStyle.SINGLE, size: 1, color: "E5E5E5" },
-    },
-  })
-}
-
-function signatureTable(exporterName: string) {
-  return new Table({
-    width: { size: 100, type: WidthType.PERCENTAGE },
-    rows: [
-      new TableRow({
-        children: [
-          new TableCell({
-            width: { size: 60, type: WidthType.PERCENTAGE },
-            children: [new Paragraph({ text: "" })],
-            borders: {
-              top: { style: BorderStyle.NONE, size: 0, color: "FFFFFF" },
-              bottom: { style: BorderStyle.NONE, size: 0, color: "FFFFFF" },
-              left: { style: BorderStyle.NONE, size: 0, color: "FFFFFF" },
-              right: { style: BorderStyle.NONE, size: 0, color: "FFFFFF" },
-            },
-          }),
-          new TableCell({
-            width: { size: 40, type: WidthType.PERCENTAGE },
-            children: [
-              new Paragraph({
-                children: [new TextRun({ text: `For ${exporterName || "Exporter"}`, size: 20, font: "Calibri" })],
-                alignment: AlignmentType.RIGHT,
-                spacing: { after: 400 },
-              }),
-              new Paragraph({
-                children: [new TextRun({ text: "________________________", size: 20, font: "Calibri" })],
-                alignment: AlignmentType.RIGHT,
-                spacing: { after: 80 },
-              }),
-              new Paragraph({
-                children: [new TextRun({ text: "Authorized Signatory", bold: true, size: 20, font: "Calibri" })],
-                alignment: AlignmentType.RIGHT,
-              }),
-            ],
-            borders: {
-              top: { style: BorderStyle.NONE, size: 0, color: "FFFFFF" },
-              bottom: { style: BorderStyle.NONE, size: 0, color: "FFFFFF" },
-              left: { style: BorderStyle.NONE, size: 0, color: "FFFFFF" },
-              right: { style: BorderStyle.NONE, size: 0, color: "FFFFFF" },
-            },
-          }),
-        ],
-      }),
-    ],
-    borders: {
-      top: { style: BorderStyle.NONE, size: 0, color: "FFFFFF" },
-      bottom: { style: BorderStyle.NONE, size: 0, color: "FFFFFF" },
-      left: { style: BorderStyle.NONE, size: 0, color: "FFFFFF" },
-      right: { style: BorderStyle.NONE, size: 0, color: "FFFFFF" },
-      insideHorizontal: { style: BorderStyle.NONE, size: 0, color: "FFFFFF" },
-      insideVertical: { style: BorderStyle.NONE, size: 0, color: "FFFFFF" },
-    },
-  })
+function formatDate(value: unknown, fallback = "N/A") {
+  if (!value) return fallback
+  const parsed = new Date(String(value))
+  if (Number.isNaN(parsed.getTime())) return fallback
+  return parsed.toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" })
 }
 
 async function pack(children: (Paragraph | Table)[]) {
@@ -330,14 +27,11 @@ export async function generateInvoiceDOCX(invoice: any) {
   const itemRows = (invoice.items || [])
     .map((item: any) => {
       const lineTotal = (Number(item.quantity) || 0) * (Number(item.unitPrice) || 0)
-      return {
-        ...item,
-        lineTotal,
-      }
+      return { ...item, lineTotal }
     })
     .sort((a: any, b: any) => String(a.description || "").localeCompare(String(b.description || "")))
 
-  const rows = itemRows.map((item: any, index: number) => [
+  const itemTableRows = itemRows.map((item: any, index: number) => [
     String(index + 1),
     item.description || "",
     item.hsCode || "-",
@@ -347,30 +41,16 @@ export async function generateInvoiceDOCX(invoice: any) {
     `${invoice.currency || "USD"} ${item.lineTotal.toFixed(2)}`,
   ])
 
-  // Transport details
   const vesselOrFlight = (invoice.vesselOrFlightNumber || "").trim()
   const blOrAwb = (invoice.blNumber || invoice.awbNumber || "").trim()
   const containerNumber = (invoice.containerNumber || "").trim()
   const marksAndNumbers = (invoice.marksAndNumbers || "").trim()
 
-  // Exchange rate
   const hasExchangeDisclosure =
-    invoice.currency !== "INR" &&
-    Number(invoice.totalValue) > 0 &&
-    Number(invoice.totalValueINR) > 0
+    invoice.currency !== "INR" && Number(invoice.totalValue) > 0 && Number(invoice.totalValueINR) > 0
   const derivedExchangeRate = hasExchangeDisclosure
     ? Number(invoice.totalValueINR) / Number(invoice.totalValue)
     : null
-  const referenceDate = hasExchangeDisclosure
-    ? new Date(invoice.exchangeRateDate || invoice.invoiceDate || new Date())
-    : null
-  const formattedReferenceDate = referenceDate
-    ? referenceDate.toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" })
-    : null
-
-  const invoiceDate = invoice.invoiceDate
-    ? new Date(invoice.invoiceDate).toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" })
-    : "N/A"
 
   const subtotal = itemRows.reduce((sum: number, item: any) => sum + Number(item.lineTotal || 0), 0)
   const freight = Number(invoice.freightCharges ?? invoice.freight ?? 0)
@@ -379,7 +59,7 @@ export async function generateInvoiceDOCX(invoice: any) {
 
   const metadataRows: Array<[string, string]> = [
     ["INVOICE NO", invoice.invoiceNumber || "N/A"],
-    ["DATE", invoiceDate],
+    ["DATE", formatDate(invoice.invoiceDate)],
     ["PAYMENT TERMS", invoice.paymentTerms || "N/A"],
   ]
 
@@ -401,101 +81,102 @@ export async function generateInvoiceDOCX(invoice: any) {
   const summaryRows: Array<[string, string]> = [
     ["Subtotal", `${invoice.currency || "USD"} ${subtotal.toFixed(2)}`],
     ...(freight > 0 ? ([["Freight", `${invoice.currency || "USD"} ${freight.toFixed(2)}`]] as Array<[string, string]>) : []),
-    ...(insurance > 0 ? ([["Insurance", `${invoice.currency || "USD"} ${insurance.toFixed(2)}`]] as Array<[string, string]>) : []),
+    ...(insurance > 0
+      ? ([["Insurance", `${invoice.currency || "USD"} ${insurance.toFixed(2)}`]] as Array<[string, string]>)
+      : []),
     ["Total Invoice Value", `${invoice.currency || "USD"} ${totalValue.toFixed(2)}`],
     ...(hasExchangeDisclosure
-      ? ([["Exchange Rate", `1 ${invoice.currency} = ₹${derivedExchangeRate?.toFixed(2)}`]] as Array<[string, string]>)
+      ? ([["Exchange Rate", `1 ${invoice.currency} = INR ${derivedExchangeRate?.toFixed(2)}`]] as Array<[string, string]>)
       : []),
-    ...(hasExchangeDisclosure ? ([["Reference Date", formattedReferenceDate || "N/A"]] as Array<[string, string]>) : []),
-  ] as Array<[string, string]>
+    ...(hasExchangeDisclosure
+      ? ([["Reference Date", formatDate(invoice.exchangeRateDate || invoice.invoiceDate)]] as Array<[string, string]>)
+      : []),
+  ]
 
   return pack([
-    new Paragraph({
-      children: [new TextRun({ text: "COMMERCIAL INVOICE", bold: true, size: 30, font: "Calibri" })],
-      alignment: AlignmentType.CENTER,
-      spacing: { after: 220 },
-    }),
-    sectionHeading("Metadata"),
-    invoiceMetaTable(metadataRows),
-    sectionHeading("Exporter / Buyer"),
-    exporterBuyerTable(invoice),
+    documentHeader("COMMERCIAL INVOICE"),
+    keyValueTable(metadataRows, { compact: true }),
+    sectionHeading("Party Details"),
+    partyDetailsTable(invoice),
     sectionHeading("Shipment Details"),
-    invoiceMetaTable(shipmentRows),
-    ...(transportRows.length > 0
-      ? [
-          sectionHeading("Transport Details"),
-          invoiceMetaTable(transportRows),
-        ]
-      : []),
-    sectionHeading("Invoice Items"),
-    table(["SR", "Description", "HS Code", "Qty", "Unit", "Unit Price", "Amount"], rows),
-    sectionHeading("Totals"),
-    totalsTable(summaryRows),
+    keyValueTable(shipmentRows, { columns: 2 }),
+    ...(transportRows.length > 0 ? [sectionHeading("Transport Details"), keyValueTable(transportRows, { columns: 2 })] : []),
+    sectionHeading("Items"),
+    dataTable(["SR", "Description", "HS Code", "Qty", "Unit", "Unit Price", "Amount"], itemTableRows, {
+      compact: true,
+    }),
+    sectionHeading("Summary / Totals"),
+    totalsBlock(summaryRows),
     sectionHeading("Signature"),
-    signatureTable(invoice.exporter?.name || "Exporter"),
+    signatureBlock(invoice.exporter?.name || "Exporter"),
   ])
 }
 
 export async function generatePackingListDOCX(invoice: any, packing: any) {
   const poRef = invoice.poReference || invoice.poRef || invoice.purchaseOrderRef || "N/A"
-  const rows = (invoice.items || []).map((item: any, index: number) => [
+  const cartons = Array.isArray(packing?.cartons) ? packing.cartons : []
+
+  const itemRows = (invoice.items || []).map((item: any, index: number) => [
     String(index + 1),
     item.description || "",
     item.hsCode || "",
     String(item.quantity ?? ""),
   ])
-  const cartons = Array.isArray(packing?.cartons) ? packing.cartons : []
+
   const cartonRows = cartons.map((carton: any) => [
     String(carton.cartonNumber ?? ""),
     String(carton.marks || "").trim() || "N/M",
     carton.lengthCm && carton.widthCm && carton.heightCm
-      ? `${Number(carton.lengthCm).toFixed(2)} × ${Number(carton.widthCm).toFixed(2)} × ${Number(carton.heightCm).toFixed(2)}`
+      ? `${Number(carton.lengthCm).toFixed(2)} x ${Number(carton.widthCm).toFixed(2)} x ${Number(carton.heightCm).toFixed(2)}`
       : "",
     Number(carton.netWeightKg || 0).toFixed(3),
     Number(carton.grossWeightKg || 0).toFixed(3),
     Number(carton.cbm || 0).toFixed(6),
   ])
-  const totalNetWeight = Number(packing?.netWeight || 0)
-  const totalGrossWeight = Number(packing?.grossWeight || 0)
-  const totalCBM = Number(packing?.totalCBM || 0)
-  const totalBoxes = Number(packing?.totalBoxes || cartons.length || 0)
+
+  const metadataRows: Array<[string, string]> = [
+    ["Invoice Ref", invoice.invoiceNumber || "N/A"],
+    ["PO Ref", poRef],
+    ["Incoterm", invoice.incoterm || "N/A"],
+  ]
+
+  const shipmentRows: Array<[string, string]> = [
+    ["Port of Loading", invoice.portOfLoading || "N/A"],
+    ["Port of Discharge", invoice.portOfDischarge || "N/A"],
+    ["Country of Origin", invoice.countryOfOrigin || "N/A"],
+    ["Mode of Transport", invoice.modeOfTransport || "N/A"],
+  ]
+
+  const summaryRows: Array<[string, string]> = [
+    ["Total Cartons", String(Number(packing?.totalBoxes || cartons.length || 0))],
+    ["Total Net Weight (kg)", Number(packing?.netWeight || 0).toFixed(3)],
+    ["Total Gross Weight (kg)", Number(packing?.grossWeight || 0).toFixed(3)],
+    ["Total CBM", Number(packing?.totalCBM || 0).toFixed(6)],
+  ]
 
   return pack([
-    h1("PACKING LIST"),
-    kv("Invoice Ref", invoice.invoiceNumber || "N/A"),
-    kv("PO Ref", poRef),
-    kv("Incoterm", invoice.incoterm || "N/A"),
-    kv("Port of Loading", invoice.portOfLoading || "N/A"),
-    kv("Port of Discharge", invoice.portOfDischarge || "N/A"),
-    kv("Country of Origin", invoice.countryOfOrigin || "N/A"),
-    kv("Mode of Transport", invoice.modeOfTransport || "N/A"),
-    h2("Exporter / Shipper"),
-    kv("Name", invoice.exporter?.name || "N/A"),
-    kv("Address", invoice.exporter?.address || "N/A"),
-    kv("IEC", invoice.exporter?.iec || "N/A"),
-    h2("Buyer / Importer"),
-    kv("Name", invoice.buyer?.name || "N/A"),
-    kv("Address", invoice.buyer?.address || "N/A"),
-    kv("Country", invoice.buyer?.country || "N/A"),
-    h2("Goods"),
-    table(["SR", "Description", "HS Code", "Qty"], rows),
-    h2("Carton Details"),
-    table(["Carton No", "Marks", "Dimensions (cm)", "Net Wt", "Gross Wt", "CBM"], cartonRows),
-    h2("Summary"),
-    kv("Total Cartons", String(totalBoxes)),
-    kv("Total Net Weight (kg)", totalNetWeight.toFixed(3)),
-    kv("Total Gross Weight (kg)", totalGrossWeight.toFixed(3)),
-    kv("Total CBM", totalCBM.toFixed(6)),
-    h2("Declaration"),
-    new Paragraph("We hereby certify that the above packing details are true and correct and correspond to the related commercial invoice."),
-    ...signBlock(invoice.exporter?.name || "Exporter"),
+    documentHeader("PACKING LIST"),
+    sectionHeading("Metadata"),
+    keyValueTable(metadataRows),
+    sectionHeading("Party Details"),
+    partyDetailsTable(invoice),
+    sectionHeading("Shipment Details"),
+    keyValueTable(shipmentRows),
+    sectionHeading("Items"),
+    dataTable(["SR", "Description", "HS Code", "Qty"], itemRows),
+    sectionHeading("Summary / Totals"),
+    keyValueTable(summaryRows),
+    sectionHeading("Carton Details"),
+    dataTable(["Carton No", "Marks", "Dimensions (cm)", "Net Wt", "Gross Wt", "CBM"], cartonRows),
+    sectionHeading("Signature"),
+    signatureBlock(invoice.exporter?.name || "Exporter"),
   ])
 }
 
 export async function generateShippingBillDOCX(invoice: any, sb: any) {
   const adCode = (sb?.adCode || invoice.exporter?.adCode || "").trim().toUpperCase() || "N/A"
 
-  const rows = (invoice.items || []).map((item: any, index: number) => {
+  const itemRows = (invoice.items || []).map((item: any, index: number) => {
     const lineValue = (Number(item.quantity) || 0) * (Number(item.unitPrice) || 0)
     return [
       String(index + 1),
@@ -507,62 +188,91 @@ export async function generateShippingBillDOCX(invoice: any, sb: any) {
     ]
   })
 
+  const metadataRows: Array<[string, string]> = [
+    ["Shipping Bill No", `SB-${String(sb.id || "DRAFT").slice(0, 8).toUpperCase()}`],
+    ["Invoice Ref", invoice.invoiceNumber || "N/A"],
+    ["IEC", invoice.exporter?.iec || "N/A"],
+    ["AD Code", adCode],
+  ]
+
+  const shipmentRows: Array<[string, string]> = [
+    ["Port of Loading", sb.portOfLoading || invoice.portOfLoading || "N/A"],
+    ["Port of Discharge", sb.portOfDischarge || invoice.portOfDischarge || "N/A"],
+    ["Destination Country", invoice.buyer?.country || "N/A"],
+    ["Scheme", sb.schemeCode || (sb.drawback ? "Drawback" : "N/A")],
+  ]
+
+  const summaryRows: Array<[string, string]> = [
+    ["FOB Value", `${invoice.currency || "USD"} ${Number(invoice.totalValue || 0).toFixed(2)}`],
+    ["Freight", `${invoice.currency || "USD"} ${Number(invoice.freight || 0).toFixed(2)}`],
+    ["Insurance", `${invoice.currency || "USD"} ${Number(invoice.insurance || 0).toFixed(2)}`],
+    ["Total Invoice Value", `${invoice.currency || "USD"} ${Number(invoice.totalValue || 0).toFixed(2)}`],
+    [
+      "Exchange Rate",
+      invoice.currency !== "INR" && Number(invoice.totalValueINR || 0) > 0 && Number(invoice.totalValue || 0) > 0
+        ? `1 ${invoice.currency} = INR ${(Number(invoice.totalValueINR) / Number(invoice.totalValue)).toFixed(2)}`
+        : "N/A",
+    ],
+  ]
+
   return pack([
-    h1("SHIPPING BILL (DRAFT)"),
-    sub("(For ICEGATE Filing Reference)"),
-    kv("Shipping Bill No", `SB-${String(sb.id || "DRAFT").slice(0, 8).toUpperCase()}`),
-    kv("Invoice Ref", invoice.invoiceNumber || "N/A"),
-    kv("IEC", invoice.exporter?.iec || "N/A"),
-    kv("AD Code", adCode),
-    kv("Port of Loading", sb.portOfLoading || invoice.portOfLoading || "N/A"),
-    kv("Destination Country", invoice.buyer?.country || "N/A"),
-    kv("Scheme", sb.schemeCode || (sb.drawback ? "Drawback" : "N/A")),
-    h2("Exporter Details"),
-    kv("Name", invoice.exporter?.name || "N/A"),
-    kv("Address", invoice.exporter?.address || "N/A"),
-    h2("Consignee Details"),
-    kv("Name", invoice.buyer?.name || "N/A"),
-    kv("Address", invoice.buyer?.address || "N/A"),
-    h2("Goods"),
-    table(["SR", "Description", "HS Code", "Qty", "FOB Value", "Scheme"], rows),
-    h2("Valuation"),
-    kv("FOB Value", `${invoice.currency || "USD"} ${Number(invoice.totalValue || 0).toFixed(2)}`),
-    kv("Freight", `${invoice.currency || "USD"} ${Number(invoice.freight || 0).toFixed(2)}`),
-    kv("Insurance", `${invoice.currency || "USD"} ${Number(invoice.insurance || 0).toFixed(2)}`),
-    kv("Total Invoice Value", `${invoice.currency || "USD"} ${Number(invoice.totalValue || 0).toFixed(2)}`),
-    kv("Exchange Rate", invoice.currency !== "INR" && Number(invoice.totalValueINR || 0) > 0 && Number(invoice.totalValue || 0) > 0
-      ? `1 ${invoice.currency} = INR ${(Number(invoice.totalValueINR) / Number(invoice.totalValue)).toFixed(2)}`
-      : "N/A"),
-    h2("Declaration"),
-    new Paragraph("We hereby declare that the particulars given above are true and correct, and the goods are intended for export as per applicable customs and FEMA regulations."),
-    ...signBlock(invoice.exporter?.name || "Exporter"),
+    documentHeader("SHIPPING BILL (DRAFT)"),
+    sectionHeading("Metadata"),
+    keyValueTable(metadataRows),
+    sectionHeading("Party Details"),
+    partyDetailsTable(invoice),
+    sectionHeading("Shipment Details"),
+    keyValueTable(shipmentRows),
+    sectionHeading("Items"),
+    dataTable(["SR", "Description", "HS Code", "Qty", "FOB Value", "Scheme"], itemRows),
+    sectionHeading("Summary / Totals"),
+    keyValueTable(summaryRows),
+    sectionHeading("Signature"),
+    signatureBlock(invoice.exporter?.name || "Exporter"),
   ])
 }
 
 export async function generateCertificateOfOriginDOCX(invoice: any, coo: any) {
   const origin = coo?.originCountry || invoice.countryOfOrigin || "N/A"
-  const rows = (invoice.items || []).map((item: any) => [
+  const itemRows = (invoice.items || []).map((item: any, index: number) => [
+    String(index + 1),
     item.description || "",
     item.hsCode || "",
     origin,
   ])
 
+  const metadataRows: Array<[string, string]> = [
+    ["Certificate Type", "Certificate of Origin"],
+    ["Invoice Ref", invoice.invoiceNumber || "N/A"],
+    ["Date", formatDate(invoice.invoiceDate)],
+  ]
+
+  const shipmentRows: Array<[string, string]> = [
+    ["Country of Origin", origin],
+    ["Port of Loading", invoice.portOfLoading || "N/A"],
+    ["Port of Discharge", invoice.portOfDischarge || "N/A"],
+    ["Mode of Transport", invoice.modeOfTransport || "N/A"],
+  ]
+
+  const summaryRows: Array<[string, string]> = [
+    ["Consignee Country", invoice.buyer?.country || "N/A"],
+    ["Exporter IEC", invoice.exporter?.iec || "N/A"],
+  ]
+
   return pack([
-    h1("CERTIFICATE OF ORIGIN"),
-    new Paragraph("This is to certify that the goods described below:"),
-    table(["Description", "HS Code", "Country of Origin"], rows),
-    h2("Exporter Details"),
-    kv("Name", invoice.exporter?.name || "N/A"),
-    kv("Address", invoice.exporter?.address || "N/A"),
-    kv("IEC", invoice.exporter?.iec || "N/A"),
-    h2("Consignee Details"),
-    kv("Name", invoice.buyer?.name || "N/A"),
-    kv("Address", invoice.buyer?.address || "N/A"),
-    kv("Country", invoice.buyer?.country || "N/A"),
-    h2("Declaration Statement"),
-    new Paragraph("We certify that the above-mentioned goods originate from the stated country of origin and are true to the best of our knowledge and records."),
-    h2("Authorized Signature"),
-    ...signBlock(invoice.exporter?.name || "Exporter"),
+    documentHeader("CERTIFICATE OF ORIGIN"),
+    sectionHeading("Metadata"),
+    keyValueTable(metadataRows),
+    sectionHeading("Party Details"),
+    partyDetailsTable(invoice),
+    sectionHeading("Shipment Details"),
+    keyValueTable(shipmentRows),
+    sectionHeading("Items"),
+    dataTable(["SR", "Description", "HS Code", "Country of Origin"], itemRows),
+    sectionHeading("Summary / Totals"),
+    keyValueTable(summaryRows),
+    sectionHeading("Signature"),
+    signatureBlock(invoice.exporter?.name || "Exporter"),
   ])
 }
 
@@ -571,48 +281,104 @@ export async function generateInsuranceDOCX(invoice: any, insurance: any) {
   const coverageType = insurance?.coverageType || "ICC (A)"
   const vesselOrVoyage = invoice.vesselOrFlightNumber || invoice.blNumber || invoice.awbNumber || "N/A"
   const beneficiary = insurance?.beneficiary || invoice.buyer?.name || "N/A"
-  const itemValues = (invoice.items || []).map((item: any) => (Number(item.quantity) || 0) * (Number(item.unitPrice) || 0))
+
+  const itemValues = (invoice.items || []).map((item: any) =>
+    (Number(item.quantity) || 0) * (Number(item.unitPrice) || 0)
+  )
   const totalItemValue = itemValues.reduce((sum: number, value: number) => sum + value, 0)
 
-  const rows = (invoice.items || []).map((item: any, index: number) => {
+  const itemRows = (invoice.items || []).map((item: any, index: number) => {
     const lineShare = totalItemValue > 0 ? (itemValues[index] || 0) / totalItemValue : 1 / Math.max(1, (invoice.items || []).length)
     const lineInsured = insuredValue * lineShare
     return [
+      String(index + 1),
       item.description || "",
       `${invoice.currency || "USD"} ${lineInsured.toFixed(2)}`,
       coverageType,
     ]
   })
 
+  const metadataRows: Array<[string, string]> = [
+    ["Policy No", insurance?.policyNumber || "N/A"],
+    ["Coverage Type", coverageType],
+    ["Beneficiary", beneficiary],
+  ]
+
+  const shipmentRows: Array<[string, string]> = [
+    ["Vessel / Voyage", vesselOrVoyage],
+    ["Port of Loading", invoice.portOfLoading || "N/A"],
+    ["Port of Discharge", invoice.portOfDischarge || "N/A"],
+    ["Mode of Transport", invoice.modeOfTransport || "N/A"],
+  ]
+
+  const summaryRows: Array<[string, string]> = [
+    ["Insured Value", `${invoice.currency || "USD"} ${insuredValue.toFixed(2)}`],
+    ["Currency", invoice.currency || "USD"],
+  ]
+
   return pack([
-    h1("MARINE INSURANCE CERTIFICATE"),
-    kv("Policy No", insurance?.policyNumber || "N/A"),
-    kv("Insured Value", `${invoice.currency || "USD"} ${insuredValue.toFixed(2)}`),
-    kv("Coverage Type", coverageType),
-    kv("Vessel / Voyage", vesselOrVoyage),
-    kv("Beneficiary", beneficiary),
-    table(["Goods", "Insured Amount", "Risk Coverage"], rows),
-    ...signBlock(invoice.exporter?.name || "Exporter"),
+    documentHeader("MARINE INSURANCE CERTIFICATE"),
+    sectionHeading("Metadata"),
+    keyValueTable(metadataRows),
+    sectionHeading("Party Details"),
+    partyDetailsTable(invoice),
+    sectionHeading("Shipment Details"),
+    keyValueTable(shipmentRows),
+    sectionHeading("Items"),
+    dataTable(["SR", "Goods", "Insured Amount", "Risk Coverage"], itemRows),
+    sectionHeading("Summary / Totals"),
+    keyValueTable(summaryRows),
+    sectionHeading("Signature"),
+    signatureBlock(invoice.exporter?.name || "Exporter"),
   ])
 }
 
 export async function generateDeclarationDOCX(invoice: any) {
+  const metadataRows: Array<[string, string]> = [
+    ["Declaration Type", "Export Declaration"],
+    ["Invoice Ref", invoice.invoiceNumber || "N/A"],
+    ["Date", formatDate(invoice.invoiceDate)],
+  ]
+
+  const shipmentRows: Array<[string, string]> = [
+    ["Port of Loading", invoice.portOfLoading || "N/A"],
+    ["Port of Discharge", invoice.portOfDischarge || "N/A"],
+    ["Country of Origin", invoice.countryOfOrigin || "N/A"],
+    ["Mode of Transport", invoice.modeOfTransport || "N/A"],
+  ]
+
+  const declarationRows = [
+    ["1", "Goods exported are as per invoice."],
+    ["2", "Proceeds will be realized within prescribed period."],
+    ["3", "No prohibited goods included."],
+    ["4", "Details furnished are true and correct."],
+  ]
+
+  const summaryRows: Array<[string, string]> = [
+    ["Exporter", invoice.exporter?.name || "N/A"],
+    ["Buyer", invoice.buyer?.name || "N/A"],
+  ]
+
   return pack([
-    h1("EXPORT DECLARATION"),
-    sub("(Under FEMA Regulations)"),
-    bullet("Goods exported are as per invoice."),
-    bullet("Proceeds will be realized within prescribed period."),
-    bullet("No prohibited goods included."),
-    bullet("Details furnished are true and correct."),
-    ...signBlock(invoice.exporter?.name || "Exporter"),
+    documentHeader("EXPORT DECLARATION"),
+    sectionHeading("Metadata"),
+    keyValueTable(metadataRows),
+    sectionHeading("Party Details"),
+    partyDetailsTable(invoice),
+    sectionHeading("Shipment Details"),
+    keyValueTable(shipmentRows),
+    sectionHeading("Items"),
+    dataTable(["Clause", "Statement"], declarationRows),
+    sectionHeading("Summary / Totals"),
+    keyValueTable(summaryRows),
+    sectionHeading("Signature"),
+    signatureBlock(invoice.exporter?.name || "Exporter"),
   ])
 }
 
 export async function generateLetterOfCreditSummaryDOCX(invoice: any, lc: any) {
   const shipmentDeadlineValue = lc?.shipmentDeadline || lc?.latestShipmentDate
-  const shipmentDeadline = shipmentDeadlineValue
-    ? new Date(shipmentDeadlineValue).toLocaleDateString("en-GB")
-    : "N/A"
+  const shipmentDeadline = shipmentDeadlineValue ? new Date(shipmentDeadlineValue).toLocaleDateString("en-GB") : "N/A"
 
   const lcCurrency = lc?.lcCurrency || invoice.currency || "N/A"
   const lcAmount = Number(lc?.lcAmount || invoice.totalValue || 0)
@@ -620,20 +386,48 @@ export async function generateLetterOfCreditSummaryDOCX(invoice: any, lc: any) {
   const tolerance =
     lc?.tolerancePercent === null || lc?.tolerancePercent === undefined
       ? "N/A"
-      : `±${Number(lc.tolerancePercent).toFixed(2)}%`
+      : `+/-${Number(lc.tolerancePercent).toFixed(2)}%`
+
+  const metadataRows: Array<[string, string]> = [
+    ["LC No", lc?.lcNumber || "N/A"],
+    ["Issuing Bank", lc?.issuingBank || "N/A"],
+    ["Advising Bank", lc?.advisingBank || "N/A"],
+  ]
+
+  const shipmentRows: Array<[string, string]> = [
+    ["Shipment Deadline", shipmentDeadline],
+    ["Presentation Period", `${Number(lc?.presentationPeriodDays || lc?.presentationDays || 45)} days`],
+    ["Partial Shipment Allowed", lc?.partialShipmentAllowed ? "Yes" : "No"],
+    ["Tolerance", tolerance],
+  ]
+
+  const itemRows = (invoice.items || []).map((item: any, index: number) => [
+    String(index + 1),
+    item.description || "",
+    item.hsCode || "",
+    String(item.quantity ?? 0),
+  ])
+
+  const summaryRows: Array<[string, string]> = [
+    ["Currency", lcCurrency],
+    ["Amount", `${lcCurrency} ${lcAmount.toFixed(2)}`],
+    ["Reference", "This document summarizes LC terms for internal validation reference."],
+  ]
 
   return pack([
-    h1("LETTER OF CREDIT SUMMARY"),
-    kv("LC No", lc?.lcNumber || "N/A"),
-    kv("Issuing Bank", lc?.issuingBank || "N/A"),
-    kv("Advising Bank", lc?.advisingBank || "N/A"),
-    kv("Currency", lcCurrency),
-    kv("Amount", `${lcCurrency} ${lcAmount.toFixed(2)}`),
-    kv("Shipment Deadline", shipmentDeadline),
-    kv("Presentation Period", `${Number(lc?.presentationPeriodDays || lc?.presentationDays || 45)} days`),
-    kv("Partial Shipment Allowed", lc?.partialShipmentAllowed ? "Yes" : "No"),
-    kv("Tolerance", tolerance),
-    new Paragraph("This document summarizes LC terms for internal validation reference."),
+    documentHeader("LETTER OF CREDIT SUMMARY"),
+    sectionHeading("Metadata"),
+    keyValueTable(metadataRows),
+    sectionHeading("Party Details"),
+    partyDetailsTable(invoice),
+    sectionHeading("Shipment Details"),
+    keyValueTable(shipmentRows),
+    sectionHeading("Items"),
+    dataTable(["SR", "Description", "HS Code", "Qty"], itemRows.length > 0 ? itemRows : [["1", "N/A", "N/A", "0"]]),
+    sectionHeading("Summary / Totals"),
+    keyValueTable(summaryRows),
+    sectionHeading("Signature"),
+    signatureBlock(invoice.exporter?.name || "Exporter"),
   ])
 }
 
@@ -645,22 +439,43 @@ export async function generateComplianceCertificateDOCX(invoice: any, validation
     issue.message || "-",
   ])
 
-  return pack([
-    h1("COMPLIANCE CERTIFICATE"),
-    kv("Invoice No", invoice?.invoiceNumber || "N/A"),
-    kv("Exporter", invoice?.exporter?.name || "N/A"),
-    kv("Buyer", invoice?.buyer?.name || "N/A"),
-    h2("Engine Status"),
-    table(["Engine", "Status"], engineRows.length > 0 ? engineRows : [["N/A", "N/A"]]),
-    h2("Validation Summary"),
-    new Paragraph(
+  const metadataRows: Array<[string, string]> = [
+    ["Invoice No", invoice?.invoiceNumber || "N/A"],
+    ["Exporter", invoice?.exporter?.name || "N/A"],
+    ["Buyer", invoice?.buyer?.name || "N/A"],
+  ]
+
+  const shipmentRows: Array<[string, string]> = [
+    ["Validation Result", validation?.canRelease ? "PASSED" : "FAILED"],
+    ["Blocker Count", String((validation?.blockers || []).length)],
+    ["Warning Count", String((validation?.warnings || []).length)],
+    ["Invoice ID", invoice?.id || "N/A"],
+  ]
+
+  const summaryRows: Array<[string, string]> = [
+    [
+      "Validation Summary",
       validation?.canRelease
         ? "All critical compliance checks passed."
-        : "One or more compliance blockers were identified."
-    ),
-    h2("Blockers"),
-    blockerRows.length > 0
-      ? table(["Engine", "Code", "Message"], blockerRows)
-      : new Paragraph("No blockers."),
+        : "One or more compliance blockers were identified.",
+    ],
+  ]
+
+  return pack([
+    documentHeader("COMPLIANCE CERTIFICATE"),
+    sectionHeading("Metadata"),
+    keyValueTable(metadataRows),
+    sectionHeading("Party Details"),
+    partyDetailsTable(invoice),
+    sectionHeading("Shipment Details"),
+    keyValueTable(shipmentRows),
+    sectionHeading("Items"),
+    dataTable(["Engine", "Status"], engineRows.length > 0 ? engineRows : [["N/A", "N/A"]]),
+    sectionHeading("Summary / Totals"),
+    keyValueTable(summaryRows),
+    sectionHeading("Blockers"),
+    dataTable(["Engine", "Code", "Message"], blockerRows.length > 0 ? blockerRows : [["-", "-", "No blockers."]]),
+    sectionHeading("Signature"),
+    signatureBlock(invoice?.exporter?.name || "Exporter"),
   ])
 }
