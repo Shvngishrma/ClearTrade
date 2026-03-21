@@ -1104,6 +1104,14 @@ function DocumentsPage() {
 
       // Track guest generation if not logged in
       if (!isLoggedIn) {
+        if (guestTracking.guestId) {
+          await fetch("/api/guest/track", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ guestId: guestTracking.guestId }),
+          }).catch(() => null)
+        }
+
         guestTracking.incrementCount()
       }
 

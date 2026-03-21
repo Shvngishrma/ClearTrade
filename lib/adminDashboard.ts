@@ -50,9 +50,10 @@ export async function getAdminDashboardStats(): Promise<AdminDashboardStats> {
   const { start, end } = getTodayRange()
 
   const [
-    totalUsers,
+    totalRegisteredUsers,
     totalProUsers,
-    totalFreeUsers,
+    totalRegisteredFreeUsers,
+    totalGuestUsers,
     totalDocumentsGenerated,
     usersRegisteredToday,
     documentsGeneratedToday,
@@ -61,6 +62,7 @@ export async function getAdminDashboardStats(): Promise<AdminDashboardStats> {
     prisma.user.count(),
     prisma.user.count({ where: { isPro: true } }),
     prisma.user.count({ where: { isPro: false } }),
+    prisma.guestUser.count(),
     prisma.document.count(),
     prisma.user.count({ where: { createdAt: { gte: start, lt: end } } }),
     prisma.document.count({ where: { createdAt: { gte: start, lt: end } } }),
@@ -71,9 +73,9 @@ export async function getAdminDashboardStats(): Promise<AdminDashboardStats> {
   ])
 
   return {
-    totalUsers,
+    totalUsers: totalRegisteredUsers + totalGuestUsers,
     totalProUsers,
-    totalFreeUsers,
+    totalFreeUsers: totalRegisteredFreeUsers + totalGuestUsers,
     totalDocumentsGenerated,
     totalRevenue: toNumber(successfulPayments._sum.amount),
     usersRegisteredToday,

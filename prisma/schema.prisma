@@ -20,6 +20,17 @@ model User {
   documents Document[]
 }
 
+model GuestUser {
+  id           String   @id @default(uuid())
+  guestId      String   @unique
+  docsGenerated Int     @default(0)
+  createdAt    DateTime @default(now())
+  lastActiveAt DateTime @default(now())
+
+  @@index([createdAt])
+  @@index([lastActiveAt])
+}
+
 model Exporter {
   id        String    @id @default(uuid())
   name      String
