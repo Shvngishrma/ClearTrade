@@ -334,6 +334,9 @@ function DownloadPageContent() {
   async function handleDownloadAllDocxZip() {
     if (!invoiceId) return
 
+    // Avoid false non-Pro gating before plan status is loaded.
+    if (usageLoading) return
+
     if (!isPro) {
       setUpgradeContext({
         reason: "DOCX_RESTRICTED",
@@ -457,6 +460,8 @@ function DownloadPageContent() {
 
   useEffect(() => {
     if (!invoiceId || autoDownloadTriggered) return
+    if (usageLoading) return
+
     if (autoDownload === "pdf") {
       if (isFreeLimitReached) {
         openLimitUpgradeModal("You’ve generated all 7 documents included in the free plan.")
@@ -471,7 +476,7 @@ function DownloadPageContent() {
       setAutoDownloadTriggered(true)
       void handleDownloadAllDocxZip()
     }
-  }, [invoiceId, autoDownload, autoDownloadTriggered, isPro, isFreeLimitReached])
+  }, [invoiceId, autoDownload, autoDownloadTriggered, isPro, isFreeLimitReached, usageLoading])
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-zinc-950 p-4">
