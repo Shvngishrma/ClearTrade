@@ -27,6 +27,8 @@ type DataTableOptions = {
   compact?: boolean
 }
 
+type AlignmentValue = (typeof AlignmentType)[keyof typeof AlignmentType]
+
 function tableBorders() {
   return {
     top: { style: BorderStyle.SINGLE, size: 1, color: BORDER_COLOR_OUTER },
@@ -63,7 +65,7 @@ export function sectionHeading(text: string) {
   })
 }
 
-function keyValueCell(text: string, bold: boolean, compact: boolean, align: AlignmentType = AlignmentType.LEFT) {
+function keyValueCell(text: string, bold: boolean, compact: boolean, align: AlignmentValue = AlignmentType.LEFT) {
   return new Paragraph({
     children: [new TextRun({ text: text || "", bold, size: compact ? 19 : 20, font: FONT })],
     spacing: { after: compact ? GAP_SMALL : 60 },
@@ -130,7 +132,7 @@ export function keyValueTable(rows: KeyValueRow[], options: KeyValueTableOptions
   })
 }
 
-function contentAlignment(header: string): AlignmentType {
+function contentAlignment(header: string): AlignmentValue {
   const key = header.toLowerCase()
   if (key.includes("qty") || key === "sr") return AlignmentType.CENTER
   if (key.includes("amount") || key.includes("value") || key.includes("price") || key.includes("total")) {
