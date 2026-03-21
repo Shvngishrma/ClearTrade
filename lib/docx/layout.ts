@@ -14,9 +14,9 @@ type KeyValueRow = [string, string]
 const FONT = "Calibri"
 const BORDER_COLOR_OUTER = "D9D9D9"
 const BORDER_COLOR_INNER = "E5E5E5"
-const GAP_SMALL = 40
-const GAP_MEDIUM = 180
-const GAP_LARGE = 320
+const GAP_SMALL = 24
+const GAP_MEDIUM = 120
+const GAP_LARGE = 180
 
 type KeyValueTableOptions = {
   columns?: 1 | 2
@@ -44,7 +44,7 @@ export function documentHeader(title: string) {
   return new Paragraph({
     children: [new TextRun({ text: title, bold: true, size: 30, font: FONT })],
     alignment: AlignmentType.CENTER,
-    spacing: { after: 140 },
+    spacing: { after: 90 },
     border: {
       bottom: { style: BorderStyle.SINGLE, size: 1, color: BORDER_COLOR_OUTER },
     },
@@ -68,7 +68,7 @@ export function sectionHeading(text: string) {
 function keyValueCell(text: string, bold: boolean, compact: boolean, align: AlignmentValue = AlignmentType.LEFT) {
   return new Paragraph({
     children: [new TextRun({ text: text || "", bold, size: compact ? 19 : 20, font: FONT })],
-    spacing: { after: compact ? GAP_SMALL : 60 },
+    spacing: { after: compact ? GAP_SMALL : 40 },
     alignment: align,
   })
 }
@@ -155,7 +155,7 @@ export function dataTable(headers: string[], rows: string[][], options: DataTabl
                 new Paragraph({
                   children: [new TextRun({ text: header, bold: true, size: 20, font: FONT })],
                   alignment: contentAlignment(header),
-                  spacing: { after: compact ? GAP_SMALL : 70 },
+                  spacing: { after: compact ? GAP_SMALL : 48 },
                 }),
               ],
             })
@@ -172,7 +172,7 @@ export function dataTable(headers: string[], rows: string[][], options: DataTabl
                     new Paragraph({
                       children: [new TextRun({ text: String(value ?? ""), size: compact ? 19 : 20, font: FONT })],
                       alignment: contentAlignment(header),
-                      spacing: { after: compact ? GAP_SMALL : 60 },
+                      spacing: { after: compact ? GAP_SMALL : 40 },
                     }),
                   ],
                 })
@@ -210,40 +210,36 @@ export function partyDetailsTable(invoice: any) {
       new TableRow({
         children: [
           new TableCell({
+            width: { size: 50, type: WidthType.PERCENTAGE },
             children: [
               new Paragraph({
                 children: [new TextRun({ text: "EXPORTER / SHIPPER", bold: true, size: 20, font: FONT })],
+                spacing: { after: 48 },
               }),
+              ...exporterLines.map(
+                (line, index) =>
+                  new Paragraph({
+                    children: [new TextRun({ text: line, size: 20, font: FONT, bold: index === 0 })],
+                    spacing: { after: GAP_SMALL },
+                  })
+              ),
             ],
           }),
           new TableCell({
+            width: { size: 50, type: WidthType.PERCENTAGE },
             children: [
               new Paragraph({
                 children: [new TextRun({ text: "BUYER / IMPORTER", bold: true, size: 20, font: FONT })],
+                spacing: { after: 48 },
               }),
+              ...buyerLines.map(
+                (line, index) =>
+                  new Paragraph({
+                    children: [new TextRun({ text: line, size: 20, font: FONT, bold: index === 0 })],
+                    spacing: { after: GAP_SMALL },
+                  })
+              ),
             ],
-          }),
-        ],
-      }),
-      new TableRow({
-        children: [
-          new TableCell({
-            children: exporterLines.map(
-              (line, index) =>
-                new Paragraph({
-                  children: [new TextRun({ text: line, size: 20, font: FONT, bold: index === 0 })],
-                  spacing: { after: GAP_SMALL },
-                })
-            ),
-          }),
-          new TableCell({
-            children: buyerLines.map(
-              (line, index) =>
-                new Paragraph({
-                  children: [new TextRun({ text: line, size: 20, font: FONT, bold: index === 0 })],
-                  spacing: { after: GAP_SMALL },
-                })
-            ),
           }),
         ],
       }),
@@ -273,12 +269,12 @@ export function signatureBlock(exporterName: string) {
             children: [
               new Paragraph({
                 text: "",
-                spacing: { before: GAP_LARGE, after: GAP_SMALL },
+                spacing: { before: GAP_MEDIUM, after: GAP_SMALL },
               }),
               new Paragraph({
                 children: [new TextRun({ text: `For ${exporterName || "Exporter"}`, size: 20, font: FONT })],
                 alignment: AlignmentType.RIGHT,
-                spacing: { after: 400 },
+                spacing: { after: 260 },
               }),
               new Paragraph({
                 children: [new TextRun({ text: "________________________", size: 20, font: FONT })],
@@ -350,7 +346,7 @@ export function totalsBlock(rows: KeyValueRow[]) {
       new TableRow({
         children: [
           new TableCell({
-            width: { size: 55, type: WidthType.PERCENTAGE },
+            width: { size: 60, type: WidthType.PERCENTAGE },
             children: [new Paragraph({ text: "" })],
             borders: {
               top: { style: BorderStyle.NONE, size: 0, color: "FFFFFF" },
@@ -360,7 +356,7 @@ export function totalsBlock(rows: KeyValueRow[]) {
             },
           }),
           new TableCell({
-            width: { size: 45, type: WidthType.PERCENTAGE },
+            width: { size: 40, type: WidthType.PERCENTAGE },
             children: [totalsTable],
             borders: {
               top: { style: BorderStyle.NONE, size: 0, color: "FFFFFF" },
