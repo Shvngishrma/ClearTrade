@@ -1,8 +1,8 @@
+import Link from "next/link"
 import { getServerSession } from "next-auth"
 import { redirect } from "next/navigation"
-import Link from "next/link"
 import { authOptions } from "@/lib/authOptions"
-import { getAdminDashboardStats, getGuestAdminStats, isAllowedAdminEmail } from "@/lib/adminDashboard"
+import { getAdminDashboardStats, isAllowedAdminEmail } from "@/lib/adminDashboard"
 
 function StatCard({ label, value, href }: { label: string; value: string | number; href?: string }) {
   const card = (
@@ -23,17 +23,14 @@ function StatCard({ label, value, href }: { label: string; value: string | numbe
   )
 }
 
-export default async function AdminPage() {
+export default async function MemberMetricsPage() {
   const session = await getServerSession(authOptions)
 
   if (!isAllowedAdminEmail(session?.user?.email)) {
     redirect("/")
   }
 
-  const [stats, guestStats] = await Promise.all([
-    getAdminDashboardStats(),
-    getGuestAdminStats(),
-  ])
+  const stats = await getAdminDashboardStats()
   const formattedRevenue = new Intl.NumberFormat("en-IN", {
     style: "currency",
     currency: "INR",
@@ -42,20 +39,27 @@ export default async function AdminPage() {
 
   return (
     <main className="max-w-6xl mx-auto p-6 md:p-8 space-y-6 text-gray-900 dark:text-zinc-100">
-      <div>
-        <h1 className="text-2xl font-semibold">Internal Admin Dashboard</h1>
-        <p className="text-sm text-gray-500 dark:text-zinc-400 mt-1">Private operational stats</p>
+      <div className="flex items-center justify-between gap-3">
+        <div>
+          <h1 className="text-2xl font-semibold">Member Metrics</h1>
+          <p className="text-sm text-gray-500 dark:text-zinc-400 mt-1">Current registered user metrics (unchanged baseline)</p>
+        </div>
+        <Link
+          href="/admin/user-segments"
+          className="rounded-lg border border-gray-200 dark:border-zinc-700 px-3 py-2 text-sm text-gray-700 dark:text-zinc-200 hover:bg-gray-50 dark:hover:bg-zinc-800"
+        >
+          Back to Segments
+        </Link>
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-        <StatCard label="Total users" value={stats.totalUsers} />
-        <StatCard label="Total Pro users" value={stats.totalProUsers} href="/admin/pro-users" />
-        <StatCard label="Total Free users" value={stats.totalFreeUsers} href="/admin/free-users" />
-        <StatCard label="Guest users tracked" value={guestStats.totalGuests} href="/admin/user-segments" />
-        <StatCard label="Total documents generated" value={stats.totalDocumentsGenerated} />
+        <StatCard label="Total members" value={stats.totalUsers} />
+        <StatCard label="Total Pro members" value={stats.totalProUsers} href="/admin/pro-users" />
+        <StatCard label="Total Free members" value={stats.totalFreeUsers} href="/admin/free-users" />
+        <StatCard label="Total member documents generated" value={stats.totalDocumentsGenerated} />
         <StatCard label="Total revenue (successful payments)" value={formattedRevenue} />
-        <StatCard label="Users registered today" value={stats.usersRegisteredToday} />
-        <StatCard label="Documents generated today" value={stats.documentsGeneratedToday} />
+        <StatCard label="Members registered today" value={stats.usersRegisteredToday} />
+        <StatCard label="Member documents generated today" value={stats.documentsGeneratedToday} />
       </div>
     </main>
   )

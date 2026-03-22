@@ -5,15 +5,6 @@ import { authOptions } from "@/lib/authOptions"
 import { isAllowedAdminEmail } from "@/lib/adminDashboard"
 import { prisma } from "@/lib/db"
 
-function isMissingGuestUserTableError(error: unknown): boolean {
-  if (!error || typeof error !== "object") {
-    return false
-  }
-
-  const err = error as { code?: string; message?: string }
-  return err.code === "P2021" && String(err.message || "").includes("GuestUser")
-}
-
 export default async function FreeUsersPage() {
   const session = await getServerSession(authOptions)
 
@@ -21,58 +12,23 @@ export default async function FreeUsersPage() {
     redirect("/")
   }
 
-  const [users, guestUsers] = await Promise.all([
-    prisma.user.findMany({
-      where: { isPro: false },
-      select: {
-        email: true,
-        createdAt: true,
-      },
-      orderBy: {
-        createdAt: "desc",
-      },
-    }),
-    prisma.guestUser
-      .findMany({
-        select: {
-          guestId: true,
-          docsGenerated: true,
-          createdAt: true,
-        },
-        orderBy: {
-          createdAt: "desc",
-        },
-      })
-      .catch((error) => {
-        if (isMissingGuestUserTableError(error)) {
-          return []
-        }
-
-        throw error
-      }),
-  ])
-
-  const freeUsers = [
-    ...users.map((user) => ({
-      id: `user-${user.email}-${user.createdAt.toISOString()}`,
-      label: user.email,
-      createdAt: user.createdAt,
-      meta: "Account",
-    })),
-    ...guestUsers.map((guest) => ({
-      id: `guest-${guest.guestId}`,
-      label: `Guest (${guest.guestId})`,
-      createdAt: guest.createdAt,
-      meta: `Guest · ${guest.docsGenerated} docs`,
-    })),
-  ].sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime())
+  const users = await prisma.user.findMany({
+    where: { isPro: false },
+    select: {
+      email: true,
+      createdAt: true,
+    },
+    orderBy: {
+      createdAt: "desc",
+    },
+  })
 
   return (
     <main className="max-w-6xl mx-auto p-6 md:p-8 space-y-6 text-gray-900 dark:text-zinc-100">
       <div className="flex items-center justify-between gap-3">
         <div>
           <h1 className="text-2xl font-semibold">Free Users</h1>
-          <p className="text-sm text-gray-500 dark:text-zinc-400 mt-1">Total: {freeUsers.length}</p>
+          <p className="text-sm text-gray-500 dark:text-zinc-400 mt-1">Total: {users.length}</p>
         </div>
         <Link
           href="/admin"
@@ -83,16 +39,13 @@ export default async function FreeUsersPage() {
       </div>
 
       <section className="rounded-xl border border-gray-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 overflow-hidden">
-        {freeUsers.length === 0 ? (
+        {users.length === 0 ? (
           <p className="p-5 text-sm text-gray-500 dark:text-zinc-400">No Free users found.</p>
         ) : (
           <ul className="divide-y divide-gray-200 dark:divide-zinc-700">
-            {freeUsers.map((user) => (
-              <li key={user.id} className="p-4 sm:p-5 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
-                <div>
-                  <p className="font-medium text-gray-900 dark:text-zinc-100 break-all">{user.label}</p>
-                  <p className="text-xs text-gray-500 dark:text-zinc-400 mt-0.5">{user.meta}</p>
-                </div>
+            {users.map((user) => (
+              <li key={`${user.email}-${user.createdAt.toISOString()}`} className="p-4 sm:p-5 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+                <p className="font-medium text-gray-900 dark:text-zinc-100 break-all">{user.email}</p>
                 <p className="text-sm text-gray-500 dark:text-zinc-400">
                   {new Intl.DateTimeFormat("en-IN", {
                     dateStyle: "medium",

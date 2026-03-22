@@ -15,6 +15,19 @@ export type AdminDashboardStats = {
   documentsGeneratedToday: number
 }
 
+export type GuestAdminStats = {
+  totalGuests: number
+  guestsActiveToday: number
+  totalGuestDocuments: number
+}
+
+export type GuestActivityRow = {
+  guestId: string
+  docsGenerated: number
+  createdAt: Date
+  lastActiveAt: Date
+}
+
 function toNumber(value: unknown): number {
   if (typeof value === "number") {
     return value
@@ -58,19 +71,10 @@ function getTodayRange() {
 export async function getAdminDashboardStats(): Promise<AdminDashboardStats> {
   const { start, end } = getTodayRange()
 
-  const guestUsersCountPromise = prisma.guestUser.count().catch((error) => {
-    if (isMissingGuestUserTableError(error)) {
-      return 0
-    }
-
-    throw error
-  })
-
   const [
-    totalRegisteredUsers,
+    totalUsers,
     totalProUsers,
-    totalRegisteredFreeUsers,
-    totalGuestUsers,
+    totalFreeUsers,
     totalDocumentsGenerated,
     usersRegisteredToday,
     documentsGeneratedToday,
@@ -79,7 +83,6 @@ export async function getAdminDashboardStats(): Promise<AdminDashboardStats> {
     prisma.user.count(),
     prisma.user.count({ where: { isPro: true } }),
     prisma.user.count({ where: { isPro: false } }),
-    guestUsersCountPromise,
     prisma.document.count(),
     prisma.user.count({ where: { createdAt: { gte: start, lt: end } } }),
     prisma.document.count({ where: { createdAt: { gte: start, lt: end } } }),
@@ -90,12 +93,66 @@ export async function getAdminDashboardStats(): Promise<AdminDashboardStats> {
   ])
 
   return {
-    totalUsers: totalRegisteredUsers + totalGuestUsers,
+    totalUsers,
     totalProUsers,
-    totalFreeUsers: totalRegisteredFreeUsers + totalGuestUsers,
+    totalFreeUsers,
     totalDocumentsGenerated,
     totalRevenue: toNumber(successfulPayments._sum.amount),
     usersRegisteredToday,
     documentsGeneratedToday,
+  }
+}
+
+export async function getGuestAdminStats(): Promise<GuestAdminStats> {
+  const { start, end } = getTodayRange()
+
+  try {
+    const [totalGuests, guestsActiveToday, guestDocsAggregate] = await Promise.all([
+      prisma.guestUser.count(),
+      prisma.guestUser.count({ where: { lastActiveAt: { gte: start, lt: end } } }),
+      prisma.guestUser.aggregate({
+        _sum: {
+          docsGenerated: true,
+        },
+      }),
+    ])
+
+    return {
+      totalGuests,
+      guestsActiveToday,
+      totalGuestDocuments: guestDocsAggregate._sum.docsGenerated ?? 0,
+    }
+  } catch (error) {
+    if (isMissingGuestUserTableError(error)) {
+      return {
+        totalGuests: 0,
+        guestsActiveToday: 0,
+        totalGuestDocuments: 0,
+      }
+    }
+
+    throw error
+  }
+}
+
+export async function getGuestActivityRows(): Promise<GuestActivityRow[]> {
+  try {
+    return await prisma.guestUser.findMany({
+      select: {
+        guestId: true,
+        docsGenerated: true,
+        createdAt: true,
+        lastActiveAt: true,
+      },
+      orderBy: {
+        lastActiveAt: "desc",
+      },
+    })
+  } catch (error) {
+    if (isMissingGuestUserTableError(error)) {
+      return []
+    }
+
+    throw error
   }
 }
