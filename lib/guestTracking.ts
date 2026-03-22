@@ -6,6 +6,7 @@
 const GUEST_ID_KEY = "clearTrade_guestId"
 const GUEST_DOCS_COUNT_KEY = "clearTrade_docsGenerated"
 const GUEST_ID_EXPIRY_KEY = "clearTrade_guestExpiry"
+const GUEST_LAST_VISIT_TRACKED_DATE_KEY = "clearTrade_lastVisitTrackedDate"
 const GUEST_ID_EXPIRY_DAYS = 90 // Expire guest ID after 90 days
 
 // Safe localStorage access with fallback
@@ -88,6 +89,23 @@ export function incrementGuestDocsCount(): number {
   return newCount
 }
 
+function getTodayDateKey(): string {
+  const now = new Date()
+  const year = now.getFullYear()
+  const month = String(now.getMonth() + 1).padStart(2, "0")
+  const day = String(now.getDate()).padStart(2, "0")
+  return `${year}-${month}-${day}`
+}
+
+export function shouldTrackGuestVisitToday(): boolean {
+  const lastTrackedDate = safeGetItem(GUEST_LAST_VISIT_TRACKED_DATE_KEY)
+  return lastTrackedDate !== getTodayDateKey()
+}
+
+export function markGuestVisitTrackedToday(): void {
+  safeSetItem(GUEST_LAST_VISIT_TRACKED_DATE_KEY, getTodayDateKey())
+}
+
 // Get remaining free documents for guest
 export function getGuestRemaining(limit: number = 7): number {
   const used = getGuestDocsGenerated()
@@ -106,6 +124,7 @@ export function clearGuestData(): void {
       localStorage.removeItem(GUEST_ID_KEY)
       localStorage.removeItem(GUEST_DOCS_COUNT_KEY)
       localStorage.removeItem(GUEST_ID_EXPIRY_KEY)
+      localStorage.removeItem(GUEST_LAST_VISIT_TRACKED_DATE_KEY)
     }
   } catch {
     // ignore

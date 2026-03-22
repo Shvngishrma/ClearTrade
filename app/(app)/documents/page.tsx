@@ -1108,7 +1108,7 @@ function DocumentsPage() {
           await fetch("/api/guest/track", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ guestId: guestTracking.guestId }),
+            body: JSON.stringify({ guestId: guestTracking.guestId, action: "document_generated" }),
           }).catch(() => null)
         }
 
