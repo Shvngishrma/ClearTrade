@@ -2,7 +2,7 @@ import { getServerSession } from "next-auth"
 import { redirect } from "next/navigation"
 import Link from "next/link"
 import { authOptions } from "@/lib/authOptions"
-import { getAdminDashboardStats, getGuestAdminStats, isAllowedAdminEmail } from "@/lib/adminDashboard"
+import { getAdminDashboardStats, isAllowedAdminEmail } from "@/lib/adminDashboard"
 
 function StatCard({ label, value, href }: { label: string; value: string | number; href?: string }) {
   const card = (
@@ -30,10 +30,7 @@ export default async function AdminPage() {
     redirect("/")
   }
 
-  const [stats, guestStats] = await Promise.all([
-    getAdminDashboardStats(),
-    getGuestAdminStats(),
-  ])
+  const stats = await getAdminDashboardStats()
   const formattedRevenue = new Intl.NumberFormat("en-IN", {
     style: "currency",
     currency: "INR",
@@ -47,11 +44,29 @@ export default async function AdminPage() {
         <p className="text-sm text-gray-500 dark:text-zinc-400 mt-1">Private operational stats</p>
       </div>
 
+      <section className="rounded-xl border border-gray-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 p-5 space-y-3">
+        <h2 className="text-lg font-semibold text-gray-900 dark:text-zinc-100">Select Metrics View</h2>
+        <p className="text-sm text-gray-500 dark:text-zinc-400">Choose whether you want to inspect member metrics or guest metrics.</p>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <Link
+            href="/admin/members"
+            className="rounded-lg border border-gray-200 dark:border-zinc-700 px-4 py-3 text-sm font-medium text-gray-900 dark:text-zinc-100 hover:bg-gray-50 dark:hover:bg-zinc-700"
+          >
+            Open Member Metrics
+          </Link>
+          <Link
+            href="/admin/guests"
+            className="rounded-lg border border-gray-200 dark:border-zinc-700 px-4 py-3 text-sm font-medium text-gray-900 dark:text-zinc-100 hover:bg-gray-50 dark:hover:bg-zinc-700"
+          >
+            Open Guest Metrics
+          </Link>
+        </div>
+      </section>
+
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
         <StatCard label="Total users" value={stats.totalUsers} />
         <StatCard label="Total Pro users" value={stats.totalProUsers} href="/admin/pro-users" />
         <StatCard label="Total Free users" value={stats.totalFreeUsers} href="/admin/free-users" />
-        <StatCard label="Guest users tracked" value={guestStats.totalGuests} href="/admin/user-segments" />
         <StatCard label="Total documents generated" value={stats.totalDocumentsGenerated} />
         <StatCard label="Total revenue (successful payments)" value={formattedRevenue} />
         <StatCard label="Users registered today" value={stats.usersRegisteredToday} />
